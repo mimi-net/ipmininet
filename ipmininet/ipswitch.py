@@ -31,7 +31,7 @@ class IPSwitch(LinuxBridge):
         self.cmd('brctl delbr', self)
         self.cmd('brctl addbr', self)
         if self.hub:
-            self.cmd('brctl setageing 0', self)
+            self.cmd('brctl setageing ', self, ' 0')
         if self.stp:
             self.cmd('brctl setbridgeprio', self, self.prio)
             self.cmd('brctl stp', self, 'on')
