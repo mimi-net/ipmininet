@@ -249,7 +249,7 @@ class NetworkCapture(Overlay):
         """
 
         self.base_filename = base_filename
-        self.interfaces = list(set(interfaces))
+        self.interfaces = list(interfaces)
         self.extra_arguments = extra_arguments
         self.ongoing_captures = {}
         super().__init__(nodes=list(set(nodes)))
@@ -274,6 +274,11 @@ class NetworkCapture(Overlay):
             self.ongoing_captures[node.name] = process
             return process
         elif intf is not None:
+
+            if intf.name in self.ongoing_captures:
+                lg.info('We already run tcpdump on this interface')
+                return None
+
             file_path = os.path.join(intf.node.cwd, self.base_filename + '_' + intf.name + '.pcapng')
             cmd = f"tcpdump -Z root -i {intf.name} -w {file_path} {self.extra_arguments}"
             process = intf.node.popen(shlex.split(cmd))
