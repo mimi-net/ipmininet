@@ -280,7 +280,9 @@ class NetworkCapture(Overlay):
                 return None
 
             file_path = os.path.join(intf.node.cwd, self.base_filename + '_' + intf.name + '.pcapng')
-            cmd = f"tcpdump -Z root -i {intf.name} -w {file_path} {self.extra_arguments}"
+            file_path_out = os.path.join(intf.node.cwd, self.base_filename + '_' + intf.name + '_out.pcapng')
+            cmd = f"mimidump {intf.name} {file_path} {file_path_out} {self.extra_arguments}"
+            
             process = intf.node.popen(shlex.split(cmd))
             self.ongoing_captures[intf.name] = process
             return process
