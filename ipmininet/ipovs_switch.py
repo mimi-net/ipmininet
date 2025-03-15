@@ -4,8 +4,9 @@ from mininet.log import info, error, warn, debug
 
 class IPOVSSwitch(OVSSwitch):
     def __init__(self, name: str, stp=False, hub=False, cwd='/tmp', rstp=False,
-                 failMode="standalone", batch=False, **params):
+                 failMode="standalone", batch=False, priority=None, **params):
         self.cwd = cwd
+        self.priority = priority
         self.rstp = rstp and not hub
         stp = stp and not hub
         OVSSwitch.__init__(self, failMode=failMode, name=name, stp=stp, batch=False, **params)
@@ -46,8 +47,12 @@ class IPOVSSwitch(OVSSwitch):
 
     def bridgeOpts(self):
         """Return OVS bridge options"""
-        opts = (' other_config:datapath-id=%s' % self.dpid +
+        opts = (' other_config:enable-vlan-filtering=true' +
+                ' other_config:datapath-id=%s' % self.dpid +
                  ' fail_mode=%s' % self.failMode)
+        if self.priority is not None:
+            opts += (' other_config:stp-priority=%s' % self.priority +
+                    ' other_config:rstp-priority=%s' % self.priority)
         if not self.inband:
             opts += ' other_config:disable-in-band=true'
         if self.datapath == 'user':
