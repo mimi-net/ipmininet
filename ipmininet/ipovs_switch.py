@@ -47,8 +47,7 @@ class IPOVSSwitch(OVSSwitch):
 
     def bridgeOpts(self):
         """Return OVS bridge options"""
-        opts = (' other_config:enable-vlan-filtering=true' +
-                ' other_config:datapath-id=%s' % self.dpid +
+        opts = (' other_config:datapath-id=%s' % self.dpid +
                  ' fail_mode=%s' % self.failMode)
         if self.priority is not None:
             opts += (' other_config:stp-priority=%s' % self.priority +
