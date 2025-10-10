@@ -16,6 +16,8 @@ from ipmininet.link import IPIntf
 from ipmininet.utils import L3Router, realIntfList, otherIntf
 from .config import BasicRouterConfig, NodeConfig, RouterConfig, \
     OpenrRouterConfig
+from .config.utils import ConfigDict
+from .config.base import Daemon
 
 
 class ProcessHelper:
@@ -114,6 +116,7 @@ class IPNode(Node):
         else:
             self.nconfig = config(self)
         self._processes = process_manager(self)
+        self._daemons = []
 
     def start(self):
         """Start the node: Configure the daemons, set the relevant sysctls,
@@ -166,11 +169,24 @@ class IPNode(Node):
             while not d.has_started(self._processes):
                 time.sleep(.001)
 
+    def build_daemon(self, daemon: Daemon):
+        _cfg = ConfigDict()
+        _cfg.name = self.name
+        _cfg[daemon.NAME] = daemon.build()
+        cfg = daemon.render(_cfg)
+        daemon.write(cfg)
+
+    def start_daemon(self, daemon: Daemon):
+        self._processes.popen(shlex.split(daemon.startup_line))
+        self._daemons.append(daemon)
+
     def terminate(self):
         """Stops this node and sets back all sysctls to their old values"""
         self._processes.terminate()
         if not DEBUG_FLAG:
             self.nconfig.cleanup()
+            for d in self._daemons:
+                d.cleanup()
         for opt, val in self._old_sysctl.items():
             self._set_sysctl(opt, val)
         # Stop the captures on this node
