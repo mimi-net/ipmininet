@@ -13,3 +13,4 @@ tags
 *.ropeproject
 _build/
 docs/api/*.rst
+.idea/
