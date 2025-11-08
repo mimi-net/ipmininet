@@ -1,0 +1,37 @@
+[build-system]
+requires = [ "setuptools>=61.2", "pytest-runner",]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ipmininet"
+version = "1.1"
+description = "A mininet extension providing components to emulate IPnetworks running multiple protocols."
+keywords = [ "networking", "OSPF", "IP", "BGP", "quagga", "mininet",]
+classifiers = [ "License :: OSI Approved :: GNU General Public License v2 (GPLv2)", "Programming Language :: Python", "Development Status :: 4 - Beta", "Intended Audience :: Developers", "Topic :: System :: Networking", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.6", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9",]
+dependencies = [ "setuptools", "mako>=1.1,<1.2", "mininet @ git+https://github.com/mininet/mininet@2.3.0",]
+
+[[project.authors]]
+name = "Olivier Tilmans"
+email = "olivier.tilmans@uclouvain.be"
+
+[[project.authors]]
+name = "Mathieu Jadin"
+email = "mathieu.jadin@uclouvain.be"
+
+[project.license]
+text = "GPLv2"
+
+[project.urls]
+Homepage = "https://github.com/cnp3/ipmininet"
+
+[project.optional-dependencies]
+testing = [ "pytest",]
+
+[tool.aliases]
+test = "pytest"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = false
