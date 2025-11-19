@@ -8,7 +8,7 @@ version = "1.1"
 description = "A mininet extension providing components to emulate IPnetworks running multiple protocols."
 keywords = [ "networking", "OSPF", "IP", "BGP", "quagga", "mininet",]
 classifiers = [ "License :: OSI Approved :: GNU General Public License v2 (GPLv2)", "Programming Language :: Python", "Development Status :: 4 - Beta", "Intended Audience :: Developers", "Topic :: System :: Networking", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.6", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9",]
-dependencies = [ "setuptools", "mako>=1.1,<1.2", "mininet @ git+https://github.com/mininet/mininet@2.3.0",]
+dependencies = [ "setuptools", "mako>=1.1,<1.2", "mininet@git+https://github.com/vicitori/mininet.git@add_duplicate",]
 
 [[project.authors]]
 name = "Olivier Tilmans"
