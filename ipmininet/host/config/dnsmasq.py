@@ -9,20 +9,21 @@ class Dnsmasq(HostDaemon):
     NAME = "dnsmasq"
     KILL_PATTERNS = ("dnsmasq",)
 
-    def __init__(self, node, ip_range, mask, gw, **kwargs):
+    def __init__(self, node, ip_range, mask, gw, intfs, **kwargs):
         self.node = node
         self.pid_file = tempfile.mktemp(dir='/tmp')
         self.popen = None
         self.ip_range = ip_range
         self.mask = mask
         self.gw = gw
+        self.intfs = intfs
         self.opts = {
-            "dhcp-range": f"{ip_range},{mask}", 
-            "dhcp-option": f"3,{gw}", 
+            "dhcp-range": f"{ip_range},{mask}",
+            "dhcp-option": f"3,{gw}",
             "pid-file": self.pid_file,
             "port": 0,
-            "log-queries": None, 
-            "log-dhcp": None, 
+            "log-queries": None,
+            "log-dhcp": None,
             "bind-interfaces": None,
         }
         super().__init__(node, **kwargs)
@@ -33,8 +34,8 @@ class Dnsmasq(HostDaemon):
         cfg.ip_range = self.ip_range
         cfg.mask = self.mask
         cfg.gw = self.gw
-        cfg.interfaces = self.node.intfNames()
-        self.opts["interface"] = self.node.intfNames()
+        cfg.interfaces = self.intfs
+        self.opts["interface"] = self.intfs
         cfg.opts = self.opts
         return cfg
 
@@ -48,7 +49,7 @@ class Dnsmasq(HostDaemon):
 
     @property
     def cfg_filenames(self):
-        return [self._file(suffix=f"cfg")]
+        return [self._file(suffix=f"%s.cfg" % '_'.join(self.intfs))]
 
     @property
     def template_filenames(self):
