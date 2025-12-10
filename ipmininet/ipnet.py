@@ -121,6 +121,7 @@ class IPNet(Mininet):
                 igp_area: Optional[str] = None,
                 igp_passive=False,
                 v4_width=1, v6_width=1,
+                duplicate: Optional[Union[str, float]] = None,
                 *args, **params) -> IPLink:
         """Register a link with additional properties
 
@@ -142,12 +143,26 @@ class IPNet(Mininet):
             igp_metric = self.igp_metric
         if not igp_area:
             igp_area = self.igp_area
+
+        duplicate_val = None
+        if isinstance(duplicate, str):
+            duplicate_str = duplicate.strip()
+            if duplicate_str.endswith('%'):
+                duplicate_val = duplicate_str
+            else:
+                try:
+                    duplicate_val = float(duplicate_str)
+                except ValueError:
+                    duplicate_val = None
+        else:
+            duplicate_val = duplicate
         # Register all link properties
         props = {'igp_metric': igp_metric,
                  'igp_area': igp_area,
                  'igp_passive': igp_passive,
                  'v4_width': v4_width,
-                 'v6_width': v6_width}
+                 'v6_width': v6_width,
+                 'duplicate': duplicate_val}
         # Update interface properties with link properties
         for pstr in ('params1', 'params2'):
             try:
