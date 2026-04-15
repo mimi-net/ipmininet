@@ -26,7 +26,7 @@ class DHCPRelay(RouterDaemon):
     
     @property
     def startup_line(self):
-        return f"dnsmasq --dhcp-relay=172.16.10.3,192.168.10.2"
+        return f"dnsmasq --dhcp-relay=172.16.10.3,192.168.10.2,{self.intf}"
     
     @property
     def dry_run(self):
