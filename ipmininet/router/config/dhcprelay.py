@@ -1,9 +1,10 @@
 from .base import RouterDaemon
+from ipmininet.router.config.utils import ConfigDict
 import tempfile
 
-class DHCPHelper(RouterDaemon):
-    NAME = "dhcp-helper"
-    KILL_PATTERNS = ("dhcp-helper",)
+class DHCPRelay(RouterDaemon):
+    NAME = "dhcprelay"
+    KILL_PATTERNS = ("dnsmasq",)
 
     def __init__(self, node, dhcp_server_ip, dhcp_server_mask, intf, **kwargs):
         self.node = node
@@ -13,9 +14,19 @@ class DHCPHelper(RouterDaemon):
         self.pid_file = tempfile.mktemp(dir='/tmp')
         super().__init__(node, **kwargs)
     
+    '''
+    def build(self) -> ConfigDict:
+        cfg = super().build()
+        cfg.pid_file = self.pid_file
+        cfg.dhcp_server_ip = self.dhcp_server_ip
+        cfg.dhcp_server_mask = self.dhcp_server_mask
+        cfg.intf = self.intf
+        return cfg
+    '''
+    
     @property
     def startup_line(self):
-        return f"{self.NAME} -s {self.dhcp_server_ip} -i {self.intf} -r {self.pid_file}"
+        return f"dnsmasq --dhcp-relay=172.16.10.3,192.168.10.2"
     
     @property
     def dry_run(self):
