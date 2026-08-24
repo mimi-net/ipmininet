@@ -10,8 +10,8 @@ from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import RIPng
 from ipmininet.router.config.base import RouterConfig
-from ipmininet.tests.utils import assert_connectivity, assert_path,\
-    assert_routing_table
+from ipmininet.tests.utils import assert_connectivity, assert_path, assert_routing_table
+
 from . import require_root
 
 
@@ -74,60 +74,60 @@ class MinimalRIPngNet(IPTopo):
 
 expected_paths = {
     MinimalRIPngNet.__name__: [
-        ['h1', 'r1', 'r3', 'r2', 'h2'],
-        ['h1', 'r1', 'r3', 'h3'],
-        ['h2', 'r2', 'r3', 'r1', 'h1'],
-        ['h2', 'r2', 'r3', 'h3'],
-        ['h3', 'r3', 'r1', 'h1'],
-        ['h3', 'r3', 'r2', 'h2']
+        ["h1", "r1", "r3", "r2", "h2"],
+        ["h1", "r1", "r3", "h3"],
+        ["h2", "r2", "r3", "r1", "h1"],
+        ["h2", "r2", "r3", "h3"],
+        ["h3", "r3", "r1", "h1"],
+        ["h3", "r3", "r2", "h2"],
     ],
     RIPngNetwork.__name__: [
-        ['h1', 'r1', 'r2', 'r3', 'h3'],
-        ['h1', 'r1', 'r4', 'h4'],
-        ['h1', 'r1', 'r4', 'r5', 'h5'],
+        ["h1", "r1", "r2", "r3", "h3"],
+        ["h1", "r1", "r4", "h4"],
+        ["h1", "r1", "r4", "r5", "h5"],
 
-        ['h3', 'r3', 'r2', 'r1', 'h1'],
-        ['h3', 'r3', 'r2', 'r5', 'r4', 'h4'],
-        ['h3', 'r3', 'r2', 'r5', 'h5'],
+        ["h3", "r3", "r2", "r1", "h1"],
+        ["h3", "r3", "r2", "r5", "r4", "h4"],
+        ["h3", "r3", "r2", "r5", "h5"],
 
-        ['h4', 'r4', 'r1', 'h1'],
-        ['h4', 'r4', 'r5', 'r2', 'r3', 'h3'],
-        ['h4', 'r4', 'r5', 'h5'],
+        ["h4", "r4", "r1", "h1"],
+        ["h4", "r4", "r5", "r2", "r3", "h3"],
+        ["h4", "r4", "r5", "h5"],
 
-        ['h5', 'r5', 'r4', 'r1', 'h1'],
-        ['h5', 'r5', 'r2', 'r3', 'h3'],
-        ['h5', 'r5', 'r4', 'h4']
+        ["h5", "r5", "r4", "r1", "h1"],
+        ["h5", "r5", "r2", "r3", "h3"],
+        ["h5", "r5", "r4", "h4"],
     ],
     RIPngNetworkAdjust.__name__: [
-        ['h1', 'r1', 'r3', 'h3'],
-        ['h1', 'r1', 'r5', 'h5'],
+        ["h1", "r1", "r3", "h3"],
+        ["h1", "r1", "r5", "h5"],
 
-        ['h3', 'r3', 'r1', 'h1'],
-        ['h3', 'r3', 'r2', 'r4', 'h4'],
+        ["h3", "r3", "r1", "h1"],
+        ["h3", "r3", "r2", "r4", "h4"],
 
-        ['h4', 'r4', 'r2', 'r3', 'h3'],
-        ['h4', 'r4', 'r5', 'h5'],
+        ["h4", "r4", "r2", "r3", "h3"],
+        ["h4", "r4", "r5", "h5"],
 
-        ['h5', 'r5', 'r1', 'h1'],
-        ['h5', 'r5', 'r4', 'h4']
+        ["h5", "r5", "r1", "h1"],
+        ["h5", "r5", "r4", "h4"],
     ],
     "RIPngNetworkAdjust-mod": [
-        ['h1', 'r1', 'r3', 'h3'],
-        ['h1', 'r1', 'r2', 'r4', 'h4'],
-        ['h1', 'r1', 'r2', 'r5', 'h5'],
+        ["h1", "r1", "r3", "h3"],
+        ["h1", "r1", "r2", "r4", "h4"],
+        ["h1", "r1", "r2", "r5", "h5"],
 
-        ['h3', 'r3', 'r1', 'h1'],
-        ['h3', 'r3', 'r2', 'r4', 'h4'],
-        ['h3', 'r3', 'r2', 'r5', 'h5'],
+        ["h3", "r3", "r1", "h1"],
+        ["h3", "r3", "r2", "r4", "h4"],
+        ["h3", "r3", "r2", "r5", "h5"],
 
-        ['h4', 'r4', 'r2', 'r3', 'h3'],
-        ['h4', 'r4', 'r2', 'r3', 'h3'],
-        ['h4', 'r4', 'r5', 'h5'],
+        ["h4", "r4", "r2", "r3", "h3"],
+        ["h4", "r4", "r2", "r3", "h3"],
+        ["h4", "r4", "r5", "h5"],
 
-        ['h5', 'r5', 'r2', 'r1', 'h1'],
-        ['h5', 'r5', 'r2', 'r3', 'h3'],
-        ['h5', 'r5', 'r4', 'h4']
-    ]
+        ["h5", "r5", "r2", "r1", "h1"],
+        ["h5", "r5", "r2", "r3", "h3"],
+        ["h5", "r5", "r4", "h4"],
+    ],
 }
 
 
@@ -135,7 +135,7 @@ expected_paths = {
 @pytest.mark.parametrize("topo", [
     MinimalRIPngNet,
     RIPngNetwork,
-    RIPngNetworkAdjust
+    RIPngNetworkAdjust,
 ])
 def test_ripng_examples(topo):
     try:
@@ -174,7 +174,7 @@ def test_ripng_flush_routing_tables():
         routing_tables = {
             "r1": ["2042:22::/64", "2042:33::/64", "2042:23::/64"],
             "r2": ["2042:11::/64", "2042:33::/64", "2042:13::/64"],
-            "r3": ["2042:11::/64", "2042:22::/64", "2042:12::/64"]
+            "r3": ["2042:11::/64", "2042:22::/64", "2042:12::/64"],
         }
         for router, expected_ipv6 in routing_tables.items():
             assert_routing_table(net[router], expected_ipv6)

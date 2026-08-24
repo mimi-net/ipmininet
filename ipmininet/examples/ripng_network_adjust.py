@@ -2,8 +2,8 @@
    The weight can be customized."""
 
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config.ripng import RIPng
 from ipmininet.router.config import RouterConfig
+from ipmininet.router.config.ripng import RIPng
 
 
 class RIPngNetworkAdjust(IPTopo):
@@ -54,7 +54,7 @@ class RIPngNetworkAdjust(IPTopo):
        +-----+                                     +-----+
         """
 
-        r1, r2, r3, r4, r5 = self.addRouters('r1', 'r2', 'r3', 'r4', 'r5',
+        r1, r2, r3, r4, r5 = self.addRouters("r1", "r2", "r3", "r4", "r5",
                                              use_v4=False, use_v6=True,
                                              config=RouterConfig)
         r1.addDaemon(RIPng)
@@ -63,10 +63,10 @@ class RIPngNetworkAdjust(IPTopo):
         r4.addDaemon(RIPng)
         r5.addDaemon(RIPng)
 
-        h1 = self.addHost('h1')
-        h3 = self.addHost('h3')
-        h4 = self.addHost('h4')
-        h5 = self.addHost('h5')
+        h1 = self.addHost("h1")
+        h3 = self.addHost("h3")
+        h4 = self.addHost("h4")
+        h5 = self.addHost("h5")
 
         self.addLinks((h1, r1), (h3, r3), (h4, r4), (h5, r5))
 

@@ -1,7 +1,14 @@
 import os
 
-from .install import parse_args, dist, install_mininet, install_frrouting, \
-    install_exabgp, enable_ipv6, install_openr
+from .install import (
+    dist,
+    enable_ipv6,
+    install_exabgp,
+    install_frrouting,
+    install_mininet,
+    install_openr,
+    parse_args,
+)
 
 if __name__ == "__main__":
 
@@ -10,8 +17,11 @@ if __name__ == "__main__":
 
     dist.require_pip()
 
-    if args.install_mininet:
-        install_mininet(args.output_dir)
+    if args.all or args.install_mininet:
+        install_mininet(args.output_dir, pip_install=not args.all)
+
+    if args.install_frrouting_compile:
+        install_frrouting(args.output_dir, compile_prefix="/opt/compiled-frr")
 
     if args.all or args.install_frrouting:
         install_frrouting(args.output_dir)
@@ -20,7 +30,7 @@ if __name__ == "__main__":
         install_exabgp(args.output_dir)
 
     if args.all or args.install_radvd:
-        if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+        if dist.NAME in {"Ubuntu", "Debian"}:
             dist.install("resolvconf")
         dist.install("radvd")
 
@@ -28,7 +38,7 @@ if __name__ == "__main__":
         dist.install("openssh-server")
 
     if args.all or args.install_named:
-        if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+        if dist.NAME in {"Ubuntu", "Debian"}:
             dist.install("bind9")
         elif dist.NAME == "Fedora":
             dist.install("bind")

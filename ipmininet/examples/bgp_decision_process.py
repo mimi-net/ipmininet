@@ -6,9 +6,9 @@ The key factor here is that the nexthop advertized over BGP must NOT be in a
 subnet directly connected to the router whose decision process we want to
 analyze, as this would result in a metric of 0 since the connected routes
 types as an administrative distance and a metric of 0.:"""
-from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, OSPF, RouterConfig
 import ipmininet.router.config.bgp as _bgp
+from ipmininet.iptopo import IPTopo
+from ipmininet.router.config import BGP, OSPF, RouterConfig, ebgp_session
 
 
 class BGPDecisionProcess(IPTopo):
@@ -41,15 +41,15 @@ class BGPDecisionProcess(IPTopo):
         """
         # Add all routers
         as1r1, as2r1, as2r2, as2r3, x, y, as3r1 = \
-            self.addRouters('as1r1', 'as2r1', 'as2r2', 'as2r3', 'x', 'y',
-                            'as3r1', config=RouterConfig)
+            self.addRouters("as1r1", "as2r1", "as2r2", "as2r3", "x", "y",
+                            "as3r1", config=RouterConfig)
 
         as1r1.addDaemon(BGP, address_families=(
-            _bgp.AF_INET(networks=('1.2.3.0/24',)),))
+            _bgp.AF_INET(networks=("1.2.3.0/24",)),))
 
-        as2r1.addDaemon(BGP, routerid='1.1.1.1')
+        as2r1.addDaemon(BGP, routerid="1.1.1.1")
         as2r1.addDaemon(OSPF)
-        as2r2.addDaemon(BGP, routerid='1.1.1.2')
+        as2r2.addDaemon(BGP, routerid="1.1.1.2")
         as2r2.addDaemon(OSPF)
         as2r3.addDaemon(BGP)
         as2r3.addDaemon(OSPF)
@@ -57,7 +57,7 @@ class BGPDecisionProcess(IPTopo):
         y.addDaemon(OSPF)
 
         as3r1.addDaemon(BGP, address_families=(
-            _bgp.AF_INET(networks=('1.2.3.0/24',)),))
+            _bgp.AF_INET(networks=("1.2.3.0/24",)),))
 
         self.addLink(as1r1, as2r1)
         self.addLink(as2r1, x, igp_metric=1)

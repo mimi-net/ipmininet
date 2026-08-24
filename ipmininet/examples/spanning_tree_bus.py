@@ -32,6 +32,6 @@ class SpanningTreeBus(IPTopo):
         self.addLink(s1, s3)
 
         for s in (s1, s2, s3):
-            self.addLink(s, self.addHost('h%s' % s))
+            self.addLink(s, self.addHost(f"h{s}"))
 
         super().build(*args, **kwargs)

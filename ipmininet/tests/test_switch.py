@@ -6,15 +6,14 @@ from ipmininet.clean import cleanup
 from ipmininet.examples.spanning_tree import SpanningTreeNet
 from ipmininet.examples.spanning_tree_adjust import SpanningTreeAdjust
 from ipmininet.examples.spanning_tree_bus import SpanningTreeBus
+from ipmininet.examples.spanning_tree_cost import SpanningTreeCost
 from ipmininet.examples.spanning_tree_full_mesh import SpanningTreeFullMesh
 from ipmininet.examples.spanning_tree_hub import SpanningTreeHub
-from ipmininet.examples.spanning_tree_intermediate import \
-    SpanningTreeIntermediate
-from ipmininet.examples.spanning_tree_cost import SpanningTreeCost
+from ipmininet.examples.spanning_tree_intermediate import SpanningTreeIntermediate
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.tests import require_root
-from ipmininet.tests.utils import assert_stp_state, assert_connectivity
+from ipmininet.tests.utils import assert_connectivity, assert_stp_state
 
 
 class SimpleSpanningTree(IPTopo):
@@ -53,7 +52,7 @@ class SimpleSpanningTree(IPTopo):
         self.addLink(s3, s4)
 
         for s in self.switches():
-            self.addLink(s, self.addHost('h%s' % s))
+            self.addLink(s, self.addHost(f"h{s}"))
 
         super().build(*args, **kwargs)
 
@@ -65,12 +64,12 @@ expected_states = {
         "s2": {"s2-eth1": "blocking", "s2-eth2": "forwarding"},
         "s3": {"s3-eth1": "forwarding", "s3-eth2": "forwarding",
                "s3-eth3": "forwarding"},
-        "s4": {"s4-eth1": "blocking", "s4-eth2": "forwarding"}
+        "s4": {"s4-eth1": "blocking", "s4-eth2": "forwarding"},
     },
     SpanningTreeNet.__name__: {
         "s1": {"s1-eth1": "blocking", "s1-eth2": "forwarding"},
         "s2": {"s2-eth1": "forwarding", "s2-eth2": "forwarding"},
-        "s3": {"s3-eth1": "forwarding", "s3-eth2": "forwarding"}
+        "s3": {"s3-eth1": "forwarding", "s3-eth2": "forwarding"},
     },
     SpanningTreeAdjust.__name__: {
         "s1": {"s1-eth1": "forwarding", "s1-eth2": "forwarding",
@@ -81,7 +80,7 @@ expected_states = {
         "s4": {"s4-eth1": "forwarding", "s4-eth2": "blocking"},
         "s5": {"s5-eth1": "forwarding", "s5-eth2": "blocking",
                "s5-eth3": "forwarding", "s5-eth4": "forwarding"},
-        "s6": {"s6-eth1": "forwarding", "s6-eth2": "blocking"}
+        "s6": {"s6-eth1": "forwarding", "s6-eth2": "blocking"},
     },
     "SpanningTreeAdjust-mod": {
         "s1": {"s1-eth1": "forwarding", "s1-eth2": "forwarding",
@@ -92,12 +91,12 @@ expected_states = {
         "s4": {"s4-eth1": "blocking", "s4-eth2": "forwarding"},
         "s5": {"s5-eth1": "forwarding", "s5-eth2": "forwarding",
                "s5-eth3": "forwarding", "s5-eth4": "forwarding"},
-        "s6": {"s6-eth1": "blocking", "s6-eth2": "forwarding"}
+        "s6": {"s6-eth1": "blocking", "s6-eth2": "forwarding"},
     },
     SpanningTreeBus.__name__: {
         "s1": {"s1-eth1": "forwarding"},
         "s2": {"s2-eth1": "forwarding"},
-        "s3": {"s3-eth1": "forwarding"}
+        "s3": {"s3-eth1": "forwarding"},
     },
     SpanningTreeFullMesh.__name__: {
         "s1": {"s1-eth1": "forwarding", "s1-eth2": "forwarding",
@@ -115,7 +114,7 @@ expected_states = {
         "s10": {"s10-eth1": "forwarding", "s10-eth2": "blocking"},
         "s11": {"s11-eth1": "forwarding", "s11-eth2": "blocking"},
         "s12": {"s12-eth1": "forwarding", "s12-eth2": "blocking"},
-        "s17": {"s17-eth1": "forwarding", "s17-eth2": "blocking"}
+        "s17": {"s17-eth1": "forwarding", "s17-eth2": "blocking"},
     },
     SpanningTreeHub.__name__: {
         "s3": {"s3-eth1": "forwarding", "s3-eth2": "forwarding",
@@ -126,7 +125,7 @@ expected_states = {
         "s11": {"s11-eth1": "blocking", "s11-eth2": "forwarding",
                 "s11-eth3": "blocking"},
         "s12": {"s12-eth1": "forwarding", "s12-eth2": "blocking"},
-        "s17": {"s17-eth1": "forwarding", "s17-eth2": "forwarding"}
+        "s17": {"s17-eth1": "forwarding", "s17-eth2": "forwarding"},
     },
     SpanningTreeIntermediate.__name__: {
         "s2": {"s2-eth1": "forwarding", "s2-eth2": "forwarding"},
@@ -134,13 +133,13 @@ expected_states = {
         "s5": {"s5-eth1": "forwarding", "s5-eth2": "blocking",
                "s5-eth3": "blocking"},
         "s10": {"s10-eth1": "forwarding", "s10-eth2": "forwarding",
-                "s10-eth3": "forwarding"}
+                "s10-eth3": "forwarding"},
     },
     SpanningTreeCost.__name__: {
         "s1": {"s1-eth1": "forwarding", "s1-eth2": "forwarding"},
         "s2": {"s2-eth1": "forwarding", "s2-eth2": "forwarding"},
-        "s3": {"s3-eth1": "forwarding", "s3-eth2": "blocking"}
-    }
+        "s3": {"s3-eth1": "forwarding", "s3-eth2": "blocking"},
+    },
 }
 
 
@@ -153,7 +152,7 @@ expected_states = {
     SpanningTreeFullMesh,
     SpanningTreeHub,
     SpanningTreeIntermediate,
-    SpanningTreeCost
+    SpanningTreeCost,
 ])
 def test_stp(topo):
     try:

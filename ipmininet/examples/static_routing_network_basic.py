@@ -1,7 +1,7 @@
 """This file contains another example of static routing."""
 
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import RouterConfig, STATIC, StaticRoute
+from ipmininet.router.config import STATIC, RouterConfig, StaticRoute
 
 
 class StaticRoutingNetBasic(IPTopo):
@@ -22,7 +22,7 @@ class StaticRoutingNetBasic(IPTopo):
         # Change the config object for RouterConfig
         # because it does not add by default OSPF or OSPF6
         r1, r2, r3, r4 = \
-            self.addRouters('r1', 'r2', 'r3', 'r4',
+            self.addRouters("r1", "r2", "r3", "r4",
                             use_v4=False, use_v6=True, config=RouterConfig)
 
         # Hosts

@@ -2,16 +2,22 @@ import shlex
 import signal
 import time
 import traceback
-from typing import Dict, List, Tuple
 
 import pytest
 
 from ipmininet.clean import cleanup
 from ipmininet.examples.srv6 import SRv6Topo
 from ipmininet.ipnet import IPNet
-from ipmininet.srv6 import LocalSIDTable, SRv6EndFunction, SRv6EndXFunction, \
-    SRv6EndTFunction, SRv6EndDX6Function, SRv6Encap, SRv6EndDT6Function, \
-    SRv6EndB6EncapsFunction
+from ipmininet.srv6 import (
+    LocalSIDTable,
+    SRv6Encap,
+    SRv6EndB6EncapsFunction,
+    SRv6EndDT6Function,
+    SRv6EndDX6Function,
+    SRv6EndFunction,
+    SRv6EndTFunction,
+    SRv6EndXFunction,
+)
 from ipmininet.tests import require_root
 from ipmininet.tests.utils import assert_connectivity, assert_path
 from ipmininet.utils import require_cmd
@@ -21,7 +27,7 @@ MAIN_TABLE = 254
 
 class SRv6TestTopo(SRv6Topo):
 
-    def __init__(self, new_routes: Dict[str, Tuple], *args, **kwargs):
+    def __init__(self, new_routes: dict[str, tuple], *args, **kwargs):
         """
         :param new_routes: A dictionary mapping the host name to the router name
                            to a list of tuples (SRv6Route class, params).
@@ -29,12 +35,12 @@ class SRv6TestTopo(SRv6Topo):
                            parameter except the node and the network.
         """
         self.new_routes = new_routes
-        super(SRv6TestTopo, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def post_build(self, net):
-        super(SRv6TestTopo, self).post_build(net)
+        super().post_build(net)
 
-        for r in self.new_routes.keys():
+        for r in self.new_routes:
             route_class, route_params = self.new_routes[r]
 
             if issubclass(route_class, SRv6EndFunction):
@@ -46,13 +52,13 @@ class SRv6TestTopo(SRv6Topo):
                 route_params["table"] = self.tables[r]
             try:
                 route_class(net=net, node=net[r], **route_params)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
-                raise e
+                raise
 
 
 def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
-        -> List[str]:
+        -> list[str]:
     require_cmd("tshark", help_str="tshark is required to run tests")
     require_cmd("nmap", help_str="nmap is required to run tests")
 
@@ -67,20 +73,20 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
     try:
         for n in net.routers + net.hosts:
             p = n.popen(shlex.split("tshark -n -i any -f 'ip6'"
-                                    " -w /tmp/{}.pcap".format(n.name)))
+                                    f" -w /tmp/{n.name}.pcap"))
             tsharks.append(p)
         time.sleep(15)  # Wait for tshark to start
 
         # Launch ping
         out = net[src].cmd(shlex.split(ping_cmd))
         assert "100% packet loss" not in out, \
-            "Connectivity from %s to %s is not ensured," \
-            " so we cannot infer the path." % (src, dst_ip)
+            f"Connectivity from {src} to {dst_ip} is not ensured," \
+            " so we cannot infer the path."
         time.sleep(1)  # Wait for tshark to register the info
 
         for p in tsharks:
             assert p.poll() is None, "tshark stopped unexpectedly:" \
-                                     "stderr '{}'".format(p.stderr.read())
+                                     f"stderr '{p.stderr.read()}'"
     finally:
         # Stop captures
         for p in tsharks:
@@ -90,10 +96,10 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
     # Retrieve packet captures
     captures = {}  # type: Dict[str, List[Tuple[float, str]]]
     for n in net.routers + net.hosts:
-        out = n.cmd(shlex.split("tshark -n -r /tmp/{}.pcap -T fields "
+        out = n.cmd(shlex.split(f"tshark -n -r /tmp/{n.name}.pcap -T fields "
                                 "-E separator=, "
-                                "-e icmpv6.type -e ipv6.dst -e frame.time_epoch"
-                                .format(n.name)))
+                                "-e icmpv6.type -e ipv6.dst -e frame.time_epoch",
+                                ))
         data = out.split("\n")[1:-1]
         for line in data:
             values = line.strip().split(",")
@@ -150,8 +156,7 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
             compressed_path.append(n)
 
     # Remove source to get a similar output to traceroute
-    path = [net[n].intf().ip6 for n in compressed_path][1:]
-    return path
+    return [net[n].intf().ip6 for n in compressed_path][1:]
 
 
 @require_root
@@ -165,24 +170,24 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
         {
             "h6": (SRv6Encap, {"to": "h4", "through": ["2042:6:6::600"],
                                "mode": SRv6Encap.INLINE}),
-            "r6": (SRv6EndFunction, {"to": "2042:6:6::600"})
+            "r6": (SRv6EndFunction, {"to": "2042:6:6::600"}),
         },
         [["h6", "r6", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:6:6::600"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
+         ["r6", "r5", "2042:3:3::34", "r4"]],
     ),
     (
         {
             "h6": (SRv6Encap, {"to": "h4", "through": ["2042:5:5::500"],
                                "mode": SRv6Encap.INLINE}),
             "r5": (SRv6EndXFunction, {"to": "2042:5:5::500",
-                                      "nexthop": "2042:2:2::1"})
+                                      "nexthop": "2042:2:2::1"}),
         },
         [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:5:5::500"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
+         ["r6", "r5", "2042:3:3::34", "r4"]],
     ),
     (
         {
@@ -190,24 +195,24 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
                                "through": ["2042:5:5::501", "2042:2:2::1"],
                                "mode": SRv6Encap.INLINE}),
             "r5": (SRv6EndTFunction, {"to": "2042:5:5::501",
-                                      "lookup_table": MAIN_TABLE})
+                                      "lookup_table": MAIN_TABLE}),
         },
         [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:5:5::501", "2042:2:2::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
+         ["r6", "r5", "2042:3:3::34", "r4"]],
     ),
     (
         {
             "h6": (SRv6Encap, {"to": "h4", "through": ["2042:5:5::500"],
                                "mode": SRv6Encap.ENCAP}),
             "r5": (SRv6EndDX6Function, {"to": "2042:5:5::500",
-                                        "nexthop": "2042:2:2::1"})
+                                        "nexthop": "2042:2:2::1"}),
         },
         [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:5:5::500"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
+         ["r6", "r5", "2042:3:3::34", "r4"]],
     ),
     (
         {
@@ -215,12 +220,12 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
                                                        "2042:4:4::1"],
                                "mode": SRv6Encap.INLINE}),
             "r5": (SRv6EndB6EncapsFunction, {"to": "2042:5:5::501",
-                                             "segments": ["2042:2:2::1"]})
+                                             "segments": ["2042:2:2::1"]}),
         },
         [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:5:5::501", "2042:2:2::1", "2042:4:4::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
+         ["r6", "r5", "2042:3:3::34", "r4"]],
     ),
     (
         {
@@ -230,13 +235,13 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
             "r5": (SRv6EndB6EncapsFunction, {"to": "2042:5:5::501",
                                              "segments": ["2042:2:2::200"]}),
             "r2": (SRv6EndDT6Function, {"to": "2042:2:2::200",
-                                        "lookup_table": MAIN_TABLE})
+                                        "lookup_table": MAIN_TABLE}),
         },
         [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
          ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
         [["2042:5:5::501", "2042:2:2::200", "2042:4:4::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    )
+         ["r6", "r5", "2042:3:3::34", "r4"]],
+    ),
 ])
 def test_static_examples(routes, paths, through):
     try:

@@ -1,5 +1,5 @@
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import RouterConfig, STATIC, StaticRoute
+from ipmininet.router.config import STATIC, RouterConfig, StaticRoute
 
 
 class StaticRoutingNet(IPTopo):

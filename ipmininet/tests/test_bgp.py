@@ -3,23 +3,24 @@
 import pytest
 
 from ipmininet.clean import cleanup
-from ipmininet.examples.simple_bgp_network import SimpleBGPTopo
+from ipmininet.examples.bgp_full_config import BGPTopoFull
 from ipmininet.examples.bgp_local_pref import BGPTopoLocalPref
 from ipmininet.examples.bgp_med import BGPTopoMed
-from ipmininet.examples.bgp_rr import BGPTopoRR
-from ipmininet.examples.bgp_full_config import BGPTopoFull
 from ipmininet.examples.bgp_policies_1 import BGPPoliciesTopo1
 from ipmininet.examples.bgp_policies_2 import BGPPoliciesTopo2
-from ipmininet.examples.bgp_policies_4 import BGPPoliciesTopo4
 from ipmininet.examples.bgp_policies_3 import BGPPoliciesTopo3
+from ipmininet.examples.bgp_policies_4 import BGPPoliciesTopo4
 from ipmininet.examples.bgp_policies_5 import BGPPoliciesTopo5
 from ipmininet.examples.bgp_policies_adjust import BGPPoliciesAdjustTopo
+from ipmininet.examples.bgp_rr import BGPTopoRR
+from ipmininet.examples.simple_bgp_network import SimpleBGPTopo
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, bgp_peering, AS, iBGPFullMesh
+from ipmininet.router.config import AS, BGP, bgp_peering, iBGPFullMesh
 from ipmininet.router.config.base import RouterConfig
 from ipmininet.router.config.bgp import AF_INET, AF_INET6, CLIENT_PROVIDER
 from ipmininet.tests.utils import assert_connectivity, assert_path
+
 from . import require_root
 
 
@@ -45,17 +46,17 @@ class BGPTopo(IPTopo):
          +------------+                                   +--------+
         """
         # Add all routers
-        as1r1 = self.addRouter('as1r1', config=RouterConfig)
+        as1r1 = self.addRouter("as1r1", config=RouterConfig)
         as1r1.addDaemon(BGP,
                         address_families=[AF_INET(redistribute=["connected"]),
                                           AF_INET6(redistribute=["connected"])])
-        as2r1 = self.addRouter('as2r1', config=RouterConfig)
+        as2r1 = self.addRouter("as2r1", config=RouterConfig)
         as2r1.addDaemon(BGP, **self.as2r1_params)
-        as2r2 = self.addRouter('as2r2', config=RouterConfig)
+        as2r2 = self.addRouter("as2r2", config=RouterConfig)
         as2r2.addDaemon(BGP,
                         address_families=[AF_INET(redistribute=["connected"]),
                                           AF_INET6(redistribute=["connected"])])
-        as3r1 = self.addRouter('as3r1', config=RouterConfig)
+        as3r1 = self.addRouter("as3r1", config=RouterConfig)
         as3r1.addDaemon(BGP,
                         address_families=[AF_INET(redistribute=["connected"]),
                                           AF_INET6(redistribute=["connected"])])
@@ -79,10 +80,10 @@ class BGPTopo(IPTopo):
         bgp_peering(self, as3r1, as2r2)
 
         # Add test hosts
-        self.addLink(as1r1, self.addHost('h%s' % as1r1),
+        self.addLink(as1r1, self.addHost(f"h{as1r1}"),
                      params1={"ip": ("10.1.0.1/24", "fd00:1::1/64")},
                      params2={"ip": ("10.1.0.2/24", "fd00:1::2/64")})
-        self.addLink(as3r1, self.addHost('h%s' % as3r1),
+        self.addLink(as3r1, self.addHost(f"h{as3r1}"),
                      params1={"ip": ("10.3.0.1/24", "fd00:3::1/64")},
                      params2={"ip": ("10.3.0.2/24", "fd00:3::2/64")})
         super().build(*args, **kwargs)
@@ -128,8 +129,8 @@ def test_bgp_daemon_params(bgp_params, expected_cfg):
             cfg = [line for line in (line.strip() for line in fileobj) if line]
             for line in expected_cfg:
                 assert line in cfg,\
-                    "Cannot find the line '%s' in the generated " \
-                    "configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated " \
+                    "configuration:\n{}".format(line, "".join(cfg))
 
         # Check reachability
         assert_connectivity(net, v6=False)
@@ -140,12 +141,12 @@ def test_bgp_daemon_params(bgp_params, expected_cfg):
 
 
 local_pref_paths = [
-    ['as1r1', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r2', 'as1r3', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r3', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r4', 'as1r5', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r5', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r6', 'as4r1', 'as4h1']
+    ["as1r1", "as1r6", "as4r1", "as4h1"],
+    ["as1r2", "as1r3", "as1r6", "as4r1", "as4h1"],
+    ["as1r3", "as1r6", "as4r1", "as4h1"],
+    ["as1r4", "as1r5", "as1r6", "as4r1", "as4h1"],
+    ["as1r5", "as1r6", "as4r1", "as4h1"],
+    ["as1r6", "as4r1", "as4h1"],
 ]
 
 
@@ -162,12 +163,12 @@ def test_bgp_local_pref():
 
 
 med_paths = [
-    ['as1r1', 'as1r6', 'as1r5', 'as4r2', 'as4h1'],
-    ['as1r2', 'as1r3', 'as1r6', 'as1r5', 'as4r2', 'as4h1'],
-    ['as1r3', 'as1r6', 'as1r5', 'as4r2', 'as4h1'],
-    ['as1r4', 'as1r5', 'as4r2', 'as4h1'],
-    ['as1r5', 'as4r2', 'as4h1'],
-    ['as1r6', 'as1r5', 'as4r2', 'as4h1']
+    ["as1r1", "as1r6", "as1r5", "as4r2", "as4h1"],
+    ["as1r2", "as1r3", "as1r6", "as1r5", "as4r2", "as4h1"],
+    ["as1r3", "as1r6", "as1r5", "as4r2", "as4h1"],
+    ["as1r4", "as1r5", "as4r2", "as4h1"],
+    ["as1r5", "as4r2", "as4h1"],
+    ["as1r6", "as1r5", "as4r2", "as4h1"],
 ]
 
 
@@ -184,12 +185,12 @@ def test_bgp_med():
 
 
 rr_paths = [
-    ['as1r1', 'as1r6', 'as5r1', 'as2r1', 'as2h1'],
-    ['as1r2', 'as1r3', 'as1r6', 'as5r1', 'as2r1', 'as2h1'],
-    ['as1r3', 'as1r6', 'as5r1', 'as2r1', 'as2h1'],
-    ['as1r4', 'as4r2', 'as4r1', 'as2r1', 'as2h1'],
-    ['as1r5', 'as4r1', 'as2r1', 'as2h1'],
-    ['as1r6', 'as5r1', 'as2r1', 'as2h1']
+    ["as1r1", "as1r6", "as5r1", "as2r1", "as2h1"],
+    ["as1r2", "as1r3", "as1r6", "as5r1", "as2r1", "as2h1"],
+    ["as1r3", "as1r6", "as5r1", "as2r1", "as2h1"],
+    ["as1r4", "as4r2", "as4r1", "as2r1", "as2h1"],
+    ["as1r5", "as4r1", "as2r1", "as2h1"],
+    ["as1r6", "as5r1", "as2r1", "as2h1"],
 ]
 
 
@@ -206,12 +207,12 @@ def test_bgp_rr():
 
 
 full_paths = [
-    ['as1r1', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r2', 'as1r3', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r3', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r4', 'as1r5', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r5', 'as1r6', 'as4r1', 'as4h1'],
-    ['as1r6', 'as4r1', 'as4h1']
+    ["as1r1", "as1r6", "as4r1", "as4h1"],
+    ["as1r2", "as1r3", "as1r6", "as4r1", "as4h1"],
+    ["as1r3", "as1r6", "as4r1", "as4h1"],
+    ["as1r4", "as1r5", "as1r6", "as4r1", "as4h1"],
+    ["as1r5", "as1r6", "as4r1", "as4h1"],
+    ["as1r6", "as4r1", "as4h1"],
 ]
 
 
@@ -229,38 +230,38 @@ def test_bgp_full_config():
 
 policies_paths = {
     BGPPoliciesTopo1.__name__: [
-        ['has1r1', 'as1r1', 'as5r1', 'has5r1'],
-        ['has1r1', 'as1r1', 'as2r1', 'has2r1'],
-        ['has1r1', 'as1r1', 'as2r1', 'as2r2', 'has2r2'],
-        ['has2r1', 'as2r1', 'as5r1', 'has5r1'],
-        ['has2r2', 'as2r2', 'as2r1', 'as5r1', 'has5r1'],
-        ['has2r2', 'as2r2', 'as2r1', 'as5r1', 'has5r1'],
-        ['has4r1', 'as4r1', 'as5r1', 'as1r1', 'has1r1']
+        ["has1r1", "as1r1", "as5r1", "has5r1"],
+        ["has1r1", "as1r1", "as2r1", "has2r1"],
+        ["has1r1", "as1r1", "as2r1", "as2r2", "has2r2"],
+        ["has2r1", "as2r1", "as5r1", "has5r1"],
+        ["has2r2", "as2r2", "as2r1", "as5r1", "has5r1"],
+        ["has2r2", "as2r2", "as2r1", "as5r1", "has5r1"],
+        ["has4r1", "as4r1", "as5r1", "as1r1", "has1r1"],
     ],
     BGPPoliciesTopo2.__name__: [
-        ['has1', 'as1', 'as2', 'has2'],
-        ['has4', 'as4', 'as3', 'has3'],
-        ['has2', 'as2', 'as3', 'has3']
+        ["has1", "as1", "as2", "has2"],
+        ["has4", "as4", "as3", "has3"],
+        ["has2", "as2", "as3", "has3"],
     ],
     BGPPoliciesTopo3.__name__: [
-        ['has2r', 'as2r', 'as1r', 'has1r'],
-        ['has2r', 'as2r', 'as3r', 'has3r'],
-        ['has1r', 'as1r', 'as4r', 'has4r'],
-        ['has3r', 'as3r', 'as4r', 'has4r']
+        ["has2r", "as2r", "as1r", "has1r"],
+        ["has2r", "as2r", "as3r", "has3r"],
+        ["has1r", "as1r", "as4r", "has4r"],
+        ["has3r", "as3r", "as4r", "has4r"],
     ],
     BGPPoliciesTopo4.__name__: [
-        ['has2r', 'as2r', 'as3r', 'has3r'],
-        ['has2r', 'as2r', 'as5r', 'has5r'],
-        ['has2r', 'as2r', 'as1r', 'has1r'],
-        ['has3r', 'as3r', 'as4r', 'has4r']
+        ["has2r", "as2r", "as3r", "has3r"],
+        ["has2r", "as2r", "as5r", "has5r"],
+        ["has2r", "as2r", "as1r", "has1r"],
+        ["has3r", "as3r", "as4r", "has4r"],
     ],
     BGPPoliciesTopo5.__name__: [
-        ['has1r', 'as1r', 'as4r', 'as6r', 'as7r', 'as5r', 'has5r'],
-        ['has5r', 'as5r', 'as2r', 'as1r', 'has1r']
+        ["has1r", "as1r", "as4r", "as6r", "as7r", "as5r", "has5r"],
+        ["has5r", "as5r", "as2r", "as1r", "has1r"],
     ],
     BGPPoliciesAdjustTopo.__name__: [
-        ['has4r', 'as4r', 'as1r', 'has1r'],
-        ['has5r', 'as5r', 'as3r', 'has3r']
+        ["has4r", "as4r", "as1r", "has1r"],
+        ["has5r", "as5r", "as3r", "has3r"],
     ],
 }
 
@@ -268,7 +269,7 @@ policies_paths = {
 @require_root
 @pytest.mark.parametrize("topology", [
     BGPPoliciesTopo1, BGPPoliciesTopo2, BGPPoliciesTopo3,
-    BGPPoliciesTopo4, BGPPoliciesTopo5, BGPPoliciesAdjustTopo
+    BGPPoliciesTopo4, BGPPoliciesTopo5, BGPPoliciesAdjustTopo,
 ])
 def test_bgp_policies(topology):
     try:

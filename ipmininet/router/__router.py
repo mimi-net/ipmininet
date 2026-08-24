@@ -4,20 +4,20 @@ import shlex
 import subprocess
 import sys
 import time
+from collections.abc import Sequence
 from ipaddress import IPv4Interface, IPv6Interface
-from typing import Type, Optional, Tuple, Union, Dict, List, Sequence, Set
 
 import mininet.clean
 from mininet.log import lg
-from mininet.node import Node, Host
+from mininet.node import Host, Node
 
 from ipmininet import DEBUG_FLAG
 from ipmininet.link import IPIntf
-from ipmininet.utils import L3Router, realIntfList, otherIntf
-from .config import BasicRouterConfig, NodeConfig, RouterConfig, \
-    OpenrRouterConfig
-from .config.utils import ConfigDict
+from ipmininet.utils import L3Router, otherIntf, realIntfList
+
+from .config import BasicRouterConfig, NodeConfig, OpenrRouterConfig, RouterConfig
 from .config.base import Daemon
+from .config.utils import ConfigDict
 
 
 class ProcessHelper:
@@ -26,13 +26,13 @@ class ProcessHelper:
     currently in a mininet namespace, but could be extended to execute in
     a different environment."""
 
-    def __init__(self, node: 'IPNode'):
+    def __init__(self, node: "IPNode"):
         """:param node: The object to use to create subprocesses."""
         self.node = node
         self._pid_gen = 0
         self._processes = {}  # type: Dict[int, subprocess.Popen]
 
-    def call(self, *args, **kwargs) -> Optional[str]:
+    def call(self, *args, **kwargs) -> str | None:
         """Call a command, wait for it to end and return its output.
 
         :param args: the command + arguments
@@ -49,7 +49,7 @@ class ProcessHelper:
         self._processes[self._pid_gen] = self.node.popen(*args, **kwargs)
         return self._pid_gen
 
-    def pexec(self, *args, **kw) -> Tuple[str, str, int]:
+    def pexec(self, *args, **kw) -> tuple[str, str, int]:
         """Call a command, wait for it to terminate and save stdout, stderr and
         its return code"""
         return self.node.pexec(*args, **kw)
@@ -83,10 +83,9 @@ class IPNode(Node):
     """A Node which manages a set of daemons"""
 
     def __init__(self, name: str,
-                 config: Union[Type[NodeConfig],
-                               Tuple[Type[NodeConfig], Dict]] = NodeConfig,
-                 cwd='/tmp',
-                 process_manager: Type[ProcessHelper] = ProcessHelper,
+                 config: type[NodeConfig] | tuple[type[NodeConfig], dict] = NodeConfig,
+                 cwd="/tmp",
+                 process_manager: type[ProcessHelper] = ProcessHelper,
                  use_v4=True,
                  use_v6=True,
                  create_logdirs=True,
@@ -112,7 +111,7 @@ class IPNode(Node):
                 self.nconfig = config[0](self, **config[1])
             except ValueError:
                 lg.error("Expected a tuple (class, kwargs) for the config "
-                         "parameter but got instead %s" % str(config))
+                         f"parameter but got instead {config!s}")
         else:
             self.nconfig = config(self)
         self._processes = process_manager(self)
@@ -134,12 +133,12 @@ class IPNode(Node):
             out, err, code = self._processes.pexec(shlex.split(d.dry_run))
             err_code = err_code or code
             if code:
-                lg.error(d.NAME, 'configuration check failed ['
-                         'rcode:', code, ']\n'
-                         'stdout:', out, '\n'
-                         'stderr:', err)
+                lg.error(d.NAME, "configuration check failed ["
+                         "rcode:", code, "]\n"
+                         "stdout:", out, "\n"
+                         "stderr:", err)
         if err_code:
-            lg.error('Config checks failed, aborting!')
+            lg.error("Config checks failed, aborting!")
             mininet.clean.cleanup()
             sys.exit(1)
         # Set relevant sysctls
@@ -153,14 +152,14 @@ class IPNode(Node):
         lg.debug(self._processes.node.name, 'Checking for any "tentative" addresses')
         tentative_cmd = "ip -6 addr show tentative"
         tentative_chk = self._processes.call(tentative_cmd)
-        while tentative_chk is not None and tentative_chk != '':
+        while tentative_chk is not None and tentative_chk != "":
             if tentative_chk.find("dadfailed") != -1:
-                lg.error('At least two nodes have the same IPv6 address!\n')
+                lg.error("At least two nodes have the same IPv6 address!\n")
                 mininet.clean.cleanup()
                 sys.exit(1)
             time.sleep(.5)
             tentative_chk = self._processes.call(tentative_cmd)
-        lg.debug(self._processes.node.name, 'All IPv6 addresses has passed the Duplicate address detection mechanism')
+        lg.debug(self._processes.node.name, "All IPv6 addresses has passed the Duplicate address detection mechanism")
 
         # Fire up all daemons
         for d in self.nconfig.daemons:
@@ -197,42 +196,41 @@ class IPNode(Node):
                 capture.stop(intf=intf)
         super().terminate()
 
-    def _set_sysctl(self, key: str, val: Union[str, int]):
+    def _set_sysctl(self, key: str, val: str | int):
         """Change a sysctl value, and return the previous set value"""
         try:
             v = None
-            out = self._processes.call('sysctl', key)
+            out = self._processes.call("sysctl", key)
             if out is not None:
-                v = out.split('=')[1]\
-                    .strip(' \n\t\r')
+                v = out.split("=")[1]\
+                    .strip(" \n\t\r")
         except IndexError:
             v = None
         if v != val:
-            self._processes.call('sysctl', '-w', '%s=%s' % (key, val))
+            self._processes.call("sysctl", "-w", f"{key}={val}")
         return v
 
-    def _mklogdirs(self, logdir) -> Tuple[str, str, int]:
+    def _mklogdirs(self, logdir) -> tuple[str, str, int]:
         """Creates directories for the given logdir.
 
            :param logdir: The log directory path to create
            :return: (stdout, stderr, return_code)
         """
-        lg.debug('{}: Creating logdir {}.\n'.format(self.name, logdir))
-        cmd = 'mkdir -p {}'.format(logdir)
+        lg.debug(f"{self.name}: Creating logdir {logdir}.\n")
+        cmd = f"mkdir -p {logdir}"
         stdout, stderr, return_code = self._processes.pexec(shlex.split(cmd))
         if not return_code:
-            lg.debug('{}: Logdir {} successfully created.\n'.format(self.name,
-                                                                    logdir))
+            lg.debug(f"{self.name}: Logdir {logdir} successfully created.\n")
         else:
-            lg.error('{}: Could not create logdir {}. Stderr: \n'
-                     '{}\n'.format(self.name, logdir, stderr))
+            lg.error(f"{self.name}: Could not create logdir {logdir}. Stderr: \n"
+                     f"{stderr}\n")
         return (stdout, stderr, return_code)
 
     def get(self, key, val=None):
         """Check for a given key in the node parameters"""
         return self.params.get(key, val)
 
-    def network_ips(self) -> Dict[str, List[str]]:
+    def network_ips(self) -> dict[str, list[str]]:
         """Return all the addresses of the nodes connected directly or not
         to this node"""
         ips = {}  # type: Dict[str, List[str]]
@@ -260,12 +258,9 @@ class Router(IPNode, L3Router):
     """The actual router, which manages a set of daemons"""
 
     def __init__(self, name,
-                 config: Union[Type[RouterConfig],
-                               Tuple[Type[RouterConfig],
-                                     Dict]] = BasicRouterConfig,
-                 password='zebra',
-                 lo_addresses: Sequence[Union[str, IPv4Interface,
-                                              IPv6Interface]] = (),
+                 config: type[RouterConfig] | tuple[type[RouterConfig], dict] = BasicRouterConfig,
+                 password="zebra",
+                 lo_addresses: Sequence[str | IPv4Interface | IPv6Interface] = (),
                  *args, **kwargs):
         """:param password: The password for the routing daemons vtysh access
            :param lo_addresses: The list of addresses to set on the loopback
@@ -277,12 +272,12 @@ class Router(IPNode, L3Router):
         # so no need to move it
         node_params_for_lo = ["igp_area"]
         params = {k: v for k, v in kwargs.items() if k in node_params_for_lo}
-        lo = IPIntf('lo', node=self, port=-1, moveIntfFn=lambda x, y: None, **params)
+        lo = IPIntf("lo", node=self, port=-1, moveIntfFn=lambda x, y: None, **params)
         lo.ip = lo_addresses
 
     @property
     def asn(self) -> int:
-        return self.get('asn')
+        return self.get("asn")
 
 
 class OpenrRouter(Router):
@@ -290,11 +285,12 @@ class OpenrRouter(Router):
        the OpenR daemon"""
 
     def __init__(self, name, *args,
-                 config: Type[OpenrRouterConfig],
-                 lo_addresses: Optional[Sequence[
-                 Union[str, IPv4Interface, IPv6Interface]]] = None,
-                 privateDirs=['/tmp'],
+                 config: type[OpenrRouterConfig],
+                 lo_addresses: Sequence[str | IPv4Interface | IPv6Interface] | None = None,
+                 privateDirs=None,
                  **kwargs):
+        if privateDirs is None:
+            privateDirs = ["/tmp"]
         if not lo_addresses:
             lo_addresses = ()
         super().__init__(name,

@@ -9,6 +9,7 @@ from ipmininet.router.config import OSPF6
 from ipmininet.router.config.base import RouterConfig
 from ipmininet.router.config.ospf6 import OSPF6RedistributedRoute
 from ipmininet.tests.utils import assert_connectivity, assert_path
+
 from . import require_root
 
 
@@ -135,8 +136,8 @@ def test_ospf6_daemon_params(node_params, ospf6_params, link_params, exp_cfg, ex
             cfg = fileobj.readlines()
             for line in exp_cfg:
                 assert line + "\n" in cfg,\
-                    "Cannot find the line '%s' in the generated" \
-                    " configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated" \
+                    " configuration:\n{}".format(line, "".join(cfg))
 
         # Check reachability
         assert_connectivity(net, v6=True)

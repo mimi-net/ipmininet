@@ -1,6 +1,5 @@
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, AF_INET6,\
-    CLIENT_PROVIDER, SHARE
+from ipmininet.router.config import AF_INET6, BGP, CLIENT_PROVIDER, SHARE, ebgp_session
 
 
 class BGPPoliciesTopo5(IPTopo):
@@ -45,11 +44,11 @@ class BGPPoliciesTopo5(IPTopo):
         """
         # Add all routers
         as1r, as2r, as3r, as4r, as5r, as6r, as7r, as8r = \
-            self.addRouters('as1r', 'as2r', 'as3r', 'as4r', 'as5r', 'as6r',
-                            'as7r', 'as8r')
+            self.addRouters("as1r", "as2r", "as3r", "as4r", "as5r", "as6r",
+                            "as7r", "as8r")
 
         routers = self.routers()
-        prefix = {routers[i]: '2001:db:%04x::/48' % i
+        prefix = {routers[i]: f"2001:db:{i:04x}::/48"
                   for i in range(len(routers))}
         as1r.addDaemon(BGP,
                        address_families=(AF_INET6(networks=(prefix[as1r],)),))
@@ -98,6 +97,6 @@ class BGPPoliciesTopo5(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            link = self.addLink(r, self.addHost('h%s' % r))
+            link = self.addLink(r, self.addHost(f"h{r}"))
             self.addSubnet(links=[link], subnets=[prefix[r]])
         super().build(*args, **kwargs)

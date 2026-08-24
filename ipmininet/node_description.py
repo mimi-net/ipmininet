@@ -1,23 +1,27 @@
 import functools
-from typing import Union, Type, Dict, Optional
+from typing import TYPE_CHECKING, Optional
 
-from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
-from ipmininet.router.config import BasicRouterConfig, OpenrDaemon, Openr, \
-    OpenrRouterConfig
+if TYPE_CHECKING:
+    from ipmininet.iptopo import IPTopo
+
 from ipmininet.host.config import HostConfig
+from ipmininet.router.config import BasicRouterConfig, Openr, OpenrDaemon, OpenrRouterConfig
+from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
 
 
 class NodeDescription(str):
+    __slots__ = ("node", "topo")
+
     def __new__(cls, value, *args, **kwargs):
         return super().__new__(cls, value)
 
-    def __init__(self, o, topo: Optional['IPTopo'] = None):
+    def __init__(self, o, topo: Optional["IPTopo"] = None):
         self.topo = topo
         self.node = o
         super().__init__()
 
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[NodeConfig] = BasicRouterConfig,
+    def addDaemon(self, daemon: Daemon | type[Daemon],
+                  default_cfg_class: type[NodeConfig] = BasicRouterConfig,
                   cfg_daemon_list="daemons", **daemon_params):
         """Add the daemon to the list of daemons to start on the node.
 
@@ -35,15 +39,15 @@ class NodeDescription(str):
         self.topo.addDaemon(self, daemon, default_cfg_class=default_cfg_class,
                             cfg_daemon_list=cfg_daemon_list, **daemon_params)
 
-    def get_config(self, daemon: Union[Daemon, Type[Daemon]], **kwargs):
+    def get_config(self, daemon: Daemon | type[Daemon], **kwargs):
         if self.topo is None:
-            return
+            return None
         return daemon.get_config(topo=self.topo, node=self, **kwargs)
 
 
 class RouterDescription(NodeDescription):
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[RouterConfig] = BasicRouterConfig,
+    def addDaemon(self, daemon: Daemon | type[Daemon],
+                  default_cfg_class: type[RouterConfig] = BasicRouterConfig,
                   **kwargs):
         super().addDaemon(daemon,
                           default_cfg_class=default_cfg_class,
@@ -53,9 +57,9 @@ class RouterDescription(NodeDescription):
 class OpenrRouterDescription(RouterDescription):
     def addOpenrDaemon(
             self,
-            daemon: Union[OpenrDaemon, Type[OpenrDaemon]] = Openr,
-            default_cfg_class: Type[OpenrRouterConfig] = OpenrRouterConfig,
-            **kwargs
+            daemon: OpenrDaemon | type[OpenrDaemon] = Openr,
+            default_cfg_class: type[OpenrRouterConfig] = OpenrRouterConfig,
+            **kwargs,
     ):
         self.addDaemon(daemon,
                        default_cfg_class=default_cfg_class,
@@ -63,8 +67,8 @@ class OpenrRouterDescription(RouterDescription):
 
 
 class HostDescription(NodeDescription):
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[HostConfig] = HostConfig, **kwargs):
+    def addDaemon(self, daemon: Daemon | type[Daemon],
+                  default_cfg_class: type[HostConfig] = HostConfig, **kwargs):
         super().addDaemon(daemon,
                           default_cfg_class=default_cfg_class,
                           **kwargs)
@@ -73,11 +77,11 @@ class HostDescription(NodeDescription):
 @functools.total_ordering
 class LinkDescription:
     def __init__(self,
-                 topo: 'IPTopo',
+                 topo: "IPTopo",
                  src: str,
                  dst: str,
                  key,
-                 link_attrs: Dict):
+                 link_attrs: dict):
         self.src = src
         self.dst = dst
         self.key = key
@@ -98,13 +102,15 @@ class LinkDescription:
                 return self.dst_intf
             if item == 3:
                 return self.key
-            raise IndexError("Links have only two nodes and one key")
+            msg = "Links have only two nodes and one key"
+            raise IndexError(msg)
 
         if item == self.src:
             return self.src_intf
         if item == self.dst:
             return self.dst_intf
-        raise KeyError("Node '%s' is not on this link" % item)
+        msg = f"Node '{item}' is not on this link"
+        raise KeyError(msg)
 
     # The following methods allow this object to behave like an edge key
     # for mininet.topo.MultiGraph
@@ -120,8 +126,8 @@ class LinkDescription:
 
 
 class IntfDescription(NodeDescription):
-    def __init__(self, o: str, topo: 'IPTopo', link: LinkDescription,
-                 intf_attrs: Dict):
+    def __init__(self, o: str, topo: "IPTopo", link: LinkDescription,
+                 intf_attrs: dict):
         self.link = link
         self.intf_attrs = intf_attrs
         super().__init__(o, topo)

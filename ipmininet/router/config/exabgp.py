@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence, Union, List
+from collections.abc import Sequence
+from typing import Optional, Union
 
-from .bgp import AbstractBGP, AF_INET, AF_INET6, BGP_DEFAULT_PORT
+from .bgp import AF_INET, AF_INET6, BGP_DEFAULT_PORT, AbstractBGP
 from .utils import ConfigDict
 
 
@@ -71,18 +72,19 @@ class ExaList(HexRepresentable):
     """
 
     def hex_repr(self) -> str:
-        raise ValueError("Must not be used for an Hexadecimal representation")
+        msg = "Must not be used for an Hexadecimal representation"
+        raise ValueError(msg)
 
     @property
     def val(self):
         return self.lst
 
-    def __init__(self, lst: List[Union[int, str]]):
-        assert isinstance(lst, list), "%s is not a list" % type(lst)
+    def __init__(self, lst: list[int | str]):
+        assert isinstance(lst, list), f"{type(lst)} is not a list"
         self.lst = lst
 
     def __str__(self) -> str:
-        return "[ %s ]" % ' '.join([str(it) for it in self.lst])
+        return "[ {} ]".format(" ".join([str(it) for it in self.lst]))
 
 
 class BGPAttributeFlags(HexRepresentable):
@@ -145,23 +147,20 @@ class BGPAttribute(Representable):
 
     @property
     def _known_attr(self):
-        return {'next-hop', 'origin', 'med',
-                'as-path', 'local-preference', 'atomic-aggregate',
-                'aggregator', 'originator-id', 'cluster-list',
-                'community', 'large-community', 'extended-community',
-                'name', 'aigp'}
+        return {"next-hop", "origin", "med",
+                "as-path", "local-preference", "atomic-aggregate",
+                "aggregator", "originator-id", "cluster-list",
+                "community", "large-community", "extended-community",
+                "name", "aigp"}
 
     def hex_repr(self) -> str:
-        return "attribute [ {type} {flags} {value} ]".format(
-            type=hex(self.type),
-            flags=self.flags.hex_repr(),
-            value=self.val.hex_repr())
+        return f"attribute [ {hex(self.type)} {self.flags.hex_repr()} {self.val.hex_repr()} ]"
 
     def str_repr(self) -> str:
-        return "{type} {value}".format(type=str(self.type), value=str(self.val))
+        return f"{self.type!s} {self.val!s}"
 
-    def __init__(self, attr_type: Union[str, int], val: Union['HexRepresentable', int, str],
-                 flags: Optional['BGPAttributeFlags'] = None):
+    def __init__(self, attr_type: str | int, val: Union["HexRepresentable", int, str],
+                 flags: Optional["BGPAttributeFlags"] = None):
         """
         Constructs an Attribute known from ExaBGP or an unknown attribute if flags is
         not None. It raises a ValueError if the initialisation of BGPAttribute fails. Either because type_attr
@@ -183,7 +182,8 @@ class BGPAttribute(Representable):
 
         if flags is None:
             if str(attr_type) not in self._known_attr:
-                raise ValueError("{unk_attr} is not a known attribute".format(unk_attr=str(attr_type)))
+                msg = f"{attr_type!s} is not a known attribute"
+                raise ValueError(msg)
         else:
             assert isinstance(val, HexRepresentable), "If flags are set, val must be of type 'HexRepresentable'"
 
@@ -207,14 +207,14 @@ class BGPRoute(Representable):
     A BGP route as represented in ExaBGP
     """
 
-    def __init__(self, network: 'Representable', attributes: Sequence['BGPAttribute']):
+    def __init__(self, network: "Representable", attributes: Sequence["BGPAttribute"]):
         self.IPNetwork = network
         self.attributes = attributes
 
     def __str__(self):
-        route = "unicast {prefix}".format(prefix=str(self.IPNetwork))
+        route = f"unicast {self.IPNetwork!s}"
         for attr in self.attributes:
-            route += " %s" % str(attr)
+            route += f" {attr!s}"
 
         return route
 
@@ -222,13 +222,12 @@ class BGPRoute(Representable):
         return str(self)
 
     def __getitem__(self, item):
-        if item in ('network', 'IPnetwork'):
+        if item in ("network", "IPnetwork"):
             return self.IPNetwork
 
         for attr in self.attributes:
-            if isinstance(attr.type, str):
-                if attr.type == item:
-                    return attr
+            if isinstance(attr.type, str) and attr.type == item:
+                return attr
         return None
 
 
@@ -255,33 +254,27 @@ class ExaBGPDaemon(AbstractBGP):
 
     @property
     def STARTUP_LINE_EXTRA(self):
-        return ''
+        return ""
 
     @property
     def env_filename(self):
-        return self._file('env')
+        return self._file("env")
 
     @property
     def cfg_filenames(self):
-        return super().cfg_filenames + [self.env_filename]
+        return [*super().cfg_filenames, self.env_filename]
 
     @property
     def template_filenames(self):
-        return super().template_filenames + ["%s_env.mako" % self.NAME]
+        return [*super().template_filenames, f"{self.NAME}_env.mako"]
 
     @property
     def startup_line(self) -> str:
-        return '{name} --env {env} {conf}' \
-            .format(name=self.NAME,
-                    env=self.env_filename,
-                    conf=self.cfg_filename)
+        return f"{self.NAME} --env {self.env_filename} {self.cfg_filename}"
 
     @property
     def dry_run(self) -> str:
-        return '{name} --validate --env {env} {conf}' \
-            .format(name=self.NAME,
-                    env=self.env_filename,
-                    conf=self.cfg_filename)
+        return f"{self.NAME} --validate --env {self.env_filename} {self.cfg_filename}"
 
     def set_defaults(self, defaults):
         """
@@ -316,30 +309,30 @@ class ExaBGPDaemon(AbstractBGP):
         """
         defaults.base_env = ConfigDict(
             daemon=ConfigDict(
-                user='root',
-                drop='false',
-                daemonize='false',
-                pid=self._file('pid')
+                user="root",
+                drop="false",
+                daemonize="false",
+                pid=self._file("pid"),
             ),
             log=ConfigDict(
-                level='CRIT',
-                destination=self._file('log'),
-                reactor='false',
-                processes='false',
-                network='false',
+                level="CRIT",
+                destination=self._file("log"),
+                reactor="false",
+                processes="false",
+                network="false",
             ),
             api=ConfigDict(
-                cli='false',
+                cli="false",
             ),
             tcp=ConfigDict(
-                delay=2  # wait at most 2 minutes before sending UPDATE, the other peer
+                delay=2,  # wait at most 2 minutes before sending UPDATE, the other peer
                          # may not be ready yet. FRRouting do not accept incoming routes
                          # if ExaBGP sends directly its routes. Debugging information
                          # says that routes are denied due to a "deny" action from a route map
                          # (rcvd UPDATE about 8.8.8.0/24 IPv4 unicast -- DENIED due to: route-map;)
                          # However, if the daemon waits a little bit, routes are all
                          # accepted...
-            )
+            ),
         )
         defaults.address_families = [AF_INET(), AF_INET6()]
         defaults.passive = True

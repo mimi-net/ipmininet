@@ -1,0 +1,29 @@
+name: Heavy test
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+jobs:
+  heavy-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - run: uv sync --all-extras
+      - run: sudo env "PATH=$PATH" uv run python -m ipmininet.install -a
+      - name: Run full test suite with coverage
+        run: sudo env "PATH=$PATH" uv run pytest --cov-config=.coveragerc --cov=ipmininet/ --cov-report=html --cov-report=term -v ipmininet/tests/ --ignore=ipmininet/tests/test_exabgp.py --ignore=ipmininet/tests/test_openr.py
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/

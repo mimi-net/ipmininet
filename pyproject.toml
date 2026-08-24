@@ -1,14 +1,28 @@
 [build-system]
-requires = [ "setuptools>=61.2", "pytest-runner",]
+requires = ["setuptools>=61.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ipmininet"
 version = "1.1"
-description = "A mininet extension providing components to emulate IPnetworks running multiple protocols."
-keywords = [ "networking", "OSPF", "IP", "BGP", "quagga", "mininet",]
-classifiers = [ "License :: OSI Approved :: GNU General Public License v2 (GPLv2)", "Programming Language :: Python", "Development Status :: 4 - Beta", "Intended Audience :: Developers", "Topic :: System :: Networking", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.6", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9",]
-dependencies = [ "setuptools", "mako>=1.1,<1.2", "mininet @ git+https://github.com/mimi-net/mininet.git",]
+requires-python = ">=3.12"
+description = "A mininet extension providing components to emulate IP networks running multiple protocols."
+keywords = ["networking", "OSPF", "IP", "BGP", "quagga", "mininet"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Programming Language :: Python",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: System :: Networking",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "setuptools",
+    "mako>=1.1",
+    "mininet @ git+https://github.com/mimi-net/mininet.git",
+    "packaging",
+]
 
 [[project.authors]]
 name = "Olivier Tilmans"
@@ -25,13 +39,55 @@ text = "GPLv2"
 Homepage = "https://github.com/cnp3/ipmininet"
 
 [project.optional-dependencies]
-testing = [ "pytest",]
-
-[tool.aliases]
-test = "pytest"
+testing = ["pytest", "pytest-cov", "pytest-timeout"]
+dev = ["ipmininet[testing]", "ruff", "mdformat", "shellcheck-py"]
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
 namespaces = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I",
+    "N",
+    "UP",
+    "B", "C4", "SIM",
+    "RET", "TRY",
+    "PERF", "PTH",
+    "PL",
+    "A", "Q", "ISC", "COM",
+    "RUF", "FIX",
+    "ARG", "PIE", "FLY", "SLOT", "EM",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"ipmininet/tests/*" = ["S101", "T20", "ARG", "SLOT000"]
+"ipmininet/examples/*" = ["T20", "E501", "B008", "N802", "N803", "N806", "N815", "PLR2004", "PLR0912", "PLR0913", "PLR0917", "PLW2901", "B023", "UP031"]
+"ipmininet/install/*" = ["S101", "T20", "PTH", "E501", "N802", "N803", "N806", "N815"]
+"docs/*" = ["E501", "PTH", "N802", "N803", "N806", "N815", "A001"]
+"ipmininet/router/config/templates/*" = ["E501", "N802", "N803", "N806", "N815", "EM"]
+"ipmininet/host/config/templates/*" = ["E501", "N802", "N803", "N806", "N815", "EM"]
+
+# Design-level rules too invasive to fix in one pass
+"ipmininet/*.py" = ["E501", "PTH", "PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "N802", "N803", "N806", "N815", "N801", "ISC002", "UP031", "TRY003", "TRY300", "TRY004", "PERF401", "SIM102", "SIM115", "PLC0206", "PLC0415", "TRY002", "PLW0603", "B026", "B904", "PLW2901", "PLW1641", "FIX001", "FIX002", "FIX003", "SIM103", "SIM108", "ARG", "RUF012", "EM"]
+
+[tool.ruff.lint.pylint]
+max-args = 15
+max-returns = 8
+max-statements = 100
+
+[tool.mdformat]
+exclude = [".venv", "LICENSE.md", ".pytest_cache"]
+
+[tool.pytest.ini_options]
+testpaths = ["ipmininet/tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+addopts = "--tb=short"
+timeout = 300
+timeout_method = "thread"

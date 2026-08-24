@@ -1,20 +1,21 @@
-import pytest
 import re
 import signal
 import time
-from typing import List, Tuple, Dict, Pattern, Match, Optional
-
-import mininet.log
 from io import StringIO
 from ipaddress import ip_address, ip_network
-from ipmininet.utils import require_cmd
-from ipmininet.ipnet import IPNet
-from ipmininet.router import IPNode
-from ipmininet.ipswitch import IPSwitch
+from re import Match, Pattern
+
+import mininet.log
+import pytest
+
 from ipmininet.host.config.named import DNSRecord
+from ipmininet.ipnet import IPNet
+from ipmininet.ipswitch import IPSwitch
+from ipmininet.router import IPNode
+from ipmininet.utils import require_cmd
 
 
-def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300) -> List[str]:
+def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300) -> list[str]:
     require_cmd("traceroute", help_str="traceroute is required to run tests")
 
     t = 0
@@ -45,7 +46,7 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300) -> List[str]:
     return []
 
 
-def assert_path(net: IPNet, expected_path: List[str], v6=False, retry=5,
+def assert_path(net: IPNet, expected_path: list[str], v6=False, retry=5,
                 timeout=300, traceroute_fun=traceroute, **kwargs):
     src = expected_path[0]
     dst = expected_path[-1]
@@ -71,13 +72,12 @@ def assert_path(net: IPNet, expected_path: List[str], v6=False, retry=5,
                 if found:
                     path.append(n.name)
                     break
-            assert found, "Traceroute returned the address '%s' " \
-                          "that cannot be linked to a node" % path_ip
+            assert found, f"Traceroute returned the address '{path_ip}' " \
+                          "that cannot be linked to a node"
         i += 1
 
-    assert path == expected_path, "We expected the path from %s to %s to go " \
-                                  "through %s but it went through %s" \
-                                  % (src, dst, expected_path[1:-1], path[1:-1])
+    assert path == expected_path, f"We expected the path from {src} to {dst} to go " \
+                                  f"through {expected_path[1:-1]} but it went through {path[1:-1]}"
 
 
 def host_connected(net: IPNet, v6=False, timeout=0.5, translate_address=True) \
@@ -133,7 +133,7 @@ def assert_connectivity(net: IPNet, v6=False, attempts=300,
 
 def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
                            server_port=80, server_itf=None, timeout=300) \
-        -> Tuple[int, bytes, bytes]:
+        -> tuple[int, bytes, bytes]:
     require_cmd("nc", help_str="nc is required to run tests")
 
     if server_itf is None:
@@ -150,9 +150,8 @@ def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
         t += 1
         if server_p.poll() is not None:
             out, err = server_p.communicate()
-            assert False, \
-                "The netcat server used to check TCP connectivity failed" \
-                " with the output:\n[stdout]\n%s\n[stderr]\n%s" % (out, err)
+            msg = f"The netcat server used to check TCP connectivity failed with the output:\n[stdout]\n{out}\n[stderr]\n{err}"
+            raise AssertionError(msg)
         time.sleep(.5)
         client_p = client.popen(client_cmd.split(" "))
     out, err = client_p.communicate()
@@ -162,7 +161,7 @@ def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
     return code, out, err
 
 
-def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
+def assert_stp_state(switch: IPSwitch, expected_states: dict[str, str],
                      timeout=60):
     """
     :param switch: The switch to test
@@ -177,7 +176,7 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
     possible_states = "listening|learning|forwarding|blocking"
     # In these states the STP has not converged
     ignore_state = "listening", "learning"
-    cmd = ("%s %s" % (partial_cmd, switch.name))
+    cmd = (f"{partial_cmd} {switch.name}")
     out = switch.cmd(cmd)
     states = re.findall(possible_states, out)
     # wait for the ports to be bounded
@@ -193,17 +192,16 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
 
     interfaces = re.findall(switch.name + r"-eth[0-9]+", out)
     state_map = {interfaces[i]: states[i] for i in range(len(states))}
-    for itf, _ in expected_states.items():
+    for itf in expected_states:
         assert itf in state_map,\
-            "The port %s of switch %s was not mentioned in the output of " \
-            "'brctl showstp':\n%s" % (itf, switch.name, out)
+            f"The port {itf} of switch {switch.name} was not mentioned in the output of " \
+            f"'brctl showstp':\n{out}"
         assert state_map[itf] == expected_states[itf],\
-            "The state of port %s of switch %s wasn't correct: excepted '%s' " \
-            "got '%s'"\
-            % (itf, switch.name, expected_states[itf], state_map[itf])
+            f"The state of port {itf} of switch {switch.name} wasn't correct: excepted '{expected_states[itf]}' " \
+            f"got '{state_map[itf]}'"
 
 
-def assert_routing_table(router: IPNode, expected_prefixes: List[str],
+def assert_routing_table(router: IPNode, expected_prefixes: list[str],
                          timeout=120):
     """
     :param router: The router to test
@@ -218,8 +216,8 @@ def assert_routing_table(router: IPNode, expected_prefixes: List[str],
     count = 0
     while any(item in prefixes for item in expected_prefixes):
         if count == timeout:
-            pytest.fail("Cannot get all expected prefixes (%s) from routing "
-                        "table (%s)" % (expected_prefixes, prefixes))
+            pytest.fail(f"Cannot get all expected prefixes ({expected_prefixes}) from routing "
+                        f"table ({prefixes})")
         time.sleep(1)
         count += 1
         out = router.cmd(cmd)
@@ -228,7 +226,7 @@ def assert_routing_table(router: IPNode, expected_prefixes: List[str],
 
 
 def search_dns_reply(reply: str, regex: Pattern) \
-        -> Tuple[bool, Optional[Match]]:
+        -> tuple[bool, Match | None]:
 
     got_answer = False
     for line in reply.split("\n"):
@@ -247,14 +245,10 @@ def assert_dns_record(node: IPNode, dns_server_address: str, record: DNSRecord,
                       port=53, timeout=60):
     require_cmd("dig", help_str="dig is required to run tests")
 
-    server_cmd = "dig @{address} -p {port} -t {rtype} {domain_name}"\
-        .format(address=dns_server_address, rtype=record.rtype,
-                domain_name=record.domain_name, port=port)
-    out_regex = re.compile(r" *{name}.?[ \t]+{ttl}[ \t]+IN[ \t]+{rtype}[ \t]+"
-                           r"{rdata}"
-                           .format(rtype=record.rtype, ttl=record.ttl,
-                                   name=record.domain_name,
-                                   rdata=record.rdata))
+    server_cmd = f"dig @{dns_server_address} -p {port} -t {record.rtype} {record.domain_name}"
+    out_regex = re.compile(rf" *{record.domain_name}.?[ \t]+{record.ttl}[ \t]+IN[ \t]+{record.rtype}[ \t]+"
+                           rf"{record.rdata}",
+                           )
 
     t = 0
     out = node.cmd(server_cmd.split(" "))
@@ -265,14 +259,12 @@ def assert_dns_record(node: IPNode, dns_server_address: str, record: DNSRecord,
         out = node.cmd(server_cmd.split(" "))
         got_answer, match = search_dns_reply(out, out_regex)
 
-    assert got_answer, "No answer was received in %s" \
-                       " from server %s in the reply of '%s':\n%s" \
-                       % (node.name, dns_server_address, server_cmd, out)
+    assert got_answer, f"No answer was received in {node.name}" \
+                       f" from server {dns_server_address} in the reply of '{server_cmd}':\n{out}"
 
-    assert match is not None, "The expected data '%s' cannot be found " \
-                              "in the DNS reply of '%s' received by %s from " \
-                              "%s:\n%s" % (out_regex.pattern, server_cmd,
-                                           node.name, dns_server_address, out)
+    assert match is not None, f"The expected data '{out_regex.pattern}' cannot be found " \
+                              f"in the DNS reply of '{server_cmd}' received by {node.name} from " \
+                              f"{dns_server_address}:\n{out}"
 
 
 class CLICapture:

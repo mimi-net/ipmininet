@@ -5,9 +5,10 @@ import pytest
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
+
+from ..examples.link_failure import FailureTopo
 from . import require_root
 from .utils import assert_connectivity, assert_node_not_connected
-from ..examples.link_failure import FailureTopo
 
 
 class Topo(IPTopo):

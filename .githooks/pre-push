@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REMOTE="$1"
+URL="$2"
+
+# Block push to any remote that isn't 'origin'
+if [ "$REMOTE" != "origin" ]; then
+    echo "ERROR: Refusing to push to remote '$REMOTE'. Only pushes to 'origin' are allowed."
+    exit 1
+fi
+
+# Check for secrets in staged changes
+if git diff --cached --diff-filter=ACMR | grep -qiE '(password|secret|token|api.?key|ssh-rsa|BEGIN (RSA|DSA|EC|OPENSSH) PRIVATE KEY)'; then
+    echo "ERROR: Possible secret found in staged changes. Aborting push."
+    exit 1
+fi
+
+# Check that no .tmp/ files are tracked in git
+if git ls-files | grep -q '^\.tmp/'; then
+    echo "ERROR: .tmp/ files are tracked in git. Remove them with: git rm --cached .tmp/*"
+    exit 1
+fi

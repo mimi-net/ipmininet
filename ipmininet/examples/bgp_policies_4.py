@@ -1,6 +1,6 @@
 import ipmininet.router.config.bgp as _bgp
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, CLIENT_PROVIDER, SHARE
+from ipmininet.router.config import BGP, CLIENT_PROVIDER, SHARE, ebgp_session
 
 
 class BGPPoliciesTopo4(IPTopo):
@@ -38,11 +38,11 @@ class BGPPoliciesTopo4(IPTopo):
         +-----+                 +-----+
         """
         # Add all routers
-        as1r = self.bgp('as1r')
-        as2r = self.bgp('as2r')
-        as3r = self.bgp('as3r')
-        as4r = self.bgp('as4r')
-        as5r = self.bgp('as5r')
+        as1r = self.bgp("as1r")
+        as2r = self.bgp("as2r")
+        as3r = self.bgp("as3r")
+        as4r = self.bgp("as4r")
+        as5r = self.bgp("as5r")
 
         # Add links
         las12 = self.addLink(as1r, as2r)
@@ -101,12 +101,12 @@ class BGPPoliciesTopo4(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            self.addLink(r, self.addHost('h%s' % r))
+            self.addLink(r, self.addHost(f"h{r}"))
         super().build(*args, **kwargs)
 
     def bgp(self, name):
         r = self.addRouter(name, use_v4=False, use_v6=True)
         r.addDaemon(BGP, address_families=(
-            _bgp.AF_INET(redistribute=('connected',)),
-            _bgp.AF_INET6(redistribute=('connected',))))
+            _bgp.AF_INET(redistribute=("connected",)),
+            _bgp.AF_INET6(redistribute=("connected",))))
         return r

@@ -1,8 +1,8 @@
 """This file contains a simple switch topology using the Named daemon"""
 from ipaddress import ip_address
 
+from ipmininet.host.config import ARecord, Named, PTRRecord
 from ipmininet.iptopo import IPTopo
-from ipmininet.host.config import Named, ARecord, PTRRecord
 
 
 class DNSNetwork(IPTopo):
@@ -24,21 +24,21 @@ class DNSNetwork(IPTopo):
         """
         # Add routers
 
-        r1, r2, r3 = self.addRouters('r1', 'r2', 'r3')
+        r1, r2, r3 = self.addRouters("r1", "r2", "r3")
         self.addLinks((r1, r2), (r1, r3), (r3, r2))
 
         # Add hosts
 
-        server = self.addHost('server')
+        server = self.addHost("server")
         lr1server = self.addLink(r1, server)
         self.addSubnet(links=[lr1server],
                        subnets=["192.168.0.0/24", "fc00::/64"])
 
-        master = self.addHost('master')
+        master = self.addHost("master")
         master.addDaemon(Named)
         self.addLink(r3, master)
 
-        slave = self.addHost('slave')
+        slave = self.addHost("slave")
         slave.addDaemon(Named)
         self.addLink(r2, slave)
 

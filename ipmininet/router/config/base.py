@@ -2,33 +2,33 @@
 that is able to provide configurations for a set of routing daemons.
 It also defines the base class for a daemon, as well as a minimalistic
 configuration for a router."""
-import os
 import abc
-from contextlib import closing
-from operator import attrgetter
+import os
+from collections.abc import Iterable, Sequence
+from contextlib import closing, suppress
 from ipaddress import ip_address
-from mako.lookup import TemplateLookup
-from typing import TYPE_CHECKING, Iterable, Optional, Dict, Union, Type, \
-    Tuple, Sequence, List, Set
-
-from .utils import ConfigDict, ip_statement
-from ipmininet.utils import require_cmd, realIntfList
-from ipmininet.link import OrderedAddress, IPIntf
+from operator import attrgetter
+from typing import TYPE_CHECKING, Union
 
 import mako.exceptions
-
+from mako.lookup import TemplateLookup
 from mininet.log import lg as log
 
+from ipmininet.link import OrderedAddress
+from ipmininet.utils import realIntfList, require_cmd
+
+from .utils import ConfigDict, ip_statement
+
 if TYPE_CHECKING:
-    from ipmininet.router import IPNode, Router, OpenrRouter, ProcessHelper
     from ipmininet.iptopo import IPTopo
     from ipmininet.node_description import NodeDescription
-DaemonOption = Union['Daemon', Type['Daemon'],
-                     Tuple[Union['Daemon', Type['Daemon']], Dict]]
+    from ipmininet.router import IPNode, OpenrRouter, ProcessHelper, Router
+DaemonOption = Union["Daemon", type["Daemon"],
+                     tuple[Union["Daemon", type["Daemon"]], dict]]
 
-last_routerid = ip_address('0.0.0.1')
+last_routerid = ip_address("0.0.0.1")
 
-__TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), 'templates')
+__TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 router_template_lookup = TemplateLookup(directories=[__TEMPLATES_DIR])
 
 
@@ -36,8 +36,8 @@ class NodeConfig:
     """This class manages a set of daemons, and generates the global
     configuration for a node"""
 
-    def __init__(self, node: 'IPNode', daemons: Iterable[DaemonOption] = (),
-                 sysctl: Optional[Dict[str, Union[str, int]]] = None, *args,
+    def __init__(self, node: "IPNode", daemons: Iterable[DaemonOption] = (),
+                 sysctl: dict[str, str | int] | None = None, *args,
                  **kwargs):
         """Initialize our config builder
 
@@ -59,13 +59,13 @@ class NodeConfig:
         configuration files"""
 
         # Mount a separate /etc/resolv.conf and /etc/hosts for the node
-        resolv_file_mount = os.path.join(self._node.cwd, 'resolv_%(name)s.conf')
+        resolv_file_mount = os.path.join(self._node.cwd, "resolv_%(name)s.conf")
         open(resolv_file_mount % self._node.__dict__, "w").close()
-        host_file_mount = os.path.join(self._node.cwd, 'hosts_%(name)s')
+        host_file_mount = os.path.join(self._node.cwd, "hosts_%(name)s")
         self.build_host_file(host_file_mount % self._node.__dict__)
-        self.add_private_fs_path([('/etc/resolv.conf', resolv_file_mount),
-                                  ('/etc/hosts', host_file_mount),
-                                  '/var/run/frr'])
+        self.add_private_fs_path([("/etc/resolv.conf", resolv_file_mount),
+                                  ("/etc/hosts", host_file_mount),
+                                  "/var/run/frr"])
 
         self._cfg.clear()
         self._cfg.name = self._node.name
@@ -102,8 +102,11 @@ class NodeConfig:
             try:
                 cls, kw = cls
             except ValueError:
-                raise TypeError('Expected a tuple (Daemon, dict) '
-                                ' but got %s' % str(cls))
+                msg = (
+                    "Expected a tuple (Daemon, dict) "
+                                f" but got {cls!s}"
+                )
+                raise TypeError(msg)
             daemon_opts.update(kw)
         if cls.NAME in self._daemons:
             return
@@ -111,12 +114,15 @@ class NodeConfig:
             if issubclass(cls, Daemon):
                 cls = cls(self._node, **daemon_opts)
             else:
-                raise TypeError('Expected an object or a subclass of '
-                                'Daemon, got %s instead' % cls)
+                msg = (
+                    "Expected an object or a subclass of "
+                                f"Daemon, got {cls} instead"
+                )
+                raise TypeError(msg)
         else:
             cls.options.update(daemon_opts)
         self._daemons[cls.NAME] = cls
-        require_cmd(cls.NAME, 'Could not find an executable for a daemon!')
+        require_cmd(cls.NAME, "Could not find an executable for a daemon!")
 
     @property
     def sysctl(self):
@@ -132,30 +138,30 @@ class NodeConfig:
                                           'net.ipv6.conf.all.forwarding=1'"""
         for value in values:
             try:
-                key, val = value.split('=')
+                key, val = value.split("=")
                 self._sysctl[key] = val
             except ValueError:
-                raise ValueError('sysctl must be specified using `key=val` '
-                                 'format. Ignoring %s' % value)
+                msg = (
+                    "sysctl must be specified using `key=val` "
+                                 f"format. Ignoring {value}"
+                )
+                raise ValueError(msg)
 
     @property
     def daemons(self):
-        return sorted(self._daemons.values(), key=attrgetter('PRIO'))
+        return sorted(self._daemons.values(), key=attrgetter("PRIO"))
 
-    def daemon(self, key: Union[str, 'Daemon', Type['Daemon']]) -> 'Daemon':
+    def daemon(self, key: Union[str, "Daemon", type["Daemon"]]) -> "Daemon":
         """Return the Daemon object in this config for the given key
 
         :param key: the daemon name or a daemon class or instance
         :return: the Daemon object
         :raise KeyError: if not found"""
-        if not isinstance(key, str):
-            key_str = key.NAME
-        else:
-            key_str = key
+        key_str = key.NAME if not isinstance(key, str) else key
         return self._daemons[key_str]
 
     def add_private_fs_path(self,
-                            loc: Sequence[Union[str, Tuple[str, str]]] = ()):
+                            loc: Sequence[str | tuple[str, str]] = ()):
         old_private_dirs = self._node.privateDirs
         try:
             self._node.privateDirs = loc
@@ -173,17 +179,17 @@ class NodeConfig:
         with open(filename, "wb") as fileobj:
             for node_name, ips in self._node.network_ips().items():
                 for ip in ips:
-                    fileobj.write("{ip}\t{name}\n"
-                                  .format(ip=ip, name=node_name).encode())
+                    fileobj.write(f"{ip}\t{node_name}\n"
+                                  .encode())
             fileobj.write(b"\n")
             fileobj.write(b"".join(lines))
 
 
 class RouterConfig(NodeConfig):
 
-    def __init__(self, node: 'Router', sysctl=None, *args, **kwargs):
-        self._sysctl = {'net.ipv4.ip_forward': 1,
-                        'net.ipv6.conf.all.forwarding': 1}
+    def __init__(self, node: "Router", sysctl=None, *args, **kwargs):
+        self._sysctl = {"net.ipv4.ip_forward": 1,
+                        "net.ipv6.conf.all.forwarding": 1}
         if sysctl:
             self._sysctl.update(sysctl)
         super().__init__(node, sysctl=self._sysctl, *args, **kwargs)
@@ -199,7 +205,7 @@ class RouterConfig(NodeConfig):
         global last_routerid
         last_routerid += 1
 
-    def _equal_routerid(self, n: 'Router') -> bool:
+    def _equal_routerid(self, n: "Router") -> bool:
 
         # Router id of 'n' already set
         if n.nconfig.routerid:
@@ -219,11 +225,7 @@ class RouterConfig(NodeConfig):
         ip_list = sorted((ip for itf in n.intfList()
                           for ip in itf.ips()),
                          key=OrderedAddress)
-        if len(ip_list) != 0 \
-                and str(ip_list.pop().ip) == str(last_routerid):
-            return True
-
-        return False
+        return bool(len(ip_list) != 0 and str(ip_list.pop().ip) == str(last_routerid))
 
     def compute_routerid(self) -> str:
         """Computes the default router id for all daemons.
@@ -274,7 +276,7 @@ class Daemon(metaclass=abc.ABCMeta):
     # The kill patterns to cleanup any processes started by this daemon
     KILL_PATTERNS = ()  # type: Sequence[str]
 
-    def __init__(self, node: 'IPNode',
+    def __init__(self, node: "IPNode",
                  template_lookup: TemplateLookup = router_template_lookup,
                  **kwargs):
         """:param node: The node for which we build the config
@@ -294,8 +296,8 @@ class Daemon(metaclass=abc.ABCMeta):
 
     @property
     def logdir(self) -> str:
-        if 'logfile' in self._options:
-            return os.path.dirname(self._options['logfile'])
+        if "logfile" in self._options:
+            return os.path.dirname(self._options["logfile"])
         return None
 
     def build(self) -> ConfigDict:
@@ -303,19 +305,17 @@ class Daemon(metaclass=abc.ABCMeta):
 
         :return: ConfigDict-like object describing this configuration"""
         cfg = ConfigDict()
-        cfg.logfile = self._options['logfile']
+        cfg.logfile = self._options["logfile"]
         return cfg
 
     def cleanup(self):
         """Cleanup the files belonging to this daemon"""
         for f in self.files:
-            try:
+            with suppress(OSError):
                 os.unlink(f)
-            except (IOError, OSError):
-                pass
         self.files = []
 
-    def render(self, cfg, **kwargs) -> Dict[str, str]:
+    def render(self, cfg, **kwargs) -> dict[str, str]:
         """Render the configuration content for each config file of this daemon
 
         :param cfg: The global config for the node
@@ -324,7 +324,7 @@ class Daemon(metaclass=abc.ABCMeta):
         self.files.extend(self.cfg_filenames)
         cfg_content = {}
         for i, filename in enumerate(self.cfg_filenames):
-            log.debug('Generating %s\n' % filename)
+            log.debug(f"Generating {filename}\n")
             try:
                 cfg.current_filename = filename
                 kwargs["node"] = cfg
@@ -334,19 +334,19 @@ class Daemon(metaclass=abc.ABCMeta):
                 cfg_content[filename] = template.render(**kwargs)
             except Exception:
                 # Display template errors in a less cryptic way
-                log.error('Couldn''t render a config file(',
-                          self.template_filenames[i], ')')
+                log.error("Couldnt render a config file(",
+                          self.template_filenames[i], ")")
                 log.error(mako.exceptions.text_error_template().render())
-                raise ValueError('Cannot render a configuration [%s: %s]' % (
-                    self._node.name, self.NAME))
+                msg = f"Cannot render a configuration [{self._node.name}: {self.NAME}]"
+                raise ValueError(msg)
         return cfg_content
 
-    def write(self, cfg: Dict[str, str]):
+    def write(self, cfg: dict[str, str]):
         """Write down the configuration files for this daemon
 
         :param cfg: The configuration string for each filename"""
         for filename in self.cfg_filenames:
-            with closing(open(filename, 'w')) as f:
+            with closing(open(filename, "w")) as f:
                 f.write(cfg[filename])
 
     @property
@@ -363,7 +363,7 @@ class Daemon(metaclass=abc.ABCMeta):
     def _filename(self, suffix: str) -> str:
         """Return a filename for this daemon and node,
         with the specified suffix"""
-        return '%s_%s.%s' % (self.NAME, self._node.name, suffix)
+        return f"{self.NAME}_{self._node.name}.{suffix}"
 
     def _filepath(self, f: str) -> str:
         """Return a path towards a given file"""
@@ -380,21 +380,21 @@ class Daemon(metaclass=abc.ABCMeta):
         return self.cfg_filenames[0]
 
     @property
-    def cfg_filenames(self) -> List[str]:
+    def cfg_filenames(self) -> list[str]:
         """Return the list of filenames in which this daemon config should be
            stored"""
-        return [self._file(suffix='cfg')]
+        return [self._file(suffix="cfg")]
 
     @property
-    def template_filenames(self) -> List[str]:
-        return ['%s.mako' % self.NAME]
+    def template_filenames(self) -> list[str]:
+        return [f"{self.NAME}.mako"]
 
     def _defaults(self, **kwargs) -> ConfigDict:
         """Return the default options for this daemon
 
         :param logfile: the path to the logfile for the daemon"""
         defaults = ConfigDict()
-        defaults.logfile = self._file('log')
+        defaults.logfile = self._file("log")
         # Apply daemon-specific defaults
         self.set_defaults(defaults)
         # Use user-supplied defaults if present
@@ -405,16 +405,16 @@ class Daemon(metaclass=abc.ABCMeta):
     def set_defaults(self, defaults):
         """Update defaults to contain the defaults specific to this daemon"""
 
-    def has_started(self, node_exec: 'ProcessHelper' = None) -> bool:
+    def has_started(self, node_exec: "ProcessHelper" = None) -> bool:
         """Return whether this daemon has started or not
         :param node_exec:
         """
         return True
 
     @classmethod
-    def get_config(cls, topo: 'IPTopo', node: 'NodeDescription', **kwargs):
+    def get_config(cls, topo: "IPTopo", node: "NodeDescription", **kwargs):
         """Returns a config object for the daemon if any"""
-        return None
+        return
 
 
 class RouterDaemon(Daemon, metaclass=abc.ABCMeta):
@@ -434,7 +434,7 @@ class RouterDaemon(Daemon, metaclass=abc.ABCMeta):
 class BasicRouterConfig(RouterConfig):
     """A basic router that will run an OSPF daemon"""
 
-    def __init__(self, node: 'Router',
+    def __init__(self, node: "Router",
                  daemons: Iterable[DaemonOption] = (),
                  additional_daemons: Iterable[DaemonOption] = (),
                  *args, **kwargs):
@@ -461,29 +461,29 @@ class BorderRouterConfig(BasicRouterConfig):
     """A router config that will run both OSPF and BGP, and redistribute all
     connected router into BGP."""
 
-    def __init__(self, node: 'Router',
+    def __init__(self, node: "Router",
                  daemons: Iterable[DaemonOption] = (),
                  additional_daemons: Iterable[DaemonOption] = (),
                  *args, **kwargs):
         """A simple router made of at least an OSPF daemon and a BGP daemon
 
         :param additional_daemons: Other daemons that should be used"""
-        from .bgp import BGP, AF_INET, AF_INET6
+        from .bgp import AF_INET, AF_INET6, BGP
 
         af = []
         if node.use_v4:
-            af.append(AF_INET(redistribute=('connected', 'ospf')))
+            af.append(AF_INET(redistribute=("connected", "ospf")))
         if node.use_v6:
-            af.append(AF_INET6(redistribute=('connected', 'ospf6')))
+            af.append(AF_INET6(redistribute=("connected", "ospf6")))
         if af:
             d = list(daemons)
-            d.append((BGP, {'address_families': af}))
+            d.append((BGP, {"address_families": af}))
         super().__init__(node, daemons=d, *args, **kwargs)
 
 
 class OpenrRouterConfig(RouterConfig):
     """A basic router that will run an OpenR daemon"""
-    def __init__(self, node: 'OpenrRouter',
+    def __init__(self, node: "OpenrRouter",
                  daemons: Iterable[DaemonOption] = (),
                  additional_daemons: Iterable[DaemonOption] = (),
                  *args, **kwargs):

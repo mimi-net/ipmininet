@@ -11,30 +11,30 @@ class IPCLI(CLI):
         """route destination: Print all the routes towards that destination
         for every router in the network"""
         for r in self.mn.routers:
-            lg.output("[%s] " % r.name)
-            self.default('%s ip route get %s' % (r.name, line))
+            lg.output(f"[{r.name}] ")
+            self.default(f"{r.name} ip route get {line}")
 
     def do_ip(self, line: str):
         """ip IP1 IP2 ...: return the node associated to the given IP"""
-        for ip in line.split(' '):
+        for ip in line.split(" "):
             try:
                 n = self.mn.node_for_ip(ip)
             except KeyError:
-                n = 'unknown IP'
+                n = "unknown IP"
             finally:
-                lg.output(ip, '|', n, "\n")
+                lg.output(ip, "|", n, "\n")
 
     def do_ips(self, line: str):
         """ips n1 n2 ...: return the ips associated to the given node name"""
-        for n in line.split(' '):
+        for n in line.split(" "):
             try:
                 ips = [ip.ip.compressed for itf in self.mn[n].intfList()
                        for ip in list(itf.ips())
                        + list(itf.ip6s(exclude_lls=True))]
             except KeyError:
-                ips = 'unknown node'
+                ips = "unknown node"
             finally:
-                lg.output(n, '|', ips, "\n")
+                lg.output(n, "|", ips, "\n")
 
     def do_ping4all(self, line):
         """Ping (IPv4-only) between all hosts."""
@@ -58,7 +58,7 @@ class IPCLI(CLI):
             :param line: the router name between which the link as to be
                          downed/up: r1 r2, r3 r4 [down/up]
         """
-        all_args = line.split(',')
+        all_args = line.split(",")
         last_args = all_args[-1].split()
         state = last_args[-1]
         for elem in all_args[:-1]:
@@ -80,10 +80,10 @@ class IPCLI(CLI):
 
         if first in self.mn:
             if not args:
-                lg.error("*** Enter a command for node: %s <cmd>" % first)
+                lg.error(f"*** Enter a command for node: {first} <cmd>")
                 return
             node = self.mn[first]
-            rest = args.split(' ')
+            rest = args.split(" ")
 
             hops = [h for h in rest if h in self.mn]
             v4_support, v6_support = address_pair(self.mn[first])
@@ -99,7 +99,7 @@ class IPCLI(CLI):
                     v6_map[hop] = ip6
             ip_map = v4_map if len(v4_map) >= len(v6_map) else v6_map
 
-            node.sendCmd(' '.join([ip_map.get(r, r) for r in rest]))
+            node.sendCmd(" ".join([ip_map.get(r, r) for r in rest]))
             self.waitForNode(node)
         else:
-            lg.error('*** Unknown command: %s\n' % line)
+            lg.error(f"*** Unknown command: {line}\n")

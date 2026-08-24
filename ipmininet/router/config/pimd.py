@@ -1,13 +1,14 @@
-from .zebra import QuaggaDaemon, Zebra
-from .utils import ConfigDict
 from ipmininet.utils import realIntfList
+
+from .utils import ConfigDict
+from .zebra import QuaggaDaemon, Zebra
 
 
 class PIMD(QuaggaDaemon):
     """This class configures a PIM daemon to responds to IGMP queries in order
     to setup multicast routing in the network."""
 
-    NAME = 'pimd'
+    NAME = "pimd"
     DEPENDS = (Zebra,)
     KILL_PATTERNS = (NAME,)
 
@@ -19,8 +20,8 @@ class PIMD(QuaggaDaemon):
         cfg.update(self.options)
         cfg.interfaces = [
             ConfigDict(name=itf.name,
-                       ssm=itf.get('multicast_ssm', self.options.multicast_ssm),
-                       igmp=itf.get('multicast_igmp',
+                       ssm=itf.get("multicast_ssm", self.options.multicast_ssm),
+                       igmp=itf.get("multicast_igmp",
                                     self.options.multicast_igmp))
             for itf in realIntfList(self._node) if itf.get("enable_multicast",
                                                            False)]

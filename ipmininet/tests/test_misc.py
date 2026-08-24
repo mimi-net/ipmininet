@@ -1,20 +1,21 @@
+import ipaddress
 import os
 import subprocess
 
-import ipaddress
 import pytest
 
-import ipmininet.utils as utils
+from ipmininet import utils
 from ipmininet.clean import cleanup
 from ipmininet.examples.static_address_network import StaticAddressNet
 from ipmininet.ipnet import IPNet
 from ipmininet.link import _parse_addresses
 from ipmininet.router.config.utils import ip_statement
+
 from . import require_root
 
 
-@pytest.mark.parametrize('address', [
-    '::/0', '0.0.0.0/0', '1.2.3.0/24', '2001:db8:1234::/48'
+@pytest.mark.parametrize("address", [
+    "::/0", "0.0.0.0/0", "1.2.3.0/24", "2001:db8:1234::/48",
 ])
 def test_nested_ip_networks(address):
     """This test ensures that we can build an IPvXNetwork from another one.
@@ -35,17 +36,17 @@ def test_nested_ip_networks(address):
     ("f000::", 4),
     ("ffff::", 16),
     ("128.0.0.0", 1),
-    ("fe00::", 7)
+    ("fe00::", 7),
 ])
 def test_prefix_for_netmask(test_input, expected):
     assert utils.prefix_for_netmask(test_input) == expected
 
 
 @pytest.mark.parametrize("test_input,expected", [
-    ('0.0.0.1', 1),
-    ('0.0.128.0', 128 << 8),
-    ('0.0.123.3', (123 << 8) + 3),
-    ('::f:1', (0xf << 16) + 1)
+    ("0.0.0.1", 1),
+    ("0.0.128.0", 128 << 8),
+    ("0.0.123.3", (123 << 8) + 3),
+    ("::f:1", (0xf << 16) + 1),
 ])
 def test_ipaddress_endianness(test_input, expected):
     """Checks int(ipaddress) endianness"""
@@ -58,12 +59,12 @@ def test_ip_address_format():
     to parse it properly.
     """
     # We force up status so we parse at least one IP of each family
-    subprocess.call(['ip', 'link', 'set', 'dev', 'lo', 'up'])
-    out = subprocess.check_output(['ip', 'address', 'show', 'dev', 'lo'])\
+    subprocess.call(["ip", "link", "set", "dev", "lo", "up"])
+    out = subprocess.check_output(["ip", "address", "show", "dev", "lo"])\
         .decode("utf-8")
     mac, v4, v6 = _parse_addresses(out)
     assert mac is not None
-    assert len(mac.split(':')) == 6
+    assert len(mac.split(":")) == 6
     assert mac in out
     assert len(v4) > 0
     for a in v4:
@@ -74,7 +75,7 @@ def test_ip_address_format():
         assert a.version == 6
         assert a.with_prefixlen in out
     # IF status, MAC, inet, valid, inet, valid, ..., inet6, valid, ...
-    assert len(out.strip('\n').split('\n')) == (2 + 2 * len(v4) + 2 * len(v6))
+    assert len(out.strip("\n").split("\n")) == (2 + 2 * len(v4) + 2 * len(v6))
 
 
 @pytest.mark.parametrize("cmd,present", [
@@ -86,11 +87,11 @@ def test_ip_address_format():
 def test_require_cmd(cmd, present):
     try:
         utils.require_cmd(cmd)
-        assert present, "The command [%s] was found" \
-                        " while it is not present" % cmd
+        assert present, f"The command [{cmd}] was found" \
+                        " while it is not present"
     except RuntimeError:
-        assert not present, "The command [%s] could not be found" \
-                            " while it is present" % cmd
+        assert not present, f"The command [{cmd}] could not be found" \
+                            " while it is present"
 
 
 @pytest.mark.parametrize("node,use_v4,use_v6,expected", [
@@ -126,12 +127,12 @@ def test_find_node(start, node, present):
         i = utils.find_node(net[start], node)
         if present:
             assert i is not None,\
-                "Node %s not found from node %s" % (node, start)
+                f"Node {node} not found from node {start}"
             assert i.node.name == node,\
-                "Node %s was found while we expected %s" % (i.node.name, node)
+                f"Node {i.node.name} was found while we expected {node}"
         else:
             assert i is None,\
-                "Node %s should not be found from node %s" % (node, start)
+                f"Node {node} should not be found from node {start}"
         net.stop()
     finally:
         cleanup()

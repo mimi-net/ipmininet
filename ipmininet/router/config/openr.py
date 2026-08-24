@@ -3,8 +3,9 @@ from ipaddress import ip_interface
 
 from ipmininet.overlay import Overlay
 from ipmininet.utils import L3Router, realIntfList
-from .utils import ConfigDict
+
 from .openrd import OpenrDaemon
+from .utils import ConfigDict
 
 
 class OpenrDomain(Overlay):
@@ -20,11 +21,11 @@ class OpenrDomain(Overlay):
 
     @property
     def domain(self):
-        return self.links_properties['openr_domain']
+        return self.links_properties["openr_domain"]
 
     @domain.setter
     def domain(self, domain):
-        self.links_properties['openr_domain'] = domain
+        self.links_properties["openr_domain"] = domain
 
     def apply(self, topo):
         # Add all links for the routers
@@ -33,12 +34,12 @@ class OpenrDomain(Overlay):
         super().apply(topo)
 
     def __str__(self):
-        return '<OpenR domain %s>' % self.domain
+        return f"<OpenR domain {self.domain}>"
 
 
 class Openr(OpenrDaemon):
     """This class provides a simple configuration for an OpenR daemon."""
-    NAME = 'openr'
+    NAME = "openr"
     DEPENDS = (OpenrDaemon,)
     KILL_PATTERNS = (NAME,)
 
@@ -47,14 +48,14 @@ class Openr(OpenrDaemon):
 
     @property
     def logdir(self) -> str:
-        if 'log_dir' in self._options:
-            return self._options['log_dir']
+        if "log_dir" in self._options:
+            return self._options["log_dir"]
         return None
 
     def build(self):
         cfg = super().build()
         self.options.redistribute_ifaces = \
-            ','.join([intf.name for intf in self._node.intfList()])
+            ",".join([intf.name for intf in self._node.intfList()])
         cfg.update(self.options)
         interfaces = realIntfList(self._node)
         cfg.interfaces = self._build_interfaces(interfaces)
@@ -68,7 +69,7 @@ class Openr(OpenrDaemon):
         active OpenR interfaces"""
         # Check that we have at least one IPv4 network on that interface ...
         def _openr_net(ip, prefixLen):
-            domain = ip_interface('%s/%s' % (ip, prefixLen))
+            domain = ip_interface(f"{ip}/{prefixLen}")
             return OpenrNetwork(domain=domain)
 
         return [_openr_net(i.ip, i.prefixLen) for i in interfaces if i.ip]
@@ -89,16 +90,16 @@ class Openr(OpenrDaemon):
         for itf in interfaces:
             ipv6_addresses += itf.addresses[6]
         ipv6_addresses = filter(lambda x: not x.is_link_local, ipv6_addresses)
-        return ','.join(map(lambda x: x.with_prefixlen, ipv6_addresses))
+        return ",".join(x.with_prefixlen for x in ipv6_addresses)
 
     def set_defaults(self, defaults):
         """Updates some options of the OpenR daemon to run a network of
         routers in mininet. For a full list of parameters see
         OpenrDaemon:_defaults in openrd.py"""
         defaults.node_name = self._node.name
-        defaults.ifname_prefix = '{}-eth'.format(self._node.name)
-        defaults.iface_regex_include = '{}-eth.*'.format(self._node.name)
-        defaults.log_dir = '/var/tmp/log/{}'.format(self._node.name)
+        defaults.ifname_prefix = f"{self._node.name}-eth"
+        defaults.iface_regex_include = f"{self._node.name}-eth.*"
+        defaults.log_dir = f"/var/tmp/log/{self._node.name}"
         defaults.enable_v4 = True
         super().set_defaults(defaults)
 

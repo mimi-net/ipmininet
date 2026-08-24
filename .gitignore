@@ -14,3 +14,6 @@ tags
 _build/
 docs/api/*.rst
 .idea/
+.venv/
+/.tmp/
+.coverage

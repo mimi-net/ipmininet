@@ -1,15 +1,13 @@
 """utils: utility functions to manipulate host, interfaces, ..."""
 import collections
 import os
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address
+from typing import TYPE_CHECKING, Optional
 
 from mininet.link import Intf
 from mininet.log import lg as log
 from mininet.node import Node
 
-from ipaddress import ip_address, IPv4Address, IPv6Address, IPv4Network,\
-    IPv6Network
-
-from typing import Type, Dict, Optional, Union, Tuple, List, TYPE_CHECKING, Set
 if TYPE_CHECKING:
     from ipmininet.link import IPIntf
 
@@ -28,7 +26,7 @@ def has_cmd(cmd: str) -> bool:
     return False
 
 
-def require_cmd(cmd: str, help_str: Optional[str] = None):
+def require_cmd(cmd: str, help_str: str | None = None):
     """
     Ensures that a command is available in $PATH
 
@@ -40,22 +38,23 @@ def require_cmd(cmd: str, help_str: Optional[str] = None):
 
     if help_str:
         log.error(help_str)
-    raise RuntimeError('[%s] is not available in $PATH' % cmd)
+    msg = f"[{cmd}] is not available in $PATH"
+    raise RuntimeError(msg)
 
 
-def otherIntf(intf: Intf) -> Optional['IPIntf']:
+def otherIntf(intf: Intf) -> Optional["IPIntf"]:
     """"Get the interface on the other side of a link"""
     link = intf.link
     return (link.intf1 if link.intf2 == intf else link.intf2) if link else None
 
 
-def realIntfList(n: Node) -> List['IPIntf']:
+def realIntfList(n: Node) -> list["IPIntf"]:
     """Return the list of interfaces of node n excluding loopback"""
-    return [i for i in n.intfList() if i.name != 'lo']
+    return [i for i in n.intfList() if i.name != "lo"]
 
 
 def address_pair(n: Node, use_v4=True, use_v6=True) \
-        -> Tuple[Optional[str], Optional[str]]:
+        -> tuple[str | None, str | None]:
     """Returns a tuple (ip, ip6) with ip/ip6 being one of the IPv4/IPv6
        addresses of the node n"""
     from .link import IPIntf  # Prevent circular imports
@@ -81,8 +80,8 @@ def address_pair(n: Node, use_v4=True, use_v6=True) \
     return v4_str, v6_str
 
 
-def is_subnet_of(a: Union[IPv4Network, IPv6Network],
-                 b: Union[IPv4Network, IPv6Network]) -> bool:
+def is_subnet_of(a: IPv4Network | IPv6Network,
+                 b: IPv4Network | IPv6Network) -> bool:
     """Return True if network a is a subnet of network b."""
 
     # This code is copied from ipaddress module in Python 3.7 for
@@ -90,13 +89,17 @@ def is_subnet_of(a: Union[IPv4Network, IPv6Network],
     try:
         # Always false if one is v4 and the other is v6.
         if a.version != b.version:
-            raise TypeError("{} and {} are not of the same version"
-                            .format(a, b))
+            msg = f"{a} and {b} are not of the same version"
+            raise TypeError(msg,
+                            )
         return (b.network_address <= a.network_address and
                 b.broadcast_address >= a.broadcast_address)
     except AttributeError:
-        raise TypeError("Unable to test subnet containment "
-                        "between {} and {}".format(a, b))
+        msg = (
+            "Unable to test subnet containment "
+                        f"between {a} and {b}"
+        )
+        raise TypeError(msg)
 
 
 def is_container(x) -> bool:
@@ -105,7 +108,7 @@ def is_container(x) -> bool:
             not isinstance(x, str))
 
 
-def prefix_for_netmask(mask: Union[IPv4Address, IPv6Address, str]) -> int:
+def prefix_for_netmask(mask: IPv4Address | IPv6Address | str) -> int:
     """Return the prefix length associated to a given netmask.
     Will return garbage if the netmask is unproperly formatted!"""
     ip = ip_address(str(mask))
@@ -131,7 +134,7 @@ class L3Router:
             return False
 
 
-def get_set(d: Dict, key, default: Type):
+def get_set(d: dict, key, default: type):
     """Attempt to return the value for the given key,
     otherwise initialize it
 
@@ -145,7 +148,7 @@ def get_set(d: Dict, key, default: Type):
         return x
 
 
-def find_node(start: Node, node_name: str) -> Optional[Intf]:
+def find_node(start: Node, node_name: str) -> Intf | None:
     """
     :param start: The starting node of the search
     :param node_name: The name of the node to find

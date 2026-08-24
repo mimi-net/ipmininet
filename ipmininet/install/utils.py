@@ -2,16 +2,15 @@ import os
 import shlex
 import subprocess
 import sys
-from typing import Optional, Type, List
 
 from distutils.spawn import find_executable
 
 
-def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
-    if 'stdout' not in kwargs:
-        kwargs['stdout'] = subprocess.PIPE
-    if 'stderr' not in kwargs:
-        kwargs['stderr'] = subprocess.STDOUT
+def sh(*cmds, **kwargs) -> subprocess.Popen | None:
+    if "stdout" not in kwargs:
+        kwargs["stdout"] = subprocess.PIPE
+    if "stderr" not in kwargs:
+        kwargs["stderr"] = subprocess.STDOUT
     may_fail = kwargs.pop("may_fail", False)
     output_stdout = kwargs.pop("output_stdout", True)
     env = kwargs.pop("env", os.environ)
@@ -27,11 +26,11 @@ def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
         if output_stdout:
             while p.poll() is None:
                 out = p.stdout.readline()
-                if out != '':
+                if out != "":
                     sys.stdout.write(out.decode("utf-8"))
 
             out = p.stdout.read()
-            if out != '':
+            if out != "":
                 sys.stdout.write(out.decode("utf-8"))
 
             if p.poll() != 0:
@@ -52,13 +51,13 @@ class Distribution:
         self.pip_args = self.check_pip_version(self.PIP_CMD)
 
     def check_pip_version(self, pip: str) -> str:
-        from pkg_resources import parse_version
+        from packaging.version import parse as parse_version
 
         if find_executable(pip) is None:
             return ""
-        p = sh("%s -V" % pip, output_stdout=False)
+        p = sh(f"{pip} -V", output_stdout=False)
         if p is None or p.wait() != 0:
-            print("Print cannot get the version of %s" % pip)
+            print(f"Print cannot get the version of {pip}")
             return ""
         content, _ = p.communicate()
         try:
@@ -68,7 +67,7 @@ class Distribution:
                 return ""
             return "--process-dependency-links"
         except (ValueError, IndexError):
-            print("Cannot retrieve version number of %s" % pip)
+            print(f"Cannot retrieve version number of {pip}")
             sys.exit(1)
 
     def install(self, *packages: str):
@@ -85,7 +84,8 @@ class Distribution:
 
     def require_pip(self):
         if find_executable(self.PIP_CMD) is None:
-            raise RuntimeError("Cannot find %s" % self.PIP_CMD)
+            msg = f"Cannot find {self.PIP_CMD}"
+            raise RuntimeError(msg)
 
 
 class Ubuntu(Distribution):
@@ -93,6 +93,14 @@ class Ubuntu(Distribution):
     INSTALL_CMD = "apt-get -y -q install"
     UPDATE_CMD = "apt-get update"
     PIP_CMD = "pip3"
+
+    def pip_install(self, *packages: str, **kwargs):
+        cmd = find_executable(self.PIP_CMD)
+        if cmd is None:
+            return
+        # PEP 668 on Ubuntu 24.04+ requires --break-system-packages
+        sh(f"{cmd} -q install --break-system-packages {self.pip_args} "
+           + " ".join(packages), **kwargs)
 
 
 class Debian(Distribution):
@@ -109,11 +117,11 @@ class Fedora(Distribution):
     PIP_CMD = "pip"
 
 
-def supported_distributions() -> List[Type]:
+def supported_distributions() -> list[type]:
     return Distribution.__subclasses__()
 
 
-def identify_distribution() -> Optional[Distribution]:
+def identify_distribution() -> Distribution | None:
     try:
         subprocess.check_call(shlex.split("grep Ubuntu /etc/lsb-release"))
         return Ubuntu()

@@ -1,16 +1,16 @@
 import time
-from subprocess import check_output, CalledProcessError
-from typing import List
+from subprocess import CalledProcessError, check_output
 
 import mininet.clean as mnclean
 from mininet.log import lg as log
 
-import ipmininet.router.config as router_daemons
 import ipmininet.host.config as host_daemons
+import ipmininet.router.config as router_daemons
+
 from .utils import is_container
 
 
-def cleanup(level: str = 'info'):
+def cleanup(level: str = "info"):
     """Cleanup all possible junk that we may have started."""
     log.setLogLevel(level)
     # Standard mininet cleanup
@@ -20,15 +20,15 @@ def cleanup(level: str = 'info'):
     for package in [router_daemons, host_daemons]:
         for d in package.__all__:
             obj = getattr(package, d, None)
-            killp = getattr(obj, 'KILL_PATTERNS', None)
+            killp = getattr(obj, "KILL_PATTERNS", None)
             if not killp:
                 continue
             if not is_container(killp):
                 killp = [killp]
             patterns.extend(killp)
-    log.info('*** Cleaning up daemons:\n')
-    killprocs(['"^%s"' % p for p in patterns])
-    log.info('\n')
+    log.info("*** Cleaning up daemons:\n")
+    killprocs([f'"^{p}"' for p in patterns])
+    log.info("\n")
 
 
 def killprocs(patterns, timeout=10):
@@ -36,17 +36,17 @@ def killprocs(patterns, timeout=10):
 
     # Try clean kill
     for p in patterns:
-        mnclean.sh('pkill -SIGINT -f %s' % p)
+        mnclean.sh(f"pkill -SIGINT -f {p}")
 
     # Make sure they are gone
     t = 0
-    to_be_killed = {p: True for p in patterns}
+    to_be_killed = dict.fromkeys(patterns, True)
     while any(to_be_killed.values()) or t >= timeout:
         for p in patterns:
             try:
-                pids = check_output(['pgrep', '-f', p])
+                pids = check_output(["pgrep", "-f", p])
             except CalledProcessError:
-                pids = ''
+                pids = ""
             if not pids:
                 log.info(p)
                 to_be_killed[p] = False
@@ -61,5 +61,5 @@ def killprocs(patterns, timeout=10):
             mnclean.killprocs(p)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cleanup()

@@ -1,10 +1,11 @@
 """Base classes to configure an OSPF daemon"""
-from ipaddress import ip_interface, IPv4Network
-from typing import Sequence, List
+from collections.abc import Sequence
+from ipaddress import IPv4Network, ip_interface
 
 from ipmininet.link import IPIntf
 from ipmininet.overlay import Overlay
 from ipmininet.utils import L3Router
+
 from .utils import ConfigDict
 from .zebra import QuaggaDaemon, Zebra
 
@@ -23,29 +24,29 @@ class OSPFArea(Overlay):
 
     @property
     def area(self) -> str:
-        return self.links_properties['igp_area']
+        return self.links_properties["igp_area"]
 
     @area.setter
     def area(self, x: str):
-        self.links_properties['igp_area'] = x
+        self.links_properties["igp_area"] = x
         # Also set node property so we can use it for the loopback interface
-        self.nodes_properties['igp_area'] = x
+        self.nodes_properties["igp_area"] = x
 
     def apply(self, topo):
         # Add all links for the routers
         for r in self.nodes:
-            self.add_link(*[(r, x) for x in topo.g[r].keys()])
+            self.add_link(*[(r, x) for x in topo.g[r]])
         super().apply(topo)
 
     def __str__(self):
-        return '<OSPF area %s>' % self.area
+        return f"<OSPF area {self.area}>"
 
 
 class OSPF(QuaggaDaemon):
     """This class provides a simple configuration for an OSPF daemon.
     It advertizes one network per interface (the primary one), and set
     interfaces not facing another L3Router to passive"""
-    NAME = 'ospfd'
+    NAME = "ospfd"
     DEPENDS = (Zebra,)
     KILL_PATTERNS = (NAME,)
 
@@ -61,29 +62,29 @@ class OSPF(QuaggaDaemon):
         return cfg
 
     @staticmethod
-    def _build_networks(interfaces: List[IPIntf]) -> List['OSPFNetwork']:
+    def _build_networks(interfaces: list[IPIntf]) -> list["OSPFNetwork"]:
         """Return the list of OSPF networks to advertize from the list of
         active OSPF interfaces"""
         # Check that we have at least one IPv4 network on that interface ...
-        return [OSPFNetwork(domain=ip_interface('%s/%s' % (i.ip, i.prefixLen)),
+        return [OSPFNetwork(domain=ip_interface(f"{i.ip}/{i.prefixLen}"),
                             area=i.igp_area) for i in interfaces if i.ip]
 
-    def _build_interfaces(self, interfaces: List[IPIntf]) -> List[ConfigDict]:
+    def _build_interfaces(self, interfaces: list[IPIntf]) -> list[ConfigDict]:
         """Return the list of OSPF interface properties from the list of
         active interfaces"""
         return [ConfigDict(description=i.describe,
                            name=i.name,
                            # Is the interface between two routers?
                            active=self.is_active_interface(i),
-                           priority=i.get('ospf_priority',
+                           priority=i.get("ospf_priority",
                                           self.options.priority),
-                           dead_int=i.get('ospf_dead_int',
+                           dead_int=i.get("ospf_dead_int",
                                           self.options.dead_int),
-                           hello_int=i.get('ospf_hello_int',
+                           hello_int=i.get("ospf_hello_int",
                                            self.options.hello_int),
                            cost=i.igp_metric,
                            # Is the interface forcefully disabled?
-                           passive=i.get('igp_passive', False))
+                           passive=i.get("igp_passive", False))
                 for i in interfaces]
 
     def set_defaults(self, defaults):
@@ -92,7 +93,7 @@ class OSPF(QuaggaDaemon):
         :param hello_int: Hello interval timer
         :param priority: priority for the interface, used for DR election
         :param redistribute: set of OSPFRedistributedRoute sources"""
-        defaults.dead_int = 'minimal hello-multiplier 5'
+        defaults.dead_int = "minimal hello-multiplier 5"
         defaults.hello_int = 1
         defaults.priority = 10
         defaults.redistribute = []

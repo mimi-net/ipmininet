@@ -5,23 +5,19 @@ from .utils import ConfigDict
 class OpenrDaemon(RouterDaemon):
     """The base class for the OpenR daemon"""
 
-    NAME = 'openr'
+    NAME = "openr"
 
     @property
     def STARTUP_LINE_EXTRA(self):
         # Add options to the standard startup line
-        return ''
+        return ""
 
     @property
     def startup_line(self):
-        return '{name} {cfg} {extra}'\
-                .format(name=self.NAME,
-                        cfg=self._cfg_options(),
-                        extra=self.STARTUP_LINE_EXTRA)
+        return f"{self.NAME} {self._cfg_options()} {self.STARTUP_LINE_EXTRA}"
 
     def build(self):
-        cfg = ConfigDict()
-        return cfg
+        return ConfigDict()
 
     def _defaults(self, **kwargs):
         """
@@ -245,5 +241,4 @@ class OpenrDaemon(RouterDaemon):
         As a workaround we only show the version of the openr daemon"""
         # TODO: Replace with a config parser or shutdown the daemon after few
         # seconds
-        return '{name} --version'\
-               .format(name=self.NAME)
+        return f"{self.NAME} --version"

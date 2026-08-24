@@ -3,9 +3,10 @@ import os
 
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
+
+from ..examples.network_capture import NetworkCaptureTopo
 from . import require_root
 from .utils import assert_connectivity
-from ..examples.network_capture import NetworkCaptureTopo
 
 
 @require_root

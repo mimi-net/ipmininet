@@ -1,8 +1,8 @@
 """This modules defines the IPSwitch class allowing to better support STP
    and to create hubs"""
-from typing import Optional
 
 from mininet.nodelib import LinuxBridge
+
 from ipmininet.utils import require_cmd
 
 
@@ -11,7 +11,7 @@ class IPSwitch(LinuxBridge):
        the hubs"""
 
     def __init__(self, name: str, stp=True, hub=False,
-                 prio: Optional[int] = None, cwd='/tmp', **kwargs):
+                 prio: int | None = None, cwd="/tmp", **kwargs):
         """:param name: the name of the node
            :param stp: whether to use spanning tree protocol
            :param hub: whether this switch behaves as a hub (this disable stp)
@@ -24,30 +24,29 @@ class IPSwitch(LinuxBridge):
 
     def start(self, _controllers):
         """Start Linux bridge"""
-        require_cmd("brctl", help_str="You need brctl to use %s objects"
-                                      % self.__class__)
+        require_cmd("brctl", help_str=f"You need brctl to use {self.__class__} objects")
 
-        self.cmd('ifconfig', self, 'down')
-        self.cmd('brctl delbr', self)
-        self.cmd('brctl addbr', self)
+        self.cmd("ifconfig", self, "down")
+        self.cmd("brctl delbr", self)
+        self.cmd("brctl addbr", self)
         if self.hub:
-            self.cmd('brctl setageing ', self, ' 0')
+            self.cmd("brctl setageing ", self, " 0")
         if self.stp:
-            self.cmd('brctl setbridgeprio', self, self.prio)
-            self.cmd('brctl stp', self, 'on')
+            self.cmd("brctl setbridgeprio", self, self.prio)
+            self.cmd("brctl stp", self, "on")
         for i in self.intfList():
             if self.name in i.name:
-                self.cmd('brctl addif', self, i)
-                self.cmd('brctl setpathcost'
-                         ' %s %s %d' % (self.name, i.name,
-                                        i.params.get('stp_cost', 1)))
+                self.cmd("brctl addif", self, i)
+                self.cmd("brctl setpathcost"
+                         " %s %s %d" % (self.name, i.name,
+                                        i.params.get("stp_cost", 1)))
         # Start the captures on this switch
         for capture in self.params.get("captures", []):
             capture.start(node=self)
         for intf in self.intfList():
             for capture in intf.params.get("captures", []):
                 capture.start(intf=intf)
-        self.cmd('ifconfig', self, 'up')
+        self.cmd("ifconfig", self, "up")
 
     def stop(self, deleteIntfs=True):
         # Stop the captures on this switch

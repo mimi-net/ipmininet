@@ -20,16 +20,16 @@ class PartialStaticAddressNet(IPTopo):
                                          +---------+ h4 |
                                                    +----+
         """
-        r1 = self.addRouter('r1', lo_addresses=["2042:1::1/64"])
-        r2 = self.addRouter('r2')
+        r1 = self.addRouter("r1", lo_addresses=["2042:1::1/64"])
+        r2 = self.addRouter("r2")
 
-        s1 = self.addSwitch('s1')
-        s2 = self.addSwitch('s2')
+        s1 = self.addSwitch("s1")
+        s2 = self.addSwitch("s2")
 
-        h1 = self.addHost('h1')
-        h2 = self.addHost('h2')
-        h3 = self.addHost('h3')
-        h4 = self.addHost('h4')
+        h1 = self.addHost("h1")
+        h2 = self.addHost("h2")
+        h3 = self.addHost("h3")
+        h4 = self.addHost("h4")
 
         _, lr1r2, _, _, _, lr2s2, ls2h3 = self.addLinks((h1, r1), (r1, r2),
                                                         (r1, s1), (s1, h2),

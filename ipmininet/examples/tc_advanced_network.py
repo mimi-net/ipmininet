@@ -5,6 +5,8 @@ the same interface by creating additional switches on the links. For more
 details, you can refer to the IPMininet documentation.
 """
 
+import contextlib
+
 from ipmininet.iptopo import IPTopo
 
 
@@ -33,17 +35,13 @@ class TCAdvancedNet(IPTopo):
         opts1 = dict(opts)
         if "params2" in opts1:
             opts1.pop("params2")
-        try:
+        with contextlib.suppress(KeyError):
             src_delay = opts.get("params1", {}).pop("delay")
-        except KeyError:
-            pass
         opts2 = dict(opts)
         if "params1" in opts2:
             opts2.pop("params1")
-        try:
+        with contextlib.suppress(KeyError):
             dst_delay = opts.get("params2", {}).pop("delay")
-        except KeyError:
-            pass
 
         src_delay = src_delay if src_delay else delay
         dst_delay = dst_delay if dst_delay else delay

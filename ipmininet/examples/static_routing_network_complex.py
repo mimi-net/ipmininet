@@ -2,7 +2,7 @@
    The routes are more complex than for the previous example."""
 
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import RouterConfig, STATIC, StaticRoute
+from ipmininet.router.config import STATIC, RouterConfig, StaticRoute
 
 
 class StaticRoutingNetComplex(IPTopo):
@@ -20,13 +20,13 @@ class StaticRoutingNetComplex(IPTopo):
         """
 
         r1, r2, r3, r4, r5, r6 = \
-            self.addRouters('r1', 'r2', 'r3', 'r4', 'r5', 'r6',
+            self.addRouters("r1", "r2", "r3", "r4", "r5", "r6",
                             use_v4=False, use_v6=True, config=RouterConfig)
 
-        h1 = self.addHost('h1', use_v4=False, use_v6=True)
-        h3 = self.addHost('h3', use_v4=False, use_v6=True)
-        h4 = self.addHost('h4', use_v4=False, use_v6=True)
-        h6 = self.addHost('h6', use_v4=False, use_v6=True)
+        h1 = self.addHost("h1", use_v4=False, use_v6=True)
+        h3 = self.addHost("h3", use_v4=False, use_v6=True)
+        h4 = self.addHost("h4", use_v4=False, use_v6=True)
+        h6 = self.addHost("h6", use_v4=False, use_v6=True)
 
         self.addLinks((h1, r1), (h3, r3), (h4, r4), (h6, r6))
 
@@ -66,7 +66,7 @@ class StaticRoutingNetComplex(IPTopo):
             StaticRoute(prefix="2042:11::2", nexthop="2042:12::1"),
             StaticRoute(prefix="2042:33::2", nexthop="2042:25::2"),
             StaticRoute(prefix="2042:44::2", nexthop="2042:25::2"),
-            StaticRoute(prefix="2042:66::2", nexthop="2042:25::2")
+            StaticRoute(prefix="2042:66::2", nexthop="2042:25::2"),
         ])
         r3.addDaemon(STATIC, static_routes=[
             StaticRoute(prefix="2042:11::2", nexthop="2042:23::1"),
@@ -76,7 +76,7 @@ class StaticRoutingNetComplex(IPTopo):
         r4.addDaemon(STATIC, static_routes=[
             StaticRoute(prefix="2042:11::2", nexthop="2042:34::1"),
             StaticRoute(prefix="2042:66::2", nexthop="2042:34::1"),
-            StaticRoute(prefix="2042:33::2", nexthop="2042:34::1")
+            StaticRoute(prefix="2042:33::2", nexthop="2042:34::1"),
         ])
         r5.addDaemon(STATIC, static_routes=[
             StaticRoute(prefix="2042:11::2", nexthop="2042:45::1"),

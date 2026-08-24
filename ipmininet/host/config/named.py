@@ -2,14 +2,16 @@
 import copy
 import os
 import re
+from collections.abc import Sequence
 from ipaddress import IPv4Address, IPv6Address, ip_address
-from typing import List, Union, Sequence, Optional
+from typing import Union
 
 from mininet.log import lg
 
 from ipmininet.overlay import Overlay
 from ipmininet.router.config.utils import ConfigDict
-from ipmininet.utils import realIntfList, find_node, has_cmd
+from ipmininet.utils import find_node, has_cmd, realIntfList
+
 from .base import HostDaemon
 
 DNS_REFRESH = 86400
@@ -20,7 +22,7 @@ DNS_ROOT = "."
 
 
 def dns_base_name(full_name: str) -> str:
-    return full_name.split(".")[0]
+    return full_name.split(".", maxsplit=1)[0]
 
 
 def dns_join_name(base_name: str, dns_zone: str) -> str:
@@ -33,7 +35,7 @@ def is_reverse_zone(zone_name: str) -> bool:
 
 
 class Named(HostDaemon):
-    NAME = 'named'
+    NAME = "named"
     KILL_PATTERNS = (NAME,)
 
     def __init__(self, node, **kwargs):
@@ -45,7 +47,7 @@ class Named(HostDaemon):
     @property
     def startup_line(self):
         # This runs the daemon outside of AppArmor's restrictions
-        return '{apparmor}{name} -c {cfg} -f -u root -t / -p {port}' \
+        return "{apparmor}{name} -c {cfg} -f -u root -t / -p {port}" \
             .format(apparmor="aa-exec -p unconfined " if self.apparmor else "",
                     name=self.NAME,
                     cfg=self.cfg_filename,
@@ -53,8 +55,8 @@ class Named(HostDaemon):
 
     @property
     def dry_run(self):
-        return '{name} {cfg}' \
-            .format(name='named-checkconf', cfg=self.cfg_filename)
+        return "{name} {cfg}" \
+            .format(name="named-checkconf", cfg=self.cfg_filename)
 
     def build(self):
         cfg = super().build()
@@ -63,13 +65,13 @@ class Named(HostDaemon):
 
         cfg.zones = ConfigDict()
         root_zone_found = False
-        for zone in self._node.get('dns_zones', []):
+        for zone in self._node.get("dns_zones", []):
             root_zone_found = root_zone_found or zone.name == DNS_ROOT
             cfg.zones[self.zone_filename(zone.name)] = self.build_zone(zone)
 
         self.build_reverse_zone(cfg.zones)
 
-        root = self._node.get('root_zone', None)
+        root = self._node.get("root_zone", None)
         if self.options.hint_root_zone and not root_zone_found \
                 and root is not None:
             root_filename = self.zone_filename(root.name)
@@ -78,17 +80,15 @@ class Named(HostDaemon):
 
         return cfg
 
-    def build_zone(self, zone: 'DNSZone') -> ConfigDict:
+    def build_zone(self, zone: "DNSZone") -> ConfigDict:
         master_ips = []
-        for s_name in zone.servers + [zone.dns_master] + zone.dns_slaves + \
-                      zone.delegation_servers:
+        for s_name in [*zone.servers, zone.dns_master, *zone.dns_slaves, *zone.delegation_servers]:
             server_itf = find_node(self._node, dns_base_name(s_name))
             if server_itf is None:
-                lg.error("Cannot find the server node {name} of DNS zone"
-                         " {zone}. Are you sure that they are connected to "
-                         "the current node {current}?"
-                         .format(name=s_name, zone=zone.name,
-                                 current=self._node.name))
+                lg.error(f"Cannot find the server node {s_name} of DNS zone"
+                         f" {zone.name}. Are you sure that they are connected to "
+                         f"the current node {self._node.name}?",
+                         )
                 continue
             server = server_itf.node
             for itf in realIntfList(server):
@@ -164,8 +164,8 @@ class Named(HostDaemon):
             self.build_largest_reverse_zone(cfg_zones, ptr_v4_records)
 
     def build_largest_reverse_zone(self, cfg_zones: ConfigDict,
-                                   records: List[Union['PTRRecord',
-                                                       'NSRecord']]):
+                                   records: list[Union["PTRRecord",
+                                                       "NSRecord"]]):
         """
         Create the ConfigDict object representing a new reverse zone whose
         prefix is the largest one that includes all the PTR records.
@@ -210,7 +210,7 @@ class Named(HostDaemon):
                                   records=records,
                                   master=True,
                                   master_ips=[])
-        self._node.params.setdefault('dns_zones', []).append(reverse_zone)
+        self._node.params.setdefault("dns_zones", []).append(reverse_zone)
         cfg_zones[self.zone_filename(reverse_zone.name)] = reverse_zone
 
     def set_defaults(self, defaults):
@@ -228,20 +228,20 @@ class Named(HostDaemon):
         super().set_defaults(defaults)
 
     def zone_filename(self, domain_name: str) -> str:
-        return self._file(suffix='%szone.cfg' % domain_name)
+        return self._file(suffix=f"{domain_name}zone.cfg")
 
     @property
     def cfg_filenames(self):
         return super().cfg_filenames + \
                [self.zone_filename(z.name)
-                for z in self._node.get('dns_zones', [])] + \
+                for z in self._node.get("dns_zones", [])] + \
                self.additional_zone_filenames
 
     @property
     def template_filenames(self):
         return super().template_filenames + \
-               ["%s-zone.mako" % self.NAME
-                for _ in self._node.get('dns_zones', []) +
+               [f"{self.NAME}-zone.mako"
+                for _ in self._node.get("dns_zones", []) +
                 self.additional_zone_filenames]
 
 
@@ -276,7 +276,7 @@ class DNSRecord:
 class ARecord(DNSRecord):
 
     def __init__(self, domain_name,
-                 address: Union[str, IPv4Address, IPv6Address], ttl=60):
+                 address: str | IPv4Address | IPv6Address, ttl=60):
         self.address = ip_address(str(address))
         rtype = "A" if self.address.version == 4 else "AAAA"
         super().__init__(rtype=rtype, domain_name=domain_name, ttl=ttl)
@@ -292,7 +292,7 @@ class AAAARecord(ARecord):
 
 class PTRRecord(DNSRecord):
 
-    def __init__(self, address: Union[str, IPv4Address, IPv6Address],
+    def __init__(self, address: str | IPv4Address | IPv6Address,
                  domain_name: str, ttl=60):
         self.address = ip_address(str(address))
         self.mapped_domain_name = domain_name
@@ -355,9 +355,9 @@ class DNSZone(Overlay):
                  records: Sequence[DNSRecord] = (), nodes: Sequence[str] = (),
                  refresh_time=DNS_REFRESH, retry_time=DNS_RETRY,
                  expire_time=DNS_EXPIRE, min_ttl=DNS_MIN_TTL,
-                 ns_domain_name: Optional[str] = None,
+                 ns_domain_name: str | None = None,
                  subdomain_delegation=True,
-                 delegated_zones: Sequence['DNSZone'] = ()):
+                 delegated_zones: Sequence["DNSZone"] = ()):
         """
         :param name: The domain name of the zone
         :param dns_master: The name of the master DNS server
@@ -388,14 +388,14 @@ class DNSZone(Overlay):
         self.soa_record = SOARecord(self.name, refresh_time=refresh_time,
                                     retry_time=retry_time,
                                     expire_time=expire_time, min_ttl=min_ttl)
-        super().__init__(nodes=[dns_master] + list(dns_slaves))
+        super().__init__(nodes=[dns_master, *list(dns_slaves)])
 
         self.consistent = True
-        for node_name in [dns_master] + self.dns_slaves + self.servers:
+        for node_name in [dns_master, *self.dns_slaves, *self.servers]:
             if "." in node_name:
-                lg.error("Cannot create zone {name} because the node name"
-                         " {node_name} contains a '.'"
-                         .format(name=self.name, node_name=node_name))
+                lg.error(f"Cannot create zone {self.name} because the node name"
+                         f" {node_name} contains a '.'",
+                         )
                 self.consistent = False
 
         self.ns_domain_name = ns_domain_name if ns_domain_name is not None \
@@ -463,7 +463,7 @@ class DNSZone(Overlay):
 
         for zone in self.delegated_zones:
             # Create NSRecords for the delegated subdomains
-            for ns in [zone.dns_master] + zone.dns_slaves:
+            for ns in [zone.dns_master, *zone.dns_slaves]:
                 record = NSRecord(zone.name,
                                   dns_join_name(ns, zone.ns_domain_name))
                 self.add_record(record)

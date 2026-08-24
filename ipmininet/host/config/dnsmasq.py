@@ -1,8 +1,9 @@
-from .base import HostDaemon
-from ipmininet.router.config.utils import ConfigDict
-from mininet.log import info
 import re
 import tempfile
+
+from ipmininet.router.config.utils import ConfigDict
+
+from .base import HostDaemon
 
 
 class Dnsmasq(HostDaemon):
@@ -11,7 +12,7 @@ class Dnsmasq(HostDaemon):
 
     def __init__(self, node, ip_range, mask, gw, intfs, **kwargs):
         self.node = node
-        self.pid_file = tempfile.mktemp(dir='/tmp')
+        self.pid_file = tempfile.mktemp(dir="/tmp")
         self.popen = None
         self.ip_range = ip_range
         self.mask = mask
@@ -49,11 +50,11 @@ class Dnsmasq(HostDaemon):
 
     @property
     def cfg_filenames(self):
-        return [self._file(suffix=f"%s.cfg" % '_'.join(self.intfs))]
+        return [self._file(suffix="{}.cfg".format("_".join(self.intfs)))]
 
     @property
     def template_filenames(self):
-        return super().template_filenames + ["%s.mako" % self.NAME]
+        return [*super().template_filenames, f"{self.NAME}.mako"]
 
     def set_defaults(self, defaults):
         pass
@@ -64,10 +65,10 @@ class Dnsmasq(HostDaemon):
 
         if not output:
             return None
-        match = re.findall(r'pid=(\d+)', output)
+        match = re.findall(r"pid=(\d+)", output)
         if match:
             return match
-        
+
         return None
 
     def kill(self):

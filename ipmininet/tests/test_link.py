@@ -1,5 +1,6 @@
-import pytest
 from ipaddress import ip_interface
+
+import pytest
 
 from ipmininet.clean import cleanup
 from ipmininet.examples.static_address_network import StaticAddressNet

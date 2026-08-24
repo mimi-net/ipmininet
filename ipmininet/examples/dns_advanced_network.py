@@ -29,27 +29,27 @@ class DNSAdvancedNetwork(IPTopo):
         """
         # Add routers
 
-        r1, r2, r3, r4, r5 = self.addRouters('r1', 'r2', 'r3', 'r4', 'r5')
+        r1, r2, r3, r4, r5 = self.addRouters("r1", "r2", "r3", "r4", "r5")
         self.addLinks((r1, r2), (r1, r3), (r3, r2), (r2, r4), (r3, r5),
                       (r4, r5))
 
         # Add hosts
-        server = self.addHost('server')
+        server = self.addHost("server")
         self.addLink(r1, server)
 
-        master = self.addHost('master')
+        master = self.addHost("master")
         master.addDaemon(Named)
         self.addLink(r3, master)
 
-        slave = self.addHost('slave')
+        slave = self.addHost("slave")
         slave.addDaemon(Named)
         self.addLink(r2, slave)
 
-        orgdns = self.addHost('orgdns')
+        orgdns = self.addHost("orgdns")
         orgdns.addDaemon(Named)
         self.addLink(r4, orgdns)
 
-        rootdns = self.addHost('rootdns')
+        rootdns = self.addHost("rootdns")
         rootdns.addDaemon(Named)
         self.addLink(r5, rootdns)
 

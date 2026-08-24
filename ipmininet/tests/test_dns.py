@@ -7,12 +7,12 @@ from ipmininet.clean import cleanup
 from ipmininet.examples.dns_network import DNSNetwork
 from ipmininet.examples.simple_bgp_network import SimpleBGPTopo
 from ipmininet.examples.static_routing import StaticRoutingNet
-from ipmininet.host.config import Named, ARecord, AAAARecord, NSRecord, \
-    PTRRecord
+from ipmininet.host.config import AAAARecord, ARecord, Named, NSRecord, PTRRecord
 from ipmininet.ipnet import IPNet
 from ipmininet.tests.utils import assert_connectivity, assert_dns_record
-from . import require_root
+
 from ..examples.dns_advanced_network import DNSAdvancedNetwork
+from . import require_root
 
 
 class CustomDNSNetwork(DNSNetwork):
@@ -26,7 +26,7 @@ class CustomDNSNetwork(DNSNetwork):
     def build(self, *args, **kwargs):
 
         # Update master DNS parameters
-        master2 = self.addHost('master2')
+        master2 = self.addHost("master2")
         master2.addDaemon(Named, **self.named_cfg)
 
         # Add new parametrized DNS zone
@@ -71,14 +71,14 @@ def test_dns_network(named_cfg, zone_args, exp_named_cfg, exp_zone_cfg):
             cfg = fileobj.readlines()
             for line in exp_named_cfg:
                 assert line + "\n" in cfg,\
-                    "Cannot find the line '%s' in the generated " \
-                    "main configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated " \
+                    "main configuration:\n{}".format(line, "".join(cfg))
         with open("/tmp/named_master2.test.org.zone.cfg") as fileobj:
             cfg = fileobj.readlines()
             for line in exp_zone_cfg:
                 assert line + "\n" in cfg,\
-                    "Cannot find the line '%s' in the generated zone " \
-                    "configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated zone " \
+                    "configuration:\n{}".format(line, "".join(cfg))
 
         # Check port number configuration
         dns_server_port = named_cfg.get("dns_server_port", 53)
@@ -108,7 +108,7 @@ def test_dns_network(named_cfg, zone_args, exp_named_cfg, exp_zone_cfg):
             PTRRecord(net["slave"].defaultIntf().ip6, "slave.mydomain.org"),
             PTRRecord(net["server"].defaultIntf().ip, "server.mydomain.org"),
             PTRRecord(net["server"].defaultIntf().ip6, "server.mydomain.org",
-                      ttl=120)
+                      ttl=120),
         ]
         for node in [net["master"], net["slave"]]:
             for record in records:
@@ -149,16 +149,11 @@ def test_zone_delegation():
             AAAARecord("orgdns.org", net["orgdns"].defaultIntf().ip6),
         ]
         records = [([net["master"], net["slave"]],
-                    mydomain_delegation_records
-                    + [ARecord("server.mydomain.org",
-                               net["server"].defaultIntf().ip),
-                       AAAARecord("server.mydomain.org",
-                                  net["server"].defaultIntf().ip6)]
-                    + root_hints),
+                    [*mydomain_delegation_records, ARecord("server.mydomain.org", net["server"].defaultIntf().ip), AAAARecord("server.mydomain.org", net["server"].defaultIntf().ip6), *root_hints]),
                    ([net["orgdns"]],
                     org_delegation_records + mydomain_delegation_records
                     + root_hints),
-                   ([net['rootdns']], root_hints + org_delegation_records)]
+                   ([net["rootdns"]], root_hints + org_delegation_records)]
         for nodes, zone_records in records:
             for node in nodes:
                 for record in zone_records:
@@ -174,7 +169,7 @@ def test_zone_delegation():
 @pytest.mark.parametrize("topo", [
     StaticRoutingNet,
     DNSNetwork,
-    SimpleBGPTopo
+    SimpleBGPTopo,
 ])
 def test_etc_hosts(topo):
     try:

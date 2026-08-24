@@ -1,19 +1,19 @@
 """Classes for interfaces and links that are IP-agnostic. This basically
 enhance the TCIntf class from Mininet, and then define sane defaults for the link
 classes."""
-from copy import deepcopy
-from itertools import chain
-import subprocess
-from ipaddress import ip_interface, IPv4Interface, IPv6Interface
 import functools
-from typing import Union, Tuple, Optional, Generator, Sequence, List, Type
-
-from . import OSPF_DEFAULT_AREA, MIN_IGP_METRIC
-from .utils import otherIntf, is_container
+import subprocess
+from collections.abc import Generator, Sequence
+from copy import deepcopy
+from ipaddress import IPv4Interface, IPv6Interface, ip_interface
+from itertools import chain
 
 import mininet.link as _m
 from mininet.log import lg as log
 from mininet.node import Node
+
+from . import MIN_IGP_METRIC, OSPF_DEFAULT_AREA
+from .utils import is_container, otherIntf
 
 
 class IPIntf(_m.TCIntf):
@@ -25,8 +25,8 @@ class IPIntf(_m.TCIntf):
         # by aliasing interfaces.
         self.broadcast_domain = None
         self.addresses = {4: [], 6: []}
-        self.ra_prefixes = kwargs.pop('ra', [])
-        self.rdnss_list = kwargs.pop('rdnss', [])
+        self.ra_prefixes = kwargs.pop("ra", [])
+        self.rdnss_list = kwargs.pop("rdnss", [])
         super().__init__(*args, **kwargs)
         self.isUp(setUp=True)
         self._refresh_addresses()
@@ -40,42 +40,42 @@ class IPIntf(_m.TCIntf):
     @property
     def igp_area(self) -> str:
         """Return the igp area associated to this interface"""
-        return self.get('igp_area', OSPF_DEFAULT_AREA)
+        return self.get("igp_area", OSPF_DEFAULT_AREA)
 
     @property
     def igp_metric(self) -> int:
         """Return the igp metric associated to this interface"""
-        return self.get('igp_metric', MIN_IGP_METRIC)
+        return self.get("igp_metric", MIN_IGP_METRIC)
 
     @property
     def describe(self) -> str:
         """Return a string describing the interface facing this one"""
         other = otherIntf(self)
-        return '-> %s' % (other.name if other else 'n/a')
+        return "-> %s" % (other.name if other else "n/a")
 
     @property
-    def interface_width(self) -> Tuple[int, int]:
+    def interface_width(self) -> tuple[int, int]:
         """Return the number of addresses that should be allocated to this
         interface, per address family"""
-        return self.get('v4_width', 1), self.get('v6_width', 1)
+        return self.get("v4_width", 1), self.get("v6_width", 1)
 
     def get(self, key, val):
         """Check for a given key in the interface parameters"""
         return self.params.get(key, val)
 
-    def __default(self, version: int) -> Union[IPv4Interface, IPv6Interface]:
+    def __default(self, version: int) -> IPv4Interface | IPv6Interface:
         """Return the default addresses for a given IP version
         :raise IndexError:"""
         return self.addresses[version][0]
 
-    def _ip(self, version: int) -> Optional[str]:
+    def _ip(self, version: int) -> str | None:
         """Return the main IP of the given version for this interface"""
         try:
             return self.__default(version).ip.compressed
         except IndexError:
             return None
 
-    def _prefixLen(self, version: int) -> Optional[int]:
+    def _prefixLen(self, version: int) -> int | None:
         """Return the prefixLen of the main IP for the given version"""
         try:
             return self.__default(version).network.prefixlen
@@ -84,12 +84,12 @@ class IPIntf(_m.TCIntf):
 
     # We want to stay API-compatible with Intf, so we override ip/prefixLen
     @property
-    def ip(self) -> Optional[str]:
+    def ip(self) -> str | None:
         return self._ip(4)
 
     @ip.setter
     def ip(self,
-           ip: Union[str, IPv4Interface, Sequence[Union[str, IPv4Interface]]]):
+           ip: str | IPv4Interface | Sequence[str | IPv4Interface]):
         self.setIP(ip, prefixLen=self.prefixLen)
 
     def ips(self, exclude_lbs=True) -> Generator[IPv4Interface, None, None]:
@@ -102,7 +102,7 @@ class IPIntf(_m.TCIntf):
                 yield i
 
     @property
-    def prefixLen(self) -> Optional[int]:
+    def prefixLen(self) -> int | None:
         return self._prefixLen(4)
 
     @prefixLen.setter
@@ -111,13 +111,13 @@ class IPIntf(_m.TCIntf):
             self.setIP(self.ip, prefixLen=prefixLen)
 
     @property
-    def ip6(self) -> Optional[str]:
+    def ip6(self) -> str | None:
         """Return the default IPv6 for this interface"""
         return self._ip(6)
 
     @ip6.setter
     def ip6(self,
-            ip: Union[str, IPv6Interface, Sequence[Union[str, IPv6Interface]]]):
+            ip: str | IPv6Interface | Sequence[str | IPv6Interface]):
         self.setIP6(ip, prefixLen=self.prefixLen6)
 
     def ip6s(self, exclude_lls=False, exclude_lbs=True) \
@@ -133,7 +133,7 @@ class IPIntf(_m.TCIntf):
                 yield i
 
     @property
-    def prefixLen6(self) -> Optional[int]:
+    def prefixLen6(self) -> int | None:
         """Return the prefix length for the default IPv6 for this interface"""
         return self._prefixLen(6)
 
@@ -142,10 +142,8 @@ class IPIntf(_m.TCIntf):
         if self.ip6 is not None:
             self.setIP6(self.ip6, prefixLen=prefixLen)
 
-    def _set_ip(self, ip: Union[str, IPv4Interface, IPv6Interface,
-                                Sequence[Union[str, IPv4Interface,
-                                               IPv6Interface]]],
-                prefixLen: Optional[int] = None) -> Union[None, List[str], str]:
+    def _set_ip(self, ip: str | IPv4Interface | IPv6Interface | Sequence[str | IPv4Interface | IPv6Interface],
+                prefixLen: int | None = None) -> list[str] | str | None:
         """Set one or more IP addresses, possibly from different families.
         This will remove previously set addresses of the affected families.
 
@@ -167,16 +165,15 @@ class IPIntf(_m.TCIntf):
         for addr in ip:
             # Make sure we have ip_interface-like objects
             if isinstance(addr, str):
-                if '/' not in addr and prefixLen is not None:
+                if "/" not in addr and prefixLen is not None:
                     # And use the default prefix if absent
-                    addr = ip_interface('%s/%s' % (addr, prefixLen))
+                    addr = ip_interface(f"{addr}/{prefixLen}")
                 else:
                     # no prefixLen defaults to full /128 or /32
                     addr = ip_interface(str(addr))
 
             # Prepare assignment commands
-            cmds.append('ip address add dev %s %s'
-                        % (self.name, addr.with_prefixlen))
+            cmds.append(f"ip address add dev {self.name} {addr.with_prefixlen}")
             # Record assignment family
             if addr.version == 4:
                 setv4 = True
@@ -198,12 +195,12 @@ class IPIntf(_m.TCIntf):
         self._refresh_addresses()
         return rval.pop() if rval and len(rval) == 1 else rval
 
-    def _del_ip(self, ip: Union[IPv4Interface, IPv6Interface]):
+    def _del_ip(self, ip: IPv4Interface | IPv6Interface):
         """Remove an assigned IP fom this interface.
         Does not update self.addresses!
 
         :param ip: ip_interface-like"""
-        self.cmd('ip', 'address', 'del', 'dev', self.name, ip.with_prefixlen)
+        self.cmd("ip", "address", "del", "dev", self.name, ip.with_prefixlen)
 
     setIP = setIP6 = _set_ip
 
@@ -212,19 +209,19 @@ class IPIntf(_m.TCIntf):
         self.mac, self.addresses[4], self.addresses[6] = \
             _addresses_of(self.name, self.node)
 
-    def updateIP(self) -> Optional[str]:
+    def updateIP(self) -> str | None:
         self._refresh_addresses()
         return self.ip
 
-    def updateIP6(self) -> Optional[str]:
+    def updateIP6(self) -> str | None:
         self._refresh_addresses()
         return self.ip6
 
-    def updateMAC(self) -> Optional[str]:
+    def updateMAC(self) -> str | None:
         self._refresh_addresses()
         return self.mac
 
-    def updateAddr(self) -> Tuple[Optional[str], Optional[str]]:
+    def updateAddr(self) -> tuple[str | None, str | None]:
         self._refresh_addresses()
         return self.ip, self.mac
 
@@ -246,9 +243,9 @@ class IPIntf(_m.TCIntf):
                 self.node.cmd(cmd)
 
 
-def _addresses_of(devname: str, node: Optional[Node] = None):
+def _addresses_of(devname: str, node: Node | None = None):
     """Return the addresses of a named interface"""
-    cmdline = ['ip', 'address', 'show', 'dev', devname]
+    cmdline = ["ip", "address", "show", "dev", devname]
     try:
         if node is not None:
             addrstr = node.cmd(*cmdline)
@@ -257,7 +254,7 @@ def _addresses_of(devname: str, node: Optional[Node] = None):
     except (OSError, subprocess.CalledProcessError):
         addrstr = None
     if not addrstr:
-        log.warning('Failed to run ip address!')
+        log.warning("Failed to run ip address!")
         return None, (), ()
     mac, v4, v6 = _parse_addresses(addrstr)
     return (mac,
@@ -265,8 +262,8 @@ def _addresses_of(devname: str, node: Optional[Node] = None):
             sorted(v6, key=OrderedAddress, reverse=True))
 
 
-def _parse_addresses(out: str) -> Tuple[Optional[str], List[IPv4Interface],
-                                        List[IPv6Interface]]:
+def _parse_addresses(out: str) -> tuple[str | None, list[IPv4Interface],
+                                        list[IPv6Interface]]:
     """Parse the output of an ip address command
     :return: mac, [ipv4], [ipv6]"""
     # 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state ...
@@ -278,24 +275,24 @@ def _parse_addresses(out: str) -> Tuple[Optional[str], List[IPv4Interface],
     mac = None
     v4 = []
     v6 = []
-    for line in out.strip(' \n\t\r').split('\n'):
-        parts = line.strip(' \n\t\r').split(' ')
+    for line in out.strip(" \n\t\r").split("\n"):
+        parts = line.strip(" \n\t\r").split(" ")
         try:
             t = parts[0]
-            if t == 'inet':
+            if t == "inet":
                 v4.append(IPv4Interface(parts[1]))
-            elif t == 'inet6':
+            elif t == "inet6":
                 v6.append(IPv6Interface(parts[1]))
-            elif 'link/' in t:
+            elif "link/" in t:
                 mac = parts[1]
         except IndexError:
-            log.error('Malformed ip-address line:', line)
+            log.error("Malformed ip-address line:", line)
     return mac, v4, v6
 
 
 class IPLink(_m.Link):
     """A Link class that defaults to IPIntf"""
-    def __init__(self, node1: str, node2: str, intf: Type[IPIntf] = IPIntf,
+    def __init__(self, node1: str, node2: str, intf: type[IPIntf] = IPIntf,
                  *args, **kwargs):
         """We override Link intf default to use IPIntf"""
         super().__init__(node1=node1, node2=node2, intf=intf, *args, **kwargs)
@@ -363,21 +360,23 @@ class PhysicalInterface(IPIntf):
 
     def __init__(self, name: str, *args, **kw):
         try:
-            node = kw['node']
+            node = kw["node"]
         except KeyError:
-            raise ValueError('PhysicalInterface() requires a node= argument')
+            msg = "PhysicalInterface() requires a node= argument"
+            raise ValueError(msg)
         # Save the addresses from the root namespace
         try:
             _, v4, v6 = _addresses_of(name, node=None)
         except (subprocess.CalledProcessError, OSError):
-            log.error('Cannot retrieve the addresses of interface', name, '!')
-            raise ValueError('Unknown physical interface name')
+            log.error("Cannot retrieve the addresses of interface", name, "!")
+            msg = "Unknown physical interface name"
+            raise ValueError(msg)
         if node.inNamespace:
             # cfr man ip-link; some devices cannot change of net ns
-            if 'netns-local: on' in subprocess.check_output(
-                    ('ethtool', '-k', name)).decode("utf-8"):
-                log.error('Cannot move interface', name, 'into another network'
-                          ' namespace!')
+            if "netns-local: on" in subprocess.check_output(
+                    ("ethtool", "-k", name)).decode("utf-8"):
+                log.error("Cannot move interface", name, "into another network"
+                          " namespace!")
         super().__init__(name, *args, **kw)
         # Exclude link locals ...
         v4.extend(ip for ip in v6 if not ip.is_link_local)
@@ -400,8 +399,8 @@ class GRETunnel:
     # the routing protocols)
 
     def __init__(self, if1: IPIntf, if2: IPIntf,
-                 if1address: Union[str, IPv4Interface, IPv6Interface],
-                 if2address: Union[str, IPv4Interface, IPv6Interface],
+                 if1address: str | IPv4Interface | IPv6Interface,
+                 if2address: str | IPv4Interface | IPv6Interface,
                  bidirectional=True):
         """:param if1: The first interface of the tunnel
         :param if2: The second interface of the tunnel
@@ -429,19 +428,19 @@ class GRETunnel:
 
     @staticmethod
     def _gre_name(x) -> str:
-        return 'gre-%s' % x
+        return f"gre-{x}"
 
     @staticmethod
     def _add_tunnel(if_local: IPIntf, if_remote: IPIntf, name: str,
                     address: str, ttl=255):
-        log.debug('Creating GRE tunnel named', name, ', for subnet',
-                  str(address), 'from', if_local, '[', if_local.ip, '] to',
-                  if_remote, '[', if_remote.ip, ']')
+        log.debug("Creating GRE tunnel named", name, ", for subnet",
+                  str(address), "from", if_local, "[", if_local.ip, "] to",
+                  if_remote, "[", if_remote.ip, "]")
         cmd = if_local.node.cmd
-        cmd('ip', 'tunnel', 'add', name, 'mode', 'gre', 'remote', if_remote.ip,
-            'local', if_local.ip, 'ttl', str(ttl))
-        cmd('ip', 'link', 'set', name, 'up')
-        cmd('ip', 'address', 'add', 'dev', name, address)
+        cmd("ip", "tunnel", "add", name, "mode", "gre", "remote", if_remote.ip,
+            "local", if_local.ip, "ttl", str(ttl))
+        cmd("ip", "link", "set", name, "up")
+        cmd("ip", "address", "add", "dev", name, address)
 
     def cleanup(self):
         self._del_tunnel(self.if1, self.gre1)
@@ -450,4 +449,4 @@ class GRETunnel:
 
     @staticmethod
     def _del_tunnel(if_local: IPIntf, name: str):
-        if_local.node.cmd('ip', 'tunnel', 'delete', name)
+        if_local.node.cmd("ip", "tunnel", "delete", name)

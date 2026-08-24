@@ -47,6 +47,6 @@ class SpanningTreeFullMesh(IPTopo):
                       (s3, s12), (s3, s17), (s4, s12), (s4, s17))
 
         for s in (s10, s11, s1, s2, s3, s4, s12, s17):
-            self.addLink(s, self.addHost('h%s' % s))
+            self.addLink(s, self.addHost(f"h{s}"))
 
         super().build(*args, **kwargs)

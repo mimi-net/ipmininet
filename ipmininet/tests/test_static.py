@@ -2,17 +2,15 @@
 import pytest
 
 from ipmininet.clean import cleanup
-from ipmininet.examples.partial_static_address_network import \
-    PartialStaticAddressNet
+from ipmininet.examples.partial_static_address_network import PartialStaticAddressNet
 from ipmininet.examples.static_address_network import StaticAddressNet
 from ipmininet.examples.static_routing import StaticRoutingNet
 from ipmininet.examples.static_routing_failure import StaticRoutingNetFailure
-from ipmininet.examples.static_routing_network_basic import \
-    StaticRoutingNetBasic
-from ipmininet.examples.static_routing_network_complex import \
-    StaticRoutingNetComplex
+from ipmininet.examples.static_routing_network_basic import StaticRoutingNetBasic
+from ipmininet.examples.static_routing_network_complex import StaticRoutingNetComplex
 from ipmininet.ipnet import IPNet
 from ipmininet.tests.utils import assert_connectivity, assert_path
+
 from . import require_root
 
 
@@ -92,10 +90,10 @@ static_paths = {
 
     StaticRoutingNet.__name__: [
         ["h1", "r1", "r2", "h2"],
-        ["h2", "r2", "r1", "h1"]
+        ["h2", "r2", "r1", "h1"],
     ],
     StaticRoutingNetFailure.__name__: [
-        ["h4", "r4", "r3", "h3"]
+        ["h4", "r4", "r3", "h3"],
     ],
     StaticRoutingNetBasic.__name__: [
         ["h1", "r1", "r2", "h2"],
@@ -112,7 +110,7 @@ static_paths = {
 
         ["h4", "r4", "r1", "h1"],
         ["h4", "r4", "r2", "h2"],
-        ["h4", "r4", "r1", "r3", "h3"]
+        ["h4", "r4", "r1", "r3", "h3"],
     ],
     StaticRoutingNetComplex.__name__: [
         ["h1", "r1", "r2", "r5", "r4", "r3", "h3"],
@@ -130,7 +128,7 @@ static_paths = {
         ["h6", "r6", "r1", "h1"],
         ["h6", "r6", "r5", "r4", "r3", "h3"],
         ["h6", "r6", "r5", "r4", "h4"],
-    ]
+    ],
 }
 
 

@@ -8,7 +8,7 @@ class OSPF6(OSPF):
     """This class provides a simple configuration for an OSPF6 daemon.
     It advertizes one network per interface (the primary one), and set
     interfaces not facing another L3Router to passive"""
-    NAME = 'ospf6d'
+    NAME = "ospf6d"
     DEAD_INT = 3
     KILL_PATTERNS = (NAME,)
 
@@ -20,16 +20,16 @@ class OSPF6(OSPF):
             name=i.name,
             # Is the interface between two routers?
             active=self.is_active_interface(i),
-            priority=i.get('ospf6_priority',
-                           i.get('ospf_priority', self.options.priority)),
-            dead_int=i.get('ospf6_dead_int',
-                           i.get('ospf_dead_int', self.options.dead_int)),
-            hello_int=i.get('ospf6_hello_int',
-                            i.get('ospf_hello_int', self.options.hello_int)),
+            priority=i.get("ospf6_priority",
+                           i.get("ospf_priority", self.options.priority)),
+            dead_int=i.get("ospf6_dead_int",
+                           i.get("ospf_dead_int", self.options.dead_int)),
+            hello_int=i.get("ospf6_hello_int",
+                            i.get("ospf_hello_int", self.options.hello_int)),
             cost=i.igp_metric,
             # Is the interface forcefully disabled?
-            passive=i.get('igp_passive', False),
-            instance_id=i.get('instance_id', self.options.instance_id),
+            passive=i.get("igp_passive", False),
+            instance_id=i.get("instance_id", self.options.instance_id),
             area=i.igp_area) for i in interfaces]
         # 'minimal hello-multiplier x' is not implemented in ospf6d
         for dic in conf:

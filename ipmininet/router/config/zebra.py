@@ -1,23 +1,24 @@
 import os
 import socket
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from ipaddress import IPv4Network, IPv6Network, ip_network
-from typing import Optional, Union, Sequence, Tuple, Set, Dict
+from typing import Union
 
 from .base import RouterDaemon
 from .utils import ConfigDict
 
 #  Route Map actions
-DENY = 'deny'
-PERMIT = 'permit'
+DENY = "deny"
+PERMIT = "permit"
 
 
-def get_family(prefix: Union[str, IPv4Network, IPv6Network]) -> Optional[str]:
+def get_family(prefix: str | IPv4Network | IPv6Network) -> str | None:
     pfx = ip_network(prefix) if isinstance(prefix, str) else prefix
     if pfx.version == 4:
-        return 'ipv4'
-    elif pfx.version == 6:
-        return 'ipv6'
+        return "ipv4"
+    if pfx.version == 6:
+        return "ipv6"
 
     return None
 
@@ -26,14 +27,14 @@ class QuaggaDaemon(RouterDaemon):
     """The base class for all Quagga-derived daemons"""
 
     # Additional parameters to pass when starting the daemon
-    STARTUP_LINE_EXTRA = ''
+    STARTUP_LINE_EXTRA = ""
 
     @property
     def startup_line(self):
-        return '{name} -f {cfg} -i {pid} -z {api} -u root {extra}'\
+        return "{name} -f {cfg} -i {pid} -z {api} -u root {extra}"\
                 .format(name=self.NAME,
                         cfg=self.cfg_filename,
-                        pid=self._file('pid'),
+                        pid=self._file("pid"),
                         api=self.zebra_socket,
                         extra=self.STARTUP_LINE_EXTRA)
 
@@ -41,7 +42,7 @@ class QuaggaDaemon(RouterDaemon):
     def zebra_socket(self):
         """Return the path towards the zebra API socket for the given node"""
         return os.path.join(self._node.cwd,
-                            '%s_%s.api' % ('quagga', self._node.name))
+                            "{}_{}.api".format("quagga", self._node.name))
 
     def build(self):
         cfg = super().build()
@@ -55,15 +56,13 @@ class QuaggaDaemon(RouterDaemon):
 
     @property
     def dry_run(self):
-        return '{name} -Cf {cfg} -u root'\
-               .format(name=self.NAME,
-                       cfg=self.cfg_filename)
+        return f"{self.NAME} -Cf {self.cfg_filename} -u root"
 
 
 class Zebra(QuaggaDaemon):
-    NAME = 'zebra'
+    NAME = "zebra"
     PRIO = 0
-    STARTUP_LINE_EXTRA = ''
+    STARTUP_LINE_EXTRA = ""
     KILL_PATTERNS = (NAME,)
 
     def __init__(self, *args, **kwargs):
@@ -100,7 +99,7 @@ class Zebra(QuaggaDaemon):
             sock.connect(self.zebra_socket)
             sock.close()
             return True
-        except socket.error:
+        except OSError:
             return False
 
 
@@ -109,8 +108,8 @@ class CommunityList:
     # Number of CmL
     count = 0
 
-    def __init__(self, name: Optional[str] = None, action=PERMIT,
-                 community: Union[int, str] = 0):
+    def __init__(self, name: str | None = None, action=PERMIT,
+                 community: int | str = 0):
         """
 
         :param name:
@@ -118,17 +117,17 @@ class CommunityList:
         :param community:
         """
         CommunityList.count += 1
-        self.name = name if name else 'cml%d' % CommunityList.count
+        self.name = name if name else "cml%d" % CommunityList.count
         self.action = action
         self.community = community
-        self.family = 'community'
+        self.family = "community"
 
     def __eq__(self, other):
         return self.name == other.name and self.action == other.action
 
 
 class Entry:
-    def __init__(self, prefix: Union[str, IPv4Network, IPv6Network],
+    def __init__(self, prefix: str | IPv4Network | IPv6Network,
                  action=PERMIT, family=None):
         """
         :param prefix: The ip_interface prefix for that ACL entry
@@ -137,15 +136,14 @@ class Entry:
         """
 
         if isinstance(prefix, str):
-            if prefix == 'any':
+            if prefix == "any":
                 assert family is not None
                 _prefix = prefix
             else:
                 _prefix = ip_network(prefix)
                 if family is not None:
                     assert get_family(_prefix) == family, \
-                        "prefix family %s != family (%s)" % \
-                        (get_family(_prefix), family)
+                        f"prefix family {get_family(_prefix)} != family ({family})"
         else:
             _prefix = prefix
 
@@ -155,28 +153,28 @@ class Entry:
 
     @property
     def zebra_family(self):
-        if self.family == 'ipv4':
-            return 'ip'
-        return 'ipv6'
+        if self.family == "ipv4":
+            return "ip"
+        return "ipv6"
 
 
 class AccessListEntry(Entry):
     """A zebra access-list entry"""
 
-    def __init__(self, prefix: Union[str, IPv4Network, IPv6Network], action=PERMIT, family=None):
+    def __init__(self, prefix: str | IPv4Network | IPv6Network, action=PERMIT, family=None):
         super().__init__(prefix, action, family)
 
 
 class PrefixListEntry(Entry):
-    def __init__(self, prefix: Union[str, IPv4Network, IPv6Network], action=PERMIT, family=None, le=None, ge=None):
-        type_mask = {'ipv4': 32, 'ipv6': 128}
+    def __init__(self, prefix: str | IPv4Network | IPv6Network, action=PERMIT, family=None, le=None, ge=None):
+        type_mask = {"ipv4": 32, "ipv6": 128}
 
         super().__init__(prefix, action, family)
 
         # The 'any' prefix-list entry has a special action
-        if self.prefix == 'any':
-            self.prefix = ip_network("0.0.0.0/0") if self.family == 'ipv4' \
-                else ip_network('::/0')
+        if self.prefix == "any":
+            self.prefix = ip_network("0.0.0.0/0") if self.family == "ipv4" \
+                else ip_network("::/0")
             self.le = type_mask[self.family]
             return
 
@@ -211,7 +209,7 @@ class ZebraList(ABC):
     def zebra_family(self):
         raise NotImplementedError
 
-    def __init__(self, family, entries: Sequence[Union['ZebraList.Entry',
+    def __init__(self, family, entries: Sequence[Union["ZebraList.Entry",
                                                        str, IPv4Network,
                                                        IPv6Network]] = (), name=None):
         """Setup a new zebra-list
@@ -221,22 +219,23 @@ class ZebraList(ABC):
                         or of ip_interface which describes which prefixes
                          are composing the list"""
 
-        assert family in {'ipv4', 'ipv6'}, "PrefixList unknown %s type. type must be either ipv4 or ipv6" % family
+        assert family in {"ipv4", "ipv6"}, f"PrefixList unknown {family} type. type must be either ipv4 or ipv6"
 
         ZebraList.count += 1
 
-        self.name = name if name else '%s%d' % (self.prefix_name, ZebraList.count)
+        self.name = name if name else "%s%d" % (self.prefix_name, ZebraList.count)
         self.entries = []
         for e in entries:
             if isinstance(e, self.Entry):
                 assert e.family == family, "The prefix entry must be of the same type"
                 self.entries.append(e)
-            elif isinstance(e, str) and e == 'any':
+            elif isinstance(e, str) and e == "any":
                 self.entries.append(self.Entry(prefix=e, family=family))
-            elif isinstance(e, IPv4Network) or isinstance(e, IPv6Network) or isinstance(e, str):
+            elif isinstance(e, (IPv4Network, IPv6Network, str)):
                 self.entries.append(self.Entry(prefix=e))
             else:
-                raise ValueError('"%s" is not a valid prefix entry for the %s family' % (e, family))
+                msg = f'"{e}" is not a valid prefix entry for the {family} family'
+                raise ValueError(msg)
 
         self.family = family
 
@@ -247,13 +246,13 @@ class ZebraList(ABC):
 class PrefixList(ZebraList):
     @property
     def zebra_family(self):
-        if self.family == 'ipv4':
-            return 'ip'
-        return 'ipv6'
+        if self.family == "ipv4":
+            return "ip"
+        return "ipv6"
 
     @property
     def prefix_name(self):
-        return 'pfxl'
+        return "pfxl"
 
     @property
     def Entry(self):
@@ -266,13 +265,13 @@ class AccessList(ZebraList):
 
     @property
     def zebra_family(self):
-        if self.family == 'ipv4':
-            return ''
-        return 'ipv6 '
+        if self.family == "ipv4":
+            return ""
+        return "ipv6 "
 
     @property
     def prefix_name(self):
-        return 'acl'
+        return "acl"
 
     @property
     def Entry(self):
@@ -284,7 +283,7 @@ class RouteMapMatchCond:
     A class representing a RouteMap matching condition
     """
 
-    def __init__(self, cond_type: str, condition, family: Optional[str] = None):
+    def __init__(self, cond_type: str, condition, family: str | None = None):
         """
         :param condition: Can be an ip address, the id of an access
                           or prefix list
@@ -294,21 +293,22 @@ class RouteMapMatchCond:
                        specify the family of the list (either ipv4 or ipv6)
         """
         if family:
-            assert family in {'ipv4', 'ipv6', 'community'}, "Unrecognized family type (%s)" % family
+            assert family in {"ipv4", "ipv6", "community"}, f"Unrecognized family type ({family})"
         self.condition = condition
         self.cond_type = cond_type
         self.family = family
 
     @property
     def zebra_family(self):
-        if self.family == 'ipv4':
-            return 'ip'
-        elif self.family == 'ipv6':
-            return 'ipv6'
-        elif self.family == 'community':
-            return 'community'
+        if self.family == "ipv4":
+            return "ip"
+        if self.family == "ipv6":
+            return "ipv6"
+        if self.family == "community":
+            return "community"
 
-        raise ValueError('Unsupported family; %s' % self.family)
+        msg = f"Unsupported family; {self.family}"
+        raise ValueError(msg)
 
     def __eq__(self, other):
         return self.condition == other.condition \
@@ -336,10 +336,10 @@ class RouteMapSetAction:
 
 class RouteMapEntry:
     def __init__(self, family: str, match_policy=PERMIT,
-                 match_cond: Sequence[Union[RouteMapMatchCond, Tuple]] = (),
-                 set_actions: Sequence[Union[RouteMapSetAction, Tuple]] = (),
-                 call_action: Optional[str] = None,
-                 exit_policy: Optional[str] = None):
+                 match_cond: Sequence[RouteMapMatchCond | tuple] = (),
+                 set_actions: Sequence[RouteMapSetAction | tuple] = (),
+                 call_action: str | None = None,
+                 exit_policy: str | None = None):
         """
         :param match_policy: Deny or permit the actions if the route match
                              the condition
@@ -353,7 +353,7 @@ class RouteMapEntry:
                             acl, ...]) tuples that will compose the route map
         """
 
-        assert family in {'ipv4', 'ipv6', 'community'}, "Unrecognized family"
+        assert family in {"ipv4", "ipv6", "community"}, "Unrecognized family"
 
         self.family = family
 
@@ -388,9 +388,10 @@ class RouteMapEntry:
             if set_action not in self.set_actions:
                 self.set_actions.append(set_action)
 
-    def update(self, rm_entry: 'RouteMapEntry'):
+    def update(self, rm_entry: "RouteMapEntry"):
         if not self.can_merge(rm_entry):
-            raise ValueError("Attempting to merge incompatible RouteMap Entries")
+            msg = "Attempting to merge incompatible RouteMap Entries"
+            raise ValueError(msg)
 
         self.append_set_action(rm_entry.set_actions)
         self.append_match_cond(rm_entry.match_cond)
@@ -409,9 +410,9 @@ class RouteMap:
     count = 0
     DEFAULT_POLICY = 65535
 
-    def __init__(self, family: str, name: Optional[str] = None,
-                 proto: Set[str] = (), neighbor: Optional[str] = None,
-                 direction: str = 'in'):
+    def __init__(self, family: str, name: str | None = None,
+                 proto: set[str] = (), neighbor: str | None = None,
+                 direction: str = "in"):
         """
         :param name: The name of the route-map, defaulting to rm##
         :param proto: The set of protocols to which this route-map applies
@@ -420,11 +421,11 @@ class RouteMap:
         """
         RouteMap.count += 1
 
-        assert family in {'ipv4', 'ipv6', 'community'}, "Unrecognized family"
+        assert family in {"ipv4", "ipv6", "community"}, "Unrecognized family"
 
-        self.name = name if name else 'rm%d' % RouteMap.count
+        self.name = name if name else "rm%d" % RouteMap.count
 
-        self.entries = dict()  # type: Dict[int, 'RouteMapEntry']
+        self.entries = {}  # type: Dict[int, 'RouteMapEntry']
 
         self.neighbor = neighbor
         self.direction = direction
@@ -446,7 +447,7 @@ class RouteMap:
     def default_policy_set(self):
         return self._default_policy_set
 
-    def entry(self, rm_entry: 'RouteMapEntry', order: Optional[int] = None):
+    def entry(self, rm_entry: "RouteMapEntry", order: int | None = None):
         if order is None:
             self._inc_order()
             order = self._hi_order
@@ -468,17 +469,19 @@ class RouteMap:
         if self.DEFAULT_POLICY in self.entries:
             self.entries.pop(self.DEFAULT_POLICY, None)
 
-    def update(self, rm: 'RouteMap'):
+    def update(self, rm: "RouteMap"):
         if self != rm:
-            raise ValueError("Attempting to update incompatible RouteMaps")
+            msg = "Attempting to update incompatible RouteMaps"
+            raise ValueError(msg)
 
-        for order in rm.entries.keys():
+        for order in rm.entries:
             self.entry(rm.entries[order], order)
 
-    def find_entry_by_match_condition(self, condition: Sequence['RouteMapMatchCond']):
+    def find_entry_by_match_condition(self, condition: Sequence["RouteMapMatchCond"]):
         for entry in self.entries:
             if self.entries[entry].match_cond == condition:
                 return self.entries[entry]
+        return None
 
     def __len__(self):
         return len(self.entries)
@@ -494,4 +497,4 @@ class RouteMap:
     def describe(self):
         """Return the zebra description of this route map and apply it to the
         relevant protocols"""
-        return 'route-map'
+        return "route-map"

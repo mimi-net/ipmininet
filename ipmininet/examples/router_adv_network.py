@@ -2,8 +2,7 @@
 addresses and to advertise DNS server's addresses"""
 
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import RouterConfig, RADVD, AdvConnectedPrefix,\
-    AdvRDNSS
+from ipmininet.router.config import RADVD, AdvConnectedPrefix, AdvRDNSS, RouterConfig
 
 
 class RouterAdvNet(IPTopo):
@@ -20,11 +19,11 @@ class RouterAdvNet(IPTopo):
         server.  Note that the DNS service is not actually started and thus the
         host won't get a DNS reply.
         """
-        r = self.addRouter('r', config=RouterConfig, use_v4=False,
+        r = self.addRouter("r", config=RouterConfig, use_v4=False,
                            use_v6=True)
         r.addDaemon(RADVD)
-        h = self.addHost('h')
-        dns = self.addHost('dns')
+        h = self.addHost("h")
+        dns = self.addHost("dns")
         lrh = self.addLink(r, h)
         lrh[r].addParams(ip=("2001:1341::1/64", "2001:2141::1/64"),
                          ra=[AdvConnectedPrefix()],

@@ -12,6 +12,7 @@ from ipmininet.examples.tc_network import TCNet
 from ipmininet.ipnet import IPNet
 from ipmininet.router import IPNode
 from ipmininet.tests.utils import assert_connectivity
+
 from . import require_root
 from .utils import require_cmd
 
@@ -21,16 +22,16 @@ delay_regex = re.compile(r"time=(\d+\.?\d*) ms")
 def assert_delay(src: IPNode, dst: IPNode, delay_target: float, tolerance=1.5,
                  v6=False):
     executable = "ping{v6}".format(v6="6" if v6 else "")
-    require_cmd(executable, help_str="{executable} is required to run "
-                                     "tests".format(executable=executable))
+    require_cmd(executable, help_str=f"{executable} is required to run "
+                                     "tests")
 
     cmd = "{executable} -c 10 {dst}".format(executable=executable,
                                             dst=dst.intf().ip6 if v6
                                             else dst.intf().ip)
     out, err, exitcode = src.pexec(cmd)
 
-    assert exitcode == 0, "Cannot ping between {src} and {dst}: " \
-                          "{err}".format(src=src, dst=dst, err=err)
+    assert exitcode == 0, f"Cannot ping between {src} and {dst}: " \
+                          f"{err}"
 
     delays = []
     for line in out.split("\n"):
@@ -40,8 +41,8 @@ def assert_delay(src: IPNode, dst: IPNode, delay_target: float, tolerance=1.5,
             if delay_target - tolerance <= delay <= delay_target + tolerance:
                 delays.append(delay)
     assert len(delays) >= 5, \
-        "Less than half of the pings between {src} and {dst}" \
-        " had the desired latency".format(src=src, dst=dst)
+        f"Less than half of the pings between {src} and {dst}" \
+        " had the desired latency"
 
 
 def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1,
@@ -51,12 +52,12 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1,
     iperf = dst.popen("iperf3 -s -J --one-off", universal_newlines=True)
     time.sleep(1)
     dst_ip = dst.intf().ip6 if v6 else dst.intf().ip
-    src.popen("iperf3 -c {}".format(dst_ip), stdout=subprocess.DEVNULL,
+    src.popen(f"iperf3 -c {dst_ip}", stdout=subprocess.DEVNULL,
               stderr=subprocess.DEVNULL)
     out, err = iperf.communicate()
 
-    assert iperf.poll() == 0, "Cannot use iperf3 between {src} and {dst}: " \
-                              "{err}".format(src=src, dst=dst, err=err)
+    assert iperf.poll() == 0, f"Cannot use iperf3 between {src} and {dst}: " \
+                              f"{err}"
 
     bws = []
     data = json.loads(out)
@@ -65,8 +66,8 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1,
         if bw_target - tolerance <= bw <= bw_target + tolerance:
             bws.append(bw)
     assert len(bws) >= 5, \
-        "Less than half of the pings between {src} and {dst}" \
-        " had the desired latency".format(src=src, dst=dst)
+        f"Less than half of the iperf3 runs between {src} and {dst}" \
+        " had the desired bandwidth"
 
 
 @require_root

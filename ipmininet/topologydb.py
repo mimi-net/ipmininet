@@ -1,14 +1,12 @@
 """This module defines a data-store to help dealing with all (possibly)
 auto-allocated properties of a topology: ip addresses, router ids, ..."""
-from builtins import str
-
-import json
 import itertools
+import json
 from ipaddress import ip_interface
 
-from .utils import otherIntf, realIntfList
-
 from mininet.log import lg
+
+from .utils import otherIntf, realIntfList
 
 
 class TopologyDB:
@@ -34,34 +32,36 @@ class TopologyDB:
         if net:
             self.parse_net(net)
         if not db and not net:
-            lg.warning('TopologyDB instantiated without any data')
+            lg.warning("TopologyDB instantiated without any data")
 
     def load(self, fpath):
         """Load a topology database
 
         :param fpath: path towards the file to load"""
-        with open(fpath, 'r') as f:
+        with open(fpath) as f:
             self._network = json.load(f)
 
     def save(self, fpath):
         """Save the topology database
 
         :param fpath: the save file name"""
-        with open(fpath, 'w') as f:
+        with open(fpath, "w") as f:
             json.dump(self._network, f)
 
     def _node(self, x):
         try:
             return self._network[x]
         except KeyError:
-            raise ValueError('No node named %s in the network' % x)
+            msg = f"No node named {x} in the network"
+            raise ValueError(msg)
     __getitem__ = node = _node
 
     def _interface(self, x, y):
         try:
             return self._node(x)[y]
         except KeyError:
-            raise ValueError('The link %s-%s does not exist' % (x, y))
+            msg = f"The link {x}-{y} does not exist"
+            raise ValueError(msg)
 
     def interface(self, x, y):
         """Return the ip address of the interface of x facing y
@@ -69,11 +69,11 @@ class TopologyDB:
         :param x: the node from which we want an IP address
         :param y: the node on the other side of the link
         :return: ip_interface-like object"""
-        return ip_interface(str(self._interface(x, y)['ip']))
+        return ip_interface(str(self._interface(x, y)["ip"]))
 
     def interfaces(self, x):
         """Return the list of interface names of node x"""
-        return self._node(x)['interfaces']
+        return self._node(x)["interfaces"]
 
     def interface_bandwidth(self, x, y):
         """Return the bandwidth capacity of the interface on node x
@@ -83,7 +83,7 @@ class TopologyDB:
         :param y: node name
         :return: The bandwidth of link x-y, -1 if unlimited"""
         try:
-            return self._interface(x, y)['bw']
+            return self._interface(x, y)["bw"]
         except KeyError:
             return -1
 
@@ -101,9 +101,10 @@ class TopologyDB:
         :param x: router name
         :return: the routerid"""
         n = self._node(x)
-        if n['type'] != 'router':
-            raise TypeError('%s is not a router' % x)
-        return n['routerid']
+        if n["type"] != "router":
+            msg = f"{x} is not a router"
+            raise TypeError(msg)
+        return n["routerid"]
 
     def parse_net(self, net):
         """Stores the content of the given network
@@ -118,15 +119,15 @@ class TopologyDB:
 
     def _add_node(self, n, props):
         itfs = realIntfList(n)
-        props['interfaces'] = [itf.name for itf in itfs]
+        props["interfaces"] = [itf.name for itf in itfs]
         for itf in itfs:
             nh = otherIntf(itf)
             itf_props = {
-                'ip': '%s/%s' % (itf.ip, itf.prefixLen),
-                'ips': [ip.with_prefixlen
+                "ip": f"{itf.ip}/{itf.prefixLen}",
+                "ips": [ip.with_prefixlen
                         for ip in itertools.chain(itf.ips(), itf.ip6s())],
-                'name': itf.name,
-                'bw': itf.params.get('bw', -1)
+                "name": itf.name,
+                "bw": itf.params.get("bw", -1),
             }
             if nh:
                 props[nh.node.name] = itf_props
@@ -137,18 +138,18 @@ class TopologyDB:
         """Register an host
 
         :param n: Host instance"""
-        self._add_node(n, {'type': 'host'})
+        self._add_node(n, {"type": "host"})
 
     def add_switch(self, n):
         """Register an switch
 
         :param n: Switch instance"""
-        self._add_node(n, {'type': 'switch'})
+        self._add_node(n, {"type": "switch"})
 
     def add_router(self, n):
         """Register an router
 
         :param n: Router instance"""
-        self._add_node(n, {'type': 'router', })
+        self._add_node(n, {"type": "router"})
         # FIXME make routerid global across all daemons
         #                  'routerid': n.id})

@@ -26,20 +26,20 @@ def test_v4_and_v6_only_network(topo, use_v4, use_v6):
                 if itf.node.use_v4 and net.use_v4:
                     assert len(list(itf.ips())) == itf.interface_width[0], \
                         "Did not allocate enough IPv4 addresses on interface " \
-                        "{}".format(itf)
+                        f"{itf}"
                 else:
                     assert len(list(itf.ips())) == 0,\
                         "Should not allocate IPv4 addresses on interface " \
-                        "{}".format(itf)
+                        f"{itf}"
                 if itf.node.use_v6 and net.use_v6:
                     assert len(list(itf.ip6s(exclude_lls=True))) == \
                            itf.interface_width[1], \
                         "Did not allocate enough IPv6 addresses on interface " \
-                        "{}".format(itf)
+                        f"{itf}"
                 else:
                     assert len(list(itf.ip6s(exclude_lls=True))) == 0, \
                         "Should not allocate IPv6 addresses on interface " \
-                        "{}".format(itf)
+                        f"{itf}"
         net.stop()
     finally:
         cleanup()

@@ -3,14 +3,14 @@
    traffic to h4 through r1, r6, r5, r2, r3 and r4 instead of taking the
    shortest IGP path."""
 from ipmininet.iptopo import IPTopo
-from ipmininet.srv6 import SRv6Encap, SRv6EndXFunction, LocalSIDTable
+from ipmininet.srv6 import LocalSIDTable, SRv6Encap, SRv6EndXFunction
 
 
 class SRv6Topo(IPTopo):
 
     def __init__(self, *args, **kwargs):
         self.tables = {}
-        super(SRv6Topo, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def build(self, *args, **kwargs):
         """
@@ -25,23 +25,23 @@ class SRv6Topo(IPTopo):
         """
         # Routers need to have a separate prefix for segments
         # and those representing interfaces to use SRv6 functions
-        r1 = self.addRouter('r1',
+        r1 = self.addRouter("r1",
                             lo_addresses=["2042:1:1::1/64", "192.168.1.1/24"])
-        r2 = self.addRouter('r2',
+        r2 = self.addRouter("r2",
                             lo_addresses=["2042:2:2::1/64", "192.168.2.1/24"])
-        r3 = self.addRouter('r3',
+        r3 = self.addRouter("r3",
                             lo_addresses=["2042:3:3::1/64", "192.168.3.1/24"])
-        r4 = self.addRouter('r4',
+        r4 = self.addRouter("r4",
                             lo_addresses=["2042:4:4::1/64", "192.168.4.1/24"])
-        r5 = self.addRouter('r5',
+        r5 = self.addRouter("r5",
                             lo_addresses=["2042:5:5::1/64", "192.168.5.1/24"])
-        r6 = self.addRouter('r6',
+        r6 = self.addRouter("r6",
                             lo_addresses=["2042:6:6::1/64", "192.168.6.1/24"])
 
-        h1 = self.addHost('h1')
-        h3 = self.addHost('h3')
-        h4 = self.addHost('h4')
-        h6 = self.addHost('h6')
+        h1 = self.addHost("h1")
+        h3 = self.addHost("h3")
+        h4 = self.addHost("h4")
+        h6 = self.addHost("h6")
 
         # Links to hosts
         self.addLinks((h1, r1), (h3, r3), (h4, r4), (h6, r6))

@@ -1,0 +1,9 @@
+[run]
+omit =
+    */docs/*
+    */tests/*
+    */install/*
+    */templates/*
+    *_mako
+    */.eggs/*
+    .tmp/*
