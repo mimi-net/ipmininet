@@ -149,18 +149,22 @@ class IPNode(Node):
         # wait until NDP has finished to check each IPv6 addresses assigned
         # to the interface of the node.
         # The command lists addresses failing duplicate address detection (IPv6)
-        # If any, it waits until all addresses has been checked
-        lg.debug(self._processes.node.name, 'Checking for any "tentative" addresses')
-        tentative_cmd = "ip -6 addr show tentative"
-        tentative_chk = self._processes.call(tentative_cmd)
-        while tentative_chk is not None and tentative_chk != '':
-            if tentative_chk.find("dadfailed") != -1:
-                lg.error('At least two nodes have the same IPv6 address!\n')
-                mininet.clean.cleanup()
-                sys.exit(1)
-            time.sleep(.5)
+        # If any, it waits until all addresses has been checked.
+        # Only IPv6 networks have addresses that go through DAD; for IPv4-only
+        # nodes (use_v6=False) this poll would wait ~0.5 s per iteration on
+        # nothing, so skip it entirely.
+        if self.use_v6:
+            lg.debug(self._processes.node.name, 'Checking for any "tentative" addresses')
+            tentative_cmd = "ip -6 addr show tentative"
             tentative_chk = self._processes.call(tentative_cmd)
-        lg.debug(self._processes.node.name, 'All IPv6 addresses has passed the Duplicate address detection mechanism')
+            while tentative_chk is not None and tentative_chk != '':
+                if tentative_chk.find("dadfailed") != -1:
+                    lg.error('At least two nodes have the same IPv6 address!\n')
+                    mininet.clean.cleanup()
+                    sys.exit(1)
+                time.sleep(.5)
+                tentative_chk = self._processes.call(tentative_cmd)
+            lg.debug(self._processes.node.name, 'All IPv6 addresses has passed the Duplicate address detection mechanism')
 
         # Fire up all daemons
         for d in self.nconfig.daemons:
