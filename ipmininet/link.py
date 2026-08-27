@@ -4,6 +4,7 @@ classes."""
 from copy import deepcopy
 from itertools import chain
 import subprocess
+import time
 from ipaddress import ip_interface, IPv4Interface, IPv6Interface
 import functools
 from typing import Union, Tuple, Optional, Generator, Sequence, List, Type
@@ -33,9 +34,24 @@ class IPIntf(_m.TCIntf):
         self.backup_addresses = {4: [], 6: []}
         self.restore_cmds = []
 
+        # A live pcap handle activated on a not-yet-up interface can block in
+        # the capture tool's internal ifup wait and exit without producing the
+        # outbound capture file. Only start captures once the interface is
+        # confirmed up.
+        self._wait_interface_up()
+
         # Start the captures on this interface
         for capture in self.get("captures", []):
             capture.start(intf=self)
+
+    def _wait_interface_up(self, timeout: float = 5.0, poll: float = 0.1) -> bool:
+        """Wait until the interface reports UP (best-effort, bounded)."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.isUp():
+                return True
+            time.sleep(poll)
+        return self.isUp()
 
     @property
     def igp_area(self) -> str:
