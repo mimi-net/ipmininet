@@ -11,14 +11,22 @@ class IPSwitch(LinuxBridge):
        the hubs"""
 
     def __init__(self, name: str, stp=True, hub=False,
-                 prio: Optional[int] = None, cwd='/tmp', **kwargs):
+                 prio: Optional[int] = None, cwd='/tmp',
+                 stp_forward_delay: Optional[int] = None,
+                 stp_hello_time: Optional[int] = None, **kwargs):
         """:param name: the name of the node
            :param stp: whether to use spanning tree protocol
            :param hub: whether this switch behaves as a hub (this disable stp)
            :param prio: optional explicit bridge priority for STP
-           :param cwd: The base directory for temporary files such as configs"""
+           :param cwd: The base directory for temporary files such as configs
+           :param stp_forward_delay: optional STP forward delay in seconds
+                                     (kernel default is 15)
+           :param stp_hello_time: optional STP hello time in seconds
+                                  (kernel default is 2)"""
         self.hub = hub
         self.cwd = cwd
+        self.stp_forward_delay = stp_forward_delay
+        self.stp_hello_time = stp_hello_time
         stp = stp and not hub
         LinuxBridge.__init__(self, name, stp=stp, prio=prio, **kwargs)
 
@@ -35,6 +43,12 @@ class IPSwitch(LinuxBridge):
         if self.stp:
             self.cmd('brctl setbridgeprio', self, self.prio)
             self.cmd('brctl stp', self, 'on')
+            # Accelerate convergence when requested (kernel requires the
+            # forward delay to be at least twice the hello time)
+            if self.stp_forward_delay is not None:
+                self.cmd('brctl setfd', self, self.stp_forward_delay)
+            if self.stp_hello_time is not None:
+                self.cmd('brctl sethello', self, self.stp_hello_time)
         for i in self.intfList():
             if self.name in i.name:
                 self.cmd('brctl addif', self, i)

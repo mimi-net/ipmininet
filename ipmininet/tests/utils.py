@@ -2,6 +2,7 @@ import pytest
 import re
 import signal
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple, Dict, Pattern, Match, Optional
 
 import mininet.log
@@ -14,14 +15,15 @@ from ipmininet.ipswitch import IPSwitch
 from ipmininet.host.config.named import DNSRecord
 
 
-def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300) -> List[str]:
+def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
+               poll=1.0) -> List[str]:
     require_cmd("traceroute", help_str="traceroute is required to run tests")
 
     t = 0
     old_path_ips = []  # type: List[str]
     same_path_count = 0
     white_space = re.compile(r" +")
-    while t != timeout / 5.:
+    while t != timeout / poll:
         out = net[src].cmd(["traceroute", "-w", "0.05", "-q", "1", "-n",
                             "-m", len(net.routers) + len(net.hosts), dst_ip])
         lines = out.split("\n")[1:-1]
@@ -40,7 +42,9 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300) -> List[str]:
         else:
             same_path_count = 0
             old_path_ips = []
-        time.sleep(5)
+        # Only sleep before the next poll; the iteration above returns as soon
+        # as the path is stable, so this does not add latency on success.
+        time.sleep(poll)
         t += 1
     return []
 
@@ -80,21 +84,29 @@ def assert_path(net: IPNet, expected_path: List[str], v6=False, retry=5,
                                   % (src, dst, expected_path[1:-1], path[1:-1])
 
 
-def host_connected(net: IPNet, v6=False, timeout=0.5, translate_address=True) \
+def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) \
         -> bool:
     require_cmd("nmap", help_str="nmap is required to run tests")
 
-    for src in net.hosts:
-        for dst in net.hosts:
+    hosts = list(net.hosts)
+    if not hosts:
+        # Nothing to probe (e.g. router-only topologies); the sequential
+        # loop also returns True immediately in this case.
+        return True
+    # Refresh the target addresses once, before probing
+    for dst in hosts:
+        dst.defaultIntf().updateIP()
+        dst.defaultIntf().updateIP6()
+
+    def _check_src(src) -> bool:
+        for dst in hosts:
             if src != dst:
-                dst.defaultIntf().updateIP()
-                dst.defaultIntf().updateIP6()
                 if translate_address:
                     dst_ip = dst.defaultIntf().ip6 if v6 \
                         else dst.defaultIntf().ip
                 else:
                     dst_ip = dst
-                cmd = "nmap%s -sn -n --max-retries 5 --max-rtt-timeout %dms %s"\
+                cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s"\
                       % (" -6" if v6 else "", int(timeout * 1000), dst_ip)
                 out = src.cmd(cmd.split(" "))
                 if "0 hosts up" in out:
@@ -102,16 +114,21 @@ def host_connected(net: IPNet, v6=False, timeout=0.5, translate_address=True) \
                 # In case of flooding, hosts might not answer
                 # So, we wait a bit before testing the next pair of hosts
                 time.sleep(0.1)
-    return True
+        return True
+
+    # Each source is probed by its own worker (never two threads touch the
+    # same node), which collapses the sweep to the cost of a single source.
+    with ThreadPoolExecutor(max_workers=min(len(hosts), 32)) as pool:
+        return all(pool.map(_check_src, hosts))
 
 
-def assert_node_not_connected(src: IPNode, dst: IPNode, v6=False, timeout=0.5):
+def assert_node_not_connected(src: IPNode, dst: IPNode, v6=False, timeout=0.2):
     require_cmd("nmap", help_str="nmap is required to run tests")
 
     dst.defaultIntf().updateIP()
     dst.defaultIntf().updateIP6()
     dst_ip = dst.defaultIntf().ip6 if v6 else dst.defaultIntf().ip
-    cmd = "nmap%s -sn -n --max-retries 5 --max-rtt-timeout %dms %s" \
+    cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" \
           % (" -6" if v6 else "", int(timeout * 1000), dst_ip)
     out = src.cmd(cmd.split(" "))
 
@@ -119,15 +136,17 @@ def assert_node_not_connected(src: IPNode, dst: IPNode, v6=False, timeout=0.5):
         .format(src.name, dst.name, "IPv4" if not v6 else "IPv6")
 
 
-def assert_connectivity(net: IPNet, v6=False, attempts=300,
+def assert_connectivity(net: IPNet, v6=False, attempts=1500,
                         translate_address=True):
     t = 0
-    while t != attempts \
-            and not host_connected(net, v6=v6,
-                                   translate_address=translate_address):
-        t += 1
-        time.sleep(5)
-    assert host_connected(net, v6=v6, translate_address=translate_address),\
+    connected = False
+    while t != attempts and not connected:
+        connected = host_connected(net, v6=v6,
+                                   translate_address=translate_address)
+        if not connected:
+            t += 1
+            time.sleep(1)
+    assert connected, \
         "Cannot ping all hosts over %s" % ("IPv4" if not v6 else "IPv6")
 
 

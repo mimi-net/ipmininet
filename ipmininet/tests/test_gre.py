@@ -10,7 +10,7 @@ from . import require_root
 @require_root
 def test_gre_example():
     try:
-        net = IPNet(topo=GRETopo())
+        net = IPNet(topo=GRETopo(), use_v6=False)
         net.start()
 
         t = 0

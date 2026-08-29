@@ -139,7 +139,7 @@ detour_paths = [
 def test_ospf_daemon_params(node_params, ospf_params, link_params, exp_cfg, exp_paths):
     try:
         net = IPNet(topo=MinimalOSPFNet(node_params, ospf_params, link_params),
-                    allocate_IPs=False)
+                    allocate_IPs=False, use_v6=False)
         net.start()
 
         # Check generated configuration

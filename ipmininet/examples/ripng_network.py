@@ -7,6 +7,12 @@ from ipmininet.router.config.ripng import RIPng
 
 class RIPngNetwork(IPTopo):
 
+    def __init__(self, ripng_timers=None, *args, **kwargs):
+        """:param ripng_timers: optional dict of RIPng daemon options applied
+        to every router (e.g. {'update_timer': 2} to speed up convergence)"""
+        self.ripng_timers = ripng_timers or {}
+        super().__init__(*args, **kwargs)
+
     def build(self, *args, **kwargs):
         """
         +-----+     +-----+  2  +-----+     +-----+     +-----+
@@ -56,10 +62,10 @@ class RIPngNetwork(IPTopo):
         self.addSubnet(nodes=[r4, h4], subnets=["2042:44::/64"])
         self.addSubnet(nodes=[r5, h5], subnets=["2042:55::/64"])
 
-        r1.addDaemon(RIPng)
-        r2.addDaemon(RIPng)
-        r3.addDaemon(RIPng)
-        r4.addDaemon(RIPng)
-        r5.addDaemon(RIPng)
+        r1.addDaemon(RIPng, **self.ripng_timers)
+        r2.addDaemon(RIPng, **self.ripng_timers)
+        r3.addDaemon(RIPng, **self.ripng_timers)
+        r4.addDaemon(RIPng, **self.ripng_timers)
+        r5.addDaemon(RIPng, **self.ripng_timers)
 
         super().build(*args, **kwargs)

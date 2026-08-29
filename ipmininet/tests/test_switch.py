@@ -1,5 +1,6 @@
 """This module tests the switches, hubs and STP"""
 
+import functools
 import pytest
 
 from ipmininet.clean import cleanup
@@ -13,8 +14,12 @@ from ipmininet.examples.spanning_tree_intermediate import \
 from ipmininet.examples.spanning_tree_cost import SpanningTreeCost
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
+from ipmininet.ipswitch import IPSwitch
 from ipmininet.tests import require_root
 from ipmininet.tests.utils import assert_stp_state, assert_connectivity
+
+# Accelerate STP convergence (kernel forward delay is 15s by default).
+FastSTPSwitch = functools.partial(IPSwitch, stp_forward_delay=4)
 
 
 class SimpleSpanningTree(IPTopo):
@@ -157,7 +162,7 @@ expected_states = {
 ])
 def test_stp(topo):
     try:
-        net = IPNet(topo=topo())
+        net = IPNet(topo=topo(), switch=FastSTPSwitch)
         net.start()
 
         assert_connectivity(net, v6=False)
@@ -175,7 +180,8 @@ def test_stp_adjust():
         net = IPNet(topo=SpanningTreeAdjust(l1_start="s2-eth1",
                                             l1_end="s1-eth1", l1_cost=2,
                                             l2_start="s1-eth3",
-                                            l2_end="s3-eth1", l2_cost=3))
+                                            l2_end="s3-eth1", l2_cost=3),
+                    switch=FastSTPSwitch)
         net.start()
 
         assert_connectivity(net, v6=False)
