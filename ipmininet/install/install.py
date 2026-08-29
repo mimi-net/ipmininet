@@ -19,6 +19,14 @@ MininetInstallCommit = "c3ba039a9781c6c5f475b7c88ff577185747a1da"
 os.environ["PATH"] = "%s:/sbin:/usr/sbin/:/usr/local/sbin" % os.environ["PATH"]
 
 
+def _needs_rebuild(*paths: str) -> bool:
+    """Return True when a component must be (re)built: one of its artifacts is
+    missing or the user requested a forced rebuild (IPMININET_FORCE_INSTALL=1).
+    """
+    return os.environ.get("IPMININET_FORCE_INSTALL") == "1" or \
+        not all(os.path.exists(p) for p in paths)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Install IPMininet with"
                                                  " its dependencies")
@@ -70,19 +78,23 @@ def install_mininet(output_dir: str, pip_install=True):
     else:
         mininet_opts = "-a"
 
-    sh("git clone https://github.com/mininet/mininet.git", cwd=output_dir)
     if not pip_install:
         # Minimal install: only build the mnexec binary. The full
         # install.sh -a installs packages (e.g. pep8) that no longer exist
         # on Ubuntu 24.04. The Python package itself is provided by uv
         # (see pyproject.toml) and OVS comes from the openvswitch-switch
         # apt package installed above.
-        sh("git checkout %s" % MininetVersion,
-           cwd=os.path.join(output_dir, "mininet"))
-        sh("make mnexec", cwd=os.path.join(output_dir, "mininet"))
-        sh("cp mnexec /usr/local/bin/",
-           cwd=os.path.join(output_dir, "mininet"))
+        if _needs_rebuild("/usr/local/bin/mnexec"):
+            sh("rm -rf mininet",
+               "git clone https://github.com/mininet/mininet.git", cwd=output_dir)
+            sh("git checkout %s" % MininetVersion,
+               cwd=os.path.join(output_dir, "mininet"))
+            sh("make mnexec", cwd=os.path.join(output_dir, "mininet"))
+            sh("cp mnexec /usr/local/bin/",
+               cwd=os.path.join(output_dir, "mininet"))
         return
+    if _needs_rebuild(os.path.join(output_dir, "mininet")):
+        sh("git clone https://github.com/mininet/mininet.git", cwd=output_dir)
     # Save valid version of mininet install script
     sh("git checkout %s" % MininetInstallCommit,
        cwd=os.path.join(output_dir, "mininet/util"))
@@ -101,13 +113,17 @@ def install_mininet(output_dir: str, pip_install=True):
 
 
 def install_libyang(output_dir: str):
+    if not _needs_rebuild("/usr/bin/yanglint"):
+        print("IPMininet: libyang already installed; skipping build")
+        return
     dist.install("git", "cmake")
     if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
         dist.install("libpcre3-dev")
     elif dist.NAME == "Fedora":
         dist.install("pcre-devel")
 
-    sh("git clone https://github.com/CESNET/libyang.git", cwd=output_dir)
+    sh("rm -rf libyang",
+       "git clone https://github.com/CESNET/libyang.git", cwd=output_dir)
     cloned_repo = os.path.join(output_dir, "libyang")
     sh("git checkout %s" % LibyangVersion, "mkdir build", cwd=cloned_repo)
     sh("cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String=\"Release\" ..",
@@ -140,20 +156,21 @@ def install_frrouting(output_dir: str):
 
     install_libyang(output_dir)
 
-    frrouting_src = os.path.join(output_dir, "frr-%s" % FRRoutingVersion)
-    frrouting_tar = frrouting_src + ".tar.gz"
-    sh("wget https://github.com/FRRouting/frr/releases/download/frr-{v}/"
-       "frr-{v}.tar.gz".format(v=FRRoutingVersion),
-       "tar -zxvf '%s'" % frrouting_tar,
-       cwd=output_dir)
-
     frrouting_install = os.path.join(output_dir, "frr")
-    sh("./configure '--prefix=%s'" % frrouting_install,
-       "make",
-       "make install",
-       cwd=frrouting_src)
+    if _needs_rebuild(os.path.join(frrouting_install, "sbin", "zebra")):
+        frrouting_src = os.path.join(output_dir, "frr-%s" % FRRoutingVersion)
+        frrouting_tar = frrouting_src + ".tar.gz"
+        sh("wget https://github.com/FRRouting/frr/releases/download/frr-{v}/"
+           "frr-{v}.tar.gz".format(v=FRRoutingVersion),
+           "tar -zxvf '%s'" % frrouting_tar,
+           cwd=output_dir)
 
-    sh("rm -r '%s' '%s'" % (frrouting_src, frrouting_tar))
+        sh("./configure '--prefix=%s'" % frrouting_install,
+           "make",
+           "make install",
+           cwd=frrouting_src)
+
+        sh("rm -r '%s' '%s'" % (frrouting_src, frrouting_tar))
 
     sh("groupadd frr", may_fail=True)
     sh("groupadd frrvty", may_fail=True)
@@ -190,7 +207,12 @@ def install_exabgp(output_dir: str, may_fail=False):
     exabgp_self_executable = os.path.join(output_dir, "exabgp")
     final_link = "/usr/sbin/exabgp"
 
-    sh("git clone {url} {src_dir}".format(url=git_url, src_dir=exabgp_src_folder),
+    if not _needs_rebuild(exabgp_self_executable, final_link):
+        print("IPMininet: ExaBGP already installed; skipping build")
+        return
+
+    sh("rm -rf {src_dir}".format(src_dir=exabgp_src_folder),
+       "git clone {url} {src_dir}".format(url=git_url, src_dir=exabgp_src_folder),
        cwd=output_dir, may_fail=may_fail)
 
     sh("git checkout %s" % ExaBGPVersion, cwd=exabgp_path_src_dir, may_fail=may_fail)

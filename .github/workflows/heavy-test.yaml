@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   heavy-test:
     runs-on: ubuntu-latest
@@ -25,12 +28,26 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
       - run: uv sync --all-extras
+      - name: Record OS version for the deps cache key
+        run: echo "OS=$(. /etc/os-release && echo $VERSION_ID)" >> "$GITHUB_ENV"
+      - name: Cache compiled deps
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/ci-deps
+          key: ci-deps-${{ runner.os }}-${{ env.OS }}-${{ hashFiles('uv.lock', 'pyproject.toml', 'ipmininet/install/install.py', 'ipmininet/install/utils.py', 'ipmininet/install/__main__.py') }}
+      - name: Restore compiled deps
+        if: steps.cache-deps.outputs.cache-hit == 'true'
+        run: scripts/ci-restore-deps.sh
       - name: Install dependencies (FRRouting, libyang, mininet)
         timeout-minutes: 10
         run: |
           # PEP 668 on Ubuntu 24.04 blocks pip3 system installs; relax it.
           export PIP_BREAK_SYSTEM_PACKAGES=1
           sudo env "PATH=$PATH" PIP_BREAK_SYSTEM_PACKAGES=1 uv run python -m ipmininet.install -a
+      - name: Save compiled deps
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: scripts/ci-save-deps.sh
       - name: Run full test suite
         timeout-minutes: 170
         run: |
