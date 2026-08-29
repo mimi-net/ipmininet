@@ -21,6 +21,13 @@ if [ ! -e /var/run/openvswitch/db.sock ]; then
     sleep 0.5
 fi
 
+# Without explicit test files, run the whole suite in parallel (xdist +
+# isolated namespaces), mirroring the bare-metal jobs.
+if [ "$#" -eq 0 ]; then
+    exec sudo env "PATH=$PATH" ${UV_PROJECT_ENVIRONMENT:+"UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT"} \
+        scripts/run-tests-parallel.sh
+fi
+
 exec sudo env "PATH=$PATH" ${UV_PROJECT_ENVIRONMENT:+"UV_PROJECT_ENVIRONMENT=$UV_PROJECT_ENVIRONMENT"} uv run python -m pytest \
     -v \
     -p faulthandler \

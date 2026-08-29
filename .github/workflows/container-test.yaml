@@ -1,8 +1,10 @@
 # Containerized CI.
 #
 # Builds a self-contained image with the full install (-a: FRRouting, libyang,
-# mininet, radvd, sshd, named) plus the uv venv, then runs a subset of tests
-# inside it with root privileges.
+# mininet, radvd, sshd, named) plus the uv venv and mimidump, then runs the
+# full test suite inside it with root privileges. Every worker runs in its own
+# isolated namespace (scripts/run-tests-parallel.sh), mirroring the bare-metal
+# job but in a reproducible environment.
 name: Container test
 on:
   pull_request:
@@ -14,7 +16,7 @@ concurrency:
 jobs:
   container-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -29,13 +31,11 @@ jobs:
           tags: ipmininet-dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Run test subset with coverage
+      - name: Run full test suite
         run: |
           docker run --rm --privileged \
             -v $PWD:/workspace:Z \
             -e UV_PROJECT_ENVIRONMENT=/opt/venv \
             -e DEBIAN_FRONTEND=noninteractive \
             ipmininet-dev \
-            scripts/ci-test.sh \
-              ipmininet/tests/test_misc.py ipmininet/tests/test_pure.py \
-              ipmininet/tests/test_dns.py
+            scripts/ci-test.sh

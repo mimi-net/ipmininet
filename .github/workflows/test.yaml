@@ -75,6 +75,8 @@ jobs:
       - name: Save compiled deps
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: scripts/ci-save-deps.sh
+      - name: Install mimidump
+        run: scripts/ci-install-mimidump.sh
       - name: Run test suite
         timeout-minutes: 170
         run: |

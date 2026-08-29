@@ -21,10 +21,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcap-dev cmake libpcre3-dev socat psmisc xterm openssh-client iperf3 \
     ethtool help2man net-tools python3-pexpect python3-tk iproute2 \
     cgroup-tools autotools-dev libc6-dev tcpdump python3-scapy \
-    libpcap-dev libconfig-dev openvswitch-switch radvd bind9 dnsutils \
+    libpcap-dev libbsd-dev libconfig-dev openvswitch-switch radvd bind9 dnsutils \
     bridge-utils traceroute nmap netcat-openbsd tshark iptables iputils-ping \
     python3-pip grub-common \
     && rm -rf /var/lib/apt/lists/*
+
+# Build mimidump (mimi-net/mimidump) so the interface-capture tests can run in
+# the container. Pinned to the commit that ships the capture-readiness signal.
+RUN git clone --quiet https://github.com/mimi-net/mimidump.git /tmp/mimidump \
+    && git -C /tmp/mimidump checkout --quiet 854a3b0 \
+    && make -C /tmp/mimidump \
+    && make -C /tmp/mimidump install \
+    && rm -rf /tmp/mimidump
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
