@@ -2,12 +2,31 @@
 
 import pytest
 
+from ipaddress import ip_network
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from . import require_root
-from .utils import assert_connectivity, assert_node_not_connected
+from .utils import assert_connectivity, assert_node_not_connected, \
+    assert_routing_table
 from ..examples.link_failure import FailureTopo
+
+
+def _wait_reconvergence(net: IPNet, timeout=120):
+    """Wait for OSPF to recompute routes after link restoration.
+
+    The connectivity probe can false-negative while the routing tables are
+    still empty right after `restoreIntfs`, so wait for each router to learn
+    a route to the far host (both address families) before probing.
+    """
+    for v6 in (False, True):
+        for router, far in (("r1", net["h2"]), ("r2", net["h1"])):
+            itf = far.defaultIntf()
+            far_ip = itf.ip6 if v6 else itf.ip
+            plen = itf.prefixLen6 if v6 else itf.prefixLen
+            prefix = str(ip_network("%s/%s" % (far_ip, plen), strict=False))
+            assert_routing_table(net[router], [prefix], present=True,
+                                 timeout=timeout)
 
 
 class Topo(IPTopo):
@@ -61,6 +80,9 @@ def test_failurePlan(plan):
 
         net.restoreIntfs(interface_down)
 
+        # Wait for OSPF reconvergence before probing connectivity
+        _wait_reconvergence(net)
+
         # Check link restoration
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -88,6 +110,9 @@ def test_randomFailure(downed_links):
 
         net.restoreIntfs(interface_down)
 
+        # Wait for OSPF reconvergence before probing connectivity
+        _wait_reconvergence(net)
+
         # Check link restoration
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -114,6 +139,9 @@ def test_randomFailureOnTargetedLink():
         assert_node_not_connected(src=net["h1"], dst=net["h2"], v6=True)
 
         net.restoreIntfs(itfs)
+
+        # Wait for OSPF reconvergence before probing connectivity
+        _wait_reconvergence(net)
 
         # Check link restoration
         assert_connectivity(net, v6=False)

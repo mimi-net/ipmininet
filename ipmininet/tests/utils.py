@@ -223,27 +223,34 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
 
 
 def assert_routing_table(router: IPNode, expected_prefixes: List[str],
-                         timeout=120):
+                         present: bool = True, timeout: int = 120):
     """
-    :param router: The router to test
-    :param expected_prefixes: The list of prefixes to be in the routing table
-    :param timeout: Time to wait for the routing convergence
-    :return:
-    """
+    Wait until all expected prefixes are (present=True) or none are
+    (present=False) in the router's IPv4/IPv6 routing table.
 
-    cmd = "ip -%d route" % ip_network(str(expected_prefixes[0])).version
-    out = router.cmd(cmd)
-    prefixes = re.findall(r"|".join(expected_prefixes), out)
-    count = 0
-    while any(item in prefixes for item in expected_prefixes):
-        if count == timeout:
-            pytest.fail("Cannot get all expected prefixes (%s) from routing "
-                        "table (%s)" % (expected_prefixes, prefixes))
+    :param router: The router to test
+    :param expected_prefixes: The list of prefixes to look for
+    :param present: Whether to wait for the prefixes to be present (True) or
+                    absent (False) from the routing table
+    :param timeout: Time to wait for the routing convergence
+    """
+    expected = set(expected_prefixes)
+    cmd = "ip -%d route" % ip_network(str(next(iter(expected)))).version
+    t = 0
+    while True:
+        found = set(re.findall(r"|".join(re.escape(p) for p in expected),
+                               router.cmd(cmd)))
+        satisfied = (expected <= found) if present else not (expected & found)
+        if satisfied:
+            return
+        if t >= timeout:
+            pytest.fail("Expected prefixes %s to be %s in the routing table "
+                        "of %s within %ds (found: %s)"
+                        % (expected_prefixes,
+                           "present" if present else "absent",
+                           router.name, timeout, sorted(found)))
         time.sleep(1)
-        count += 1
-        out = router.cmd(cmd)
-        prefixes = re.findall(r"|".join(expected_prefixes), out)
-    assert len(prefixes) == 0
+        t += 1
 
 
 def search_dns_reply(reply: str, regex: Pattern) \

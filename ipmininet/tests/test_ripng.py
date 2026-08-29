@@ -185,7 +185,7 @@ def test_ripng_flush_routing_tables():
             "r3": ["2042:11::/64", "2042:22::/64", "2042:12::/64"]
         }
         for router, expected_ipv6 in routing_tables.items():
-            assert_routing_table(net[router], expected_ipv6)
+            assert_routing_table(net[router], expected_ipv6, present=False)
         net.stop()
     finally:
         cleanup()
