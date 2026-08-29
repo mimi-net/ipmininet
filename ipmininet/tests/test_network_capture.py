@@ -3,6 +3,7 @@ import os
 
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
+from ipmininet.overlay import NetworkCapture
 from . import require_root, require_mimidump
 from .utils import assert_connectivity
 from ..examples.network_capture import NetworkCaptureTopo
@@ -30,6 +31,32 @@ def test_network_capture_example():
         # Check example connectivity
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
+
+        net.stop()
+    finally:
+        cleanup()
+
+
+@require_mimidump
+@require_root
+def test_network_capture_wait_until_capturing():
+    try:
+        net = IPNet(topo=NetworkCaptureTopo())
+        net.start()
+        overlay = next(o for o in net.topo.overlays
+                       if isinstance(o, NetworkCapture))
+
+        # Captures on interfaces (mimidump) become live once the READY signal
+        # is received
+        assert overlay.wait_until_capturing("r2-eth0", timeout=10)
+        assert overlay.wait_until_capturing("s2-eth1", timeout=10)
+
+        # Captures on nodes (tcpdump) become live once their output file exists
+        assert overlay.wait_until_capturing("r1", timeout=10)
+        assert overlay.wait_until_capturing("s1", timeout=10)
+
+        # Captures that were never started are not live
+        assert not overlay.wait_until_capturing("does-not-exist", timeout=1)
 
         net.stop()
     finally:

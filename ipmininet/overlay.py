@@ -2,6 +2,8 @@ import os
 import shlex
 import signal
 import subprocess
+import threading
+import time
 from collections import defaultdict
 from builtins import str
 from subprocess import Popen
@@ -252,6 +254,9 @@ class NetworkCapture(Overlay):
         self.interfaces = list(interfaces)
         self.extra_arguments = extra_arguments
         self.ongoing_captures = {}
+        self._output_files = {}
+        self._stderr_lines = {}
+        self._stderr_lock = threading.Lock()
         super().__init__(nodes=list(set(nodes)))
 
     def apply(self, topo: 'IPTopo'):
@@ -271,6 +276,7 @@ class NetworkCapture(Overlay):
             file_path = os.path.join(node.cwd, self.base_filename + '_' + node.name + '.pcapng')
             cmd = f"tcpdump -Z root -i {' -i '.join(interfaces)} -w {file_path} {self.extra_arguments}"
             process = node.popen(shlex.split(cmd))
+            self._output_files[node.name] = file_path
             self.ongoing_captures[node.name] = process
             return process
         elif intf is not None:
@@ -284,6 +290,8 @@ class NetworkCapture(Overlay):
             cmd = f"mimidump {intf.name} {file_path} {file_path_out} {self.extra_arguments}"
             
             process = intf.node.popen(shlex.split(cmd))
+            self._output_files[intf.name] = file_path_out
+            self._drain_stderr(intf.name, process)
             self.ongoing_captures[intf.name] = process
             return process
         else:
@@ -295,3 +303,51 @@ class NetworkCapture(Overlay):
                 process: subprocess.Popen = self.ongoing_captures.get(anchor.name)
                 process.send_signal(signal.SIGINT)
                 process.wait()
+
+    def wait_until_capturing(self, intf_name: str, timeout: float = 10.0) -> bool:
+        """Wait until the capture on the given node/interface is actually running.
+
+        A capture is considered live once the corresponding process is still alive
+        AND either the mimidump ``READY`` signal has been seen on stderr (that
+        signal is emitted once, when all captors enter the capture loop) OR the
+        capture output file already exists (the fallback used by captures that do
+        not signal readiness, e.g. tcpdump or older mimidump binaries).
+
+        :param intf_name: name of the node or of the interface the capture is
+                          attached to (the key used in ``ongoing_captures``)
+        :param timeout:   maximum time to wait, in seconds
+        :return:          True as soon as the capture is live, False if the capture
+                          was not started, died or did not become live in time"""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            process = self.ongoing_captures.get(intf_name)
+            if process is None or process.poll() is not None:
+                return False
+            with self._stderr_lock:
+                if any(line.strip().startswith(b"READY")
+                       for line in self._stderr_lines.get(intf_name, ())):
+                    return True
+            output_file = self._output_files.get(intf_name)
+            if output_file is not None and os.path.exists(output_file):
+                return True
+            time.sleep(0.05)
+        return False
+
+    def _drain_stderr(self, intf_name: str, process: subprocess.Popen):
+        """Read the mimidump stderr pipe so that the process never blocks on a full
+        pipe and so that the ``READY`` readiness signal can be observed."""
+        with self._stderr_lock:
+            self._stderr_lines[intf_name] = []
+
+        def drain():
+            while True:
+                line = process.stderr.readline()
+                if not line:
+                    with self._stderr_lock:
+                        self._stderr_lines.pop(intf_name, None)
+                    break
+                with self._stderr_lock:
+                    self._stderr_lines[intf_name].append(line)
+
+        threading.Thread(target=drain, daemon=True,
+                         name=f"mimidump-stderr-{intf_name}").start()
