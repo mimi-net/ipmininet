@@ -26,7 +26,7 @@ text = "GPLv2"
 Homepage = "https://github.com/cnp3/ipmininet"
 
 [project.optional-dependencies]
-testing = [ "pytest",]
+testing = [ "pytest", "pytest-xdist",]
 
 [tool.aliases]
 test = "pytest"

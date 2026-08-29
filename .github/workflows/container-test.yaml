@@ -4,7 +4,10 @@
 # mininet, radvd, sshd, named) plus the uv venv, then runs a subset of tests
 # inside it with root privileges.
 name: Container test
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: [master]
 jobs:
   container-test:
     runs-on: ubuntu-latest

@@ -10,7 +10,10 @@
 # Lint/format checks are intentionally not part of this workflow yet; they
 # will be added together with the reformatting PR.
 name: Test IPMininet
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches: [master]
 jobs:
   rootless:
     runs-on: ubuntu-latest
@@ -58,6 +61,4 @@ jobs:
       - name: Run test suite
         timeout-minutes: 170
         run: |
-          sudo env "PATH=$PATH" uv run python -m pytest \
-            -v \
-            ipmininet/tests/
+          sudo env "PATH=$PATH" scripts/run-tests-parallel.sh
