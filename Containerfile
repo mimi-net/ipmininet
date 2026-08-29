@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ethtool help2man net-tools python3-pexpect python3-tk iproute2 \
     cgroup-tools autotools-dev libc6-dev tcpdump python3-scapy \
     libpcap-dev libconfig-dev openvswitch-switch radvd bind9 dnsutils \
-    bridge-utils traceroute nmap netcat-openbsd tshark \
+    bridge-utils traceroute nmap netcat-openbsd tshark iptables iputils-ping \
     python3-pip grub-common \
     && rm -rf /var/lib/apt/lists/*
 

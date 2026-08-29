@@ -20,9 +20,15 @@ def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
     p = None
     for cmd in cmds:
         print("\n*** " + cmd)
-        p = subprocess.Popen(shlex.split(cmd),
-                             env=env,
-                             **kwargs)
+        try:
+            p = subprocess.Popen(shlex.split(cmd),
+                                 env=env,
+                                 **kwargs)
+        except OSError as e:
+            if not may_fail:
+                raise
+            sys.stderr.write("*** failed to run %s: %s\n" % (cmd, e))
+            continue
 
         if output_stdout:
             while p.poll() is None:

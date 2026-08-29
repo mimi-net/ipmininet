@@ -233,7 +233,7 @@ def update_grub():
         cmd = "update-grub"
     else:
         return
-    sh(cmd)
+    sh(cmd, may_fail=True)
 
 
 def enable_ipv6():
