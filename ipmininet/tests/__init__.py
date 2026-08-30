@@ -25,8 +25,9 @@ require_root = pytest.mark.skipif(
 def _exabgp_usable() -> bool:
     """Return whether a working ExaBGP daemon is available.
 
-    ExaBGP 4.2.11 ships a broken vendored six dependency, so simply being on
-    PATH is not enough: the daemon must also start (--version) cleanly.
+    ExaBGP 4.2.11 shipped a vendored six too old for Python 3.12 (broken
+    ``six.moves``), so simply being on PATH is not enough: the daemon must
+    also start (--version) cleanly.
     """
     if not has_cmd('exabgp'):
         return False
@@ -44,7 +45,7 @@ require_openr = pytest.mark.skipif(
 
 require_exabgp = pytest.mark.skipif(
         not _exabgp_usable(),
-        reason='ExaBGP 4.2.11 has broken vendored six dependency')
+        reason='ExaBGP daemon not available (broken vendored six on Py3.12)')
 
 require_mimidump = pytest.mark.skipif(
         not has_cmd('mimidump'),

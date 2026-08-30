@@ -143,7 +143,7 @@ def check_next_hop(next_hops: dict, expected_nh: Dict[str, Union['IPv4Interface'
 
 
 def check_as_path(as_path_rib: str, as_path_us: ExaList):
-    as_rib = as_path_rib.split(" ")
+    as_rib = [int(asn) for asn in as_path_rib.split(" ")]
     as_rib_us = as_path_us.val
 
     error_msg = "Bad AS-PATH. Expected {expected}. Received {received}"

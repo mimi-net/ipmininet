@@ -10,7 +10,7 @@ from utils import supported_distributions, identify_distribution, sh
 MininetVersion = "2.3.0"
 FRRoutingVersion = "7.5"
 LibyangVersion = "v1.0.215"
-ExaBGPVersion = "4.2.11"
+ExaBGPVersion = "4.2.25"
 
 # XXX: We need the explicit script until the following issue is fixed:
 #      https://github.com/mininet/mininet/issues/1120
@@ -221,7 +221,7 @@ def install_exabgp(output_dir: str, may_fail=False):
     sh('python3 -m zipapp -o {executable_path} -m exabgp.application:main  -p "/usr/bin/env python3" lib'
        .format(executable_path=exabgp_self_executable), cwd=exabgp_path_src_dir, may_fail=may_fail)
 
-    if os.path.exists(final_link):
+    if os.path.lexists(final_link):
         os.remove(final_link)
     os.symlink(exabgp_self_executable, final_link)
 
