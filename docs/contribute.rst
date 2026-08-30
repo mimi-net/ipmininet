@@ -206,6 +206,12 @@ When at the root of the documentation, run:
 
     pip install -r requirements.txt
 
+The documentation build is not covered by CI, so verify your changes
+locally with ``make html`` (see below). The markdown included from the
+example topologies is pulled in through ``sphinx-mdinclude``, which pins
+``mistune`` to ``>=3,<4``; do not relax that constraint without also
+replacing ``sphinx-mdinclude``.
+
 Then you can generate the html documentation
 in the folder ``docs/_build/html/`` with:
 

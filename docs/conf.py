@@ -15,9 +15,6 @@
 import os
 import sys
 
-from m2r import MdInclude
-from recommonmark.transform import AutoStructify
-
 sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
@@ -42,11 +39,11 @@ release = u'v0.6'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-              'sphinxcontrib.napoleon',
+              'sphinx.ext.napoleon',
               'sphinxcontrib.apidoc',
               'sphinx.ext.autosectionlabel',
               'sphinx.ext.doctest',
-              'recommonmark']
+              'sphinx_mdinclude']
 
 doctest_global_setup = '''
 import sys, os
@@ -86,10 +83,7 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = ['.rst', '.md']
-
-# m2r parameters
-m2r_parse_relative_links = True
+source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'index'
@@ -99,7 +93,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -212,19 +206,3 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
-
-
-def setup(app):
-    # AutoStructify configuration
-    app.add_config_value('recommonmark_config', {
-        'auto_toc_tree_section': 'Contents',
-        'enable_eval_rst': True,
-    }, True)
-    app.add_transform(AutoStructify)
-
-    # from m2r to make `mdinclude` work
-    app.add_config_value('no_underscore_emphasis', False, 'env')
-    app.add_config_value('m2r_parse_relative_links', False, 'env')
-    app.add_config_value('m2r_anonymous_references', False, 'env')
-    app.add_config_value('m2r_disable_inline_math', False, 'env')
-    app.add_directive('mdinclude', MdInclude)
