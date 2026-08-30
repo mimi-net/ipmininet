@@ -1,0 +1,6 @@
+# Revisions to skip in `git blame` — purely mechanical reformatting with no
+# semantic change, so blame should attribute the code to its real author.
+#
+# style: apply ruff and mdformat auto-fixes (ruff lint autofix + ruff
+# formatter + mdformat on the markdown files).
+72264c21416e294f9f131ad3589f03205184f42b
