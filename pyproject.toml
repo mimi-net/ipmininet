@@ -30,6 +30,7 @@ testing = [ "pytest", "pytest-timeout", "pytest-xdist",]
 
 [dependency-groups]
 docs = [ "sphinx", "sphinx_rtd_theme", "sphinxcontrib-apidoc", "sphinx-mdinclude",]
+dev = [ "mdformat", "pre-commit", "ruff",]
 
 [tool.aliases]
 test = "pytest"
@@ -43,6 +44,38 @@ markers = [
     "require_openr: test requires the OpenR daemon",
     "require_mimidump: test requires the mimidump capture tool",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "W",
+  "I",
+  "UP",
+  "B",
+  "SIM",
+  "C4",
+  "RET",
+  "RUF",
+  "PERF",
+  "FURB",
+  "FLY",
+  "TRY",
+  "BLE",
+  "PLC0206",
+  "PLW0603",
+  "PLW1510",
+  "PLW1641",
+  "PLW2901",
+]
+ignore = [ "E501", "TRY003", "PLC0415",]
+
+[tool.mdformat]
+wrap = "keep"
 
 [tool.setuptools]
 include-package-data = true

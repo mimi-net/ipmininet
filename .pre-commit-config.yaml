@@ -1,0 +1,26 @@
+default_install_hook_types: [pre-commit, pre-push]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff
+        name: ruff (auto-fix)
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        name: ruff format (auto-format)
+      - id: ruff
+        name: ruff (strict check)
+        stages: [pre-push]
+      - id: ruff-format
+        name: ruff format (strict check)
+        args: [--check]
+        stages: [pre-push]
+  - repo: https://github.com/hukkin/mdformat
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        name: mdformat (auto-format)
+      - id: mdformat
+        name: mdformat (strict check)
+        args: [--check]
+        stages: [pre-push]

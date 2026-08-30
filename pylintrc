@@ -1,3 +1,0 @@
-[MASTER]
-msg-template={path}:{module}:{line}: [{msg_id}({symbol}), {obj}] {msg}
-disable=invalid-name,missing-docstring,too-many-arguments,wrong-import-order,too-many-locals,too-few-public-methods,useless-object-inheritance,cyclic-import,arguments-differ,keyword-arg-before-vararg,signature-differs,too-many-instance-attributes

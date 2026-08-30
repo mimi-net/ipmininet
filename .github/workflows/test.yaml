@@ -7,8 +7,7 @@
 #  - test: performs the full `ipmininet.install -a` (FRRouting, libyang,
 #    mininet, ...) and runs the complete test suite with root privileges.
 #
-# Lint/format checks are intentionally not part of this workflow yet; they
-# will be added together with the reformatting PR.
+# Lint/format checks run in the `rootless` job below, before the light tests.
 name: Test IPMininet
 on:
   pull_request:
@@ -30,6 +29,11 @@ jobs:
       - name: Mininet dependency must be mimi-net fork
         run: grep -q 'mimi-net/mininet' pyproject.toml || (echo "mininet dependency must point to mimi-net/mininet.git fork" && exit 1)
       - run: uv sync --all-extras
+      - name: Lint and format checks
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mdformat --check README.md LICENSE.md ipmininet/examples/README.md
       - name: Run rootless tests
         run: |
           uv run python -m pytest \
@@ -37,7 +41,6 @@ jobs:
             ipmininet/tests/test_pure.py \
             ipmininet/tests/test_misc.py \
             ipmininet/tests/test_link.py
-
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 200

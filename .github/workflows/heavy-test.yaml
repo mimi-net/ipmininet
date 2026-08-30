@@ -2,8 +2,7 @@
 #
 # Performs the full `ipmininet.install -a` and runs every test except the
 # known-broken daemons (exabgp, openr), which are skipped in their own test
-# modules. Lint/format checks are intentionally not part of this workflow
-# yet; they will be added together with the reformatting PR.
+# modules. Lint/format checks are run in the `rootless` job of test.yaml.
 name: Heavy test
 on:
   workflow_dispatch:
