@@ -83,23 +83,62 @@ def prepare_rib_lookup_script(rib_script) -> Sequence[Tuple[str, str]]:
     return scripts
 
 
+def get_rib_routes(node, command, family):
+    """Return the parsed BGP RIB routes for the given family, or None if the
+    RIB cannot be read yet (e.g. the router has not fully started)."""
+    my_output = node.popen("sh %s" % command)
+    my_output.wait()
+    out, err = my_output.communicate()
+
+    output = out.decode(errors="ignore")
+
+    p = re.compile(
+        r"(?s)as2> show bgp {family} json(?P<rib>.*)as2> exit".format(family=family)
+    )
+    m = p.search(output)
+    if m is None:
+        return None
+
+    return json.loads(m.group("rib")).get("routes")
+
+
+def wait_for_expected_routes(node, rib_scripts, topo, timeout=300, poll=5):
+    """Wait until all the routes ExaBGP is expected to inject appear in the
+    FRRouting BGP RIB.
+
+    ExaBGP is configured to only send its routes after a delay (2 minutes by
+    default), and the passive BGP session it uses may take a while to
+    establish. A fixed sleep is therefore unreliable under load; poll the RIB
+    instead.
+    """
+    expected_routes = topo.routes
+    elapsed = 0
+    while elapsed < timeout:
+        missing = []
+        for command, family in rib_scripts:
+            rib_routes = get_rib_routes(node, command, family)
+            if rib_routes is None:
+                missing.append((family, "<no RIB>"))
+            else:
+                for route in expected_routes[family]:
+                    if str(route.IPNetwork) not in rib_routes:
+                        missing.append((family, str(route.IPNetwork)))
+        if not missing:
+            return
+        time.sleep(poll)
+        elapsed += poll
+    pytest.fail(
+        "The routes injected by ExaBGP did not appear in the BGP RIB within "
+        "{timeout}s. Missing: {missing}".format(timeout=timeout, missing=missing)
+    )
+
+
 def check_correct_rib(node, rib_scripts, topo):
     expected_rib_routes = topo.routes
     for command, family in rib_scripts:
-        my_output = node.popen("sh %s" % command)
-        my_output.wait()
-        out, err = my_output.communicate()
+        rib_routes = get_rib_routes(node, command, family)
 
-        output = out.decode(errors="ignore")
-
-        p = re.compile(r"(?s)as2> show bgp {family} json(?P<rib>.*)as2> exit".format(family=family))
-        m = p.search(output)
-
-        assert m is not None, "Unable to find the RIB"
-
-        my_rib = m.group("rib")
-        parsed_rib = json.loads(my_rib)
-        rib_routes = parsed_rib['routes']
+        assert rib_routes is not None, "Unable to find the RIB"
 
         print(expected_rib_routes)
         print(rib_routes)
@@ -107,10 +146,12 @@ def check_correct_rib(node, rib_scripts, topo):
         for our_route in expected_rib_routes[family]:
 
             str_ipnet = str(our_route.IPNetwork)
-            rib_route = rib_routes[str_ipnet][0]  # take the first one as ExaBGP sends only one route per prefix
 
             assert str_ipnet in rib_routes, \
                 "{route} not in FRRouting BGP RIB".format(route=our_route.IPNetwork)
+
+            # take the first one as ExaBGP sends only one route per prefix
+            rib_route = rib_routes[str_ipnet][0]
 
             assert rib_route["origin"].lower() == our_route['origin'].val, \
                 "Bad origin for route {route}. Expected {origin_expect}. Received {origin_real}" \
@@ -173,8 +214,10 @@ def test_example_exabgp(topo_test, frr_bgp_node):
     net = IPNet(topo=topo_test)
     try:
         net.start()
-        # Must wait 130s since ExaBGP sends routes at most 120s after the startup
-        time.sleep(130)
+        # ExaBGP sends its routes at most 2 minutes after the startup, and the
+        # passive session may take a while to establish under load; poll the
+        # RIB instead of sleeping a fixed amount.
+        wait_for_expected_routes(net[frr_bgp_node], rib_scripts, topo_test)
         check_correct_rib(net[frr_bgp_node], rib_scripts, topo_test)
     finally:
         net.stop()
