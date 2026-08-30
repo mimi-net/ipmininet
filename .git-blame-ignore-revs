@@ -3,4 +3,4 @@
 #
 # style: apply ruff and mdformat auto-fixes (ruff lint autofix + ruff
 # formatter + mdformat on the markdown files).
-72264c21416e294f9f131ad3589f03205184f42b
+46083b313a0aca6d9f1f8ad9e4805044d52c1fef

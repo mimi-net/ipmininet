@@ -191,7 +191,7 @@ def get_rib_routes(node, command, family):
     return json.loads(m.group("rib")).get("routes")
 
 
-def wait_for_expected_routes(node, rib_scripts, topo, timeout=540, poll=5):
+def wait_for_expected_routes(node, rib_scripts, topo, timeout=900, poll=5):
     """Wait until all the routes ExaBGP is expected to inject appear in the
     FRRouting BGP RIB.
 
@@ -199,7 +199,8 @@ def wait_for_expected_routes(node, rib_scripts, topo, timeout=540, poll=5):
     default), and the passive BGP session it uses may take a while to
     establish. A fixed sleep is therefore unreliable under load; poll the RIB
     instead. The default timeout accounts for that delay plus the slow
-    delivery of the routes under a loaded CI runner.
+    delivery of the routes under a loaded CI runner (observed up to ~9 minutes
+    on the container job).
     """
     expected_routes = topo.routes
     missing = []
