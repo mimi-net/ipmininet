@@ -53,10 +53,12 @@ class IPCLI(CLI):
         self.mn.ping6Pair()
 
     def do_link(self, line: str):
-        """ down/up the link between 2 specified routers, can specify multiple
-            multiple link
-            :param line: the router name between which the link as to be
-                         downed/up: r1 r2, r3 r4 [down/up]
+        """Down/up the links between the given routers.
+
+        Multiple links can be specified at once.
+
+        :param line: the routers between which the links are downed/up,
+                     given as: r1 r2, r3 r4 [down/up]
         """
         all_args = line.split(',')
         last_args = all_args[-1].split()

@@ -199,32 +199,32 @@ reasons; skipped tests and their reasons are shown with ``pytest -rs``.
 Building the documentation
 --------------------------
 
-First, you have to install the requirements to build the project.
-When at the root of the documentation, run:
+First, install the documentation build dependencies (the ``docs`` uv
+dependency group) at the root of the repository:
 
 .. code-block:: bash
 
-    pip install -r requirements.txt
-
-The documentation build is not covered by CI, so verify your changes
-locally with ``make html`` (see below). The markdown included from the
-example topologies is pulled in through ``sphinx-mdinclude``, which pins
-``mistune`` to ``>=3,<4``; do not relax that constraint without also
-replacing ``sphinx-mdinclude``.
+    uv sync --group docs
 
 Then you can generate the html documentation
 in the folder ``docs/_build/html/`` with:
 
 .. code-block:: bash
 
-    make html
+    uv run --group docs make -C docs html
+
+The documentation build is covered by CI (see ``.github/workflows/docs.yaml``),
+which builds with ``sphinx-build -W`` so warnings are treated as errors. The
+markdown included from the example topologies is pulled in through
+``sphinx-mdinclude``, which pins ``mistune`` to ``>=3,<4``; do not relax that
+constraint without also replacing ``sphinx-mdinclude``.
 
 The examples in the documentation can also be tested when changing the code base
 with the following command:
 
 .. code-block:: bash
 
-    sudo make doctest
+    sudo uv run --group docs make -C docs doctest
 
 .. _contribute_example:
 

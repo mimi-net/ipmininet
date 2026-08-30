@@ -66,8 +66,9 @@ class IPTopo(Topo):
         """Add a router to the topology
 
         :param name: the name of the node
-        "param routerDescription: the RouterDescription class to return
-            (optional)"""
+        :param routerDescription: the RouterDescription class to return
+                                  (optional)
+        """
         return routerDescription(self.addNode(str(name),
                                               isRouter=True,
                                               **kwargs), self)

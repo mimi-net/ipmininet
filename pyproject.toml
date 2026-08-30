@@ -28,6 +28,9 @@ Homepage = "https://github.com/cnp3/ipmininet"
 [project.optional-dependencies]
 testing = [ "pytest", "pytest-xdist",]
 
+[dependency-groups]
+docs = [ "sphinx", "sphinx_rtd_theme", "sphinxcontrib-apidoc", "sphinx-mdinclude",]
+
 [tool.aliases]
 test = "pytest"
 

@@ -1,0 +1,34 @@
+# Documentation build.
+#
+# Builds the Sphinx documentation with the `docs` uv dependency group and
+# uploads the resulting HTML as an artifact. The build runs with -W so Sphinx
+# warnings fail the job. Runs on every PR and on master; the artifact is
+# available from the workflow run page.
+name: Build documentation
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install docs dependencies
+        run: uv sync --group docs
+      - name: Build documentation
+        run: uv run --group docs sphinx-build -b html -W docs docs/_build/html
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipmininet-docs
+          path: docs/_build/html

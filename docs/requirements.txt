@@ -1,5 +1,0 @@
-mako>=1.1,<1.5
-mininet @ git+https://github.com/mininet/mininet@2.3.0
-sphinx_rtd_theme
-sphinxcontrib-apidoc
-sphinx-mdinclude

@@ -214,12 +214,14 @@ class ZebraList(ABC):
     def __init__(self, family, entries: Sequence[Union['ZebraList.Entry',
                                                        str, IPv4Network,
                                                        IPv6Network]] = (), name=None):
-        """Setup a new zebra-list
+        """Setup a new zebra-list.
+
         :param name: The name of the acl, which will default to acl## where ##
                      is the instance number
         :param entries: A sequence of ZebraListEntry instance,
                         or of ip_interface which describes which prefixes
-                         are composing the list"""
+                        are composing the list
+        """
 
         assert family in {'ipv4', 'ipv6'}, "PrefixList unknown %s type. type must be either ipv4 or ipv6" % family
 

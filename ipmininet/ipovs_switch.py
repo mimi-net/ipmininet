@@ -3,8 +3,26 @@ from mininet.log import info, error, warn, debug
 
 
 class IPOVSSwitch(OVSSwitch):
+    """A switch that supports IPMininet-specific features.
+
+    The switch is an Open vSwitch kernel switch that can optionally enable
+    rapid spanning tree (RSTP) or plain spanning tree, and that records its
+    working directory and a configurable priority.
+    """
+
     def __init__(self, name: str, stp=False, hub=False, cwd='/tmp', rstp=False,
                  failMode="standalone", batch=False, priority=None, **params):
+        """Create a new IPOVSSwitch.
+
+        :param name: the name of the switch
+        :param stp: enable spanning tree
+        :param hub: run as a hub
+        :param cwd: the working directory of the switch
+        :param rstp: enable rapid spanning tree
+        :param failMode: controller loss behavior
+        :param batch: enable batch startup
+        :param priority: the switch priority
+        """
         self.cwd = cwd
         self.priority = priority
         self.rstp = rstp and not hub
