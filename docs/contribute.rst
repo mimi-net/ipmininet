@@ -6,6 +6,21 @@ Don't hesitate to ask for advice on the `mailing list
 <https://sympa-2.sipr.ucl.ac.be/sympa/info/ipmininet>`_,
 to report bugs as Github issues and to contribute through Github pull requests.
 
+Project conventions
+-------------------
+
+- **Workflow:** GitHub Flow. One short-lived branch per change, opened as a
+  pull request, merged to ``master`` with a rebase merge. ``master`` is always
+  releasable.
+- **Commits:** Conventional Commits (``type(scope): subject``), imperative
+  mood, signed.
+- **Versioning:** bump ``pyproject.toml`` only when cutting a release.
+  ``fix`` → PATCH, ``feat`` → MINOR, breaking changes → MAJOR. Additive and
+  backwards-compatible changes without significant new functionality are
+  PATCH.
+- **Changelog:** GitHub release notes, assembled from merged pull-request
+  titles.
+
 Setting up the development environment
 --------------------------------------
 
@@ -19,18 +34,11 @@ First get the source code of your fork:
     $ git clone <your-fork-url>
     $ cd ipmininet
 
-Then, install your version of IPMininet in development mode.
-If you have pip above **18.1**, execute:
+Then, install your version of IPMininet in development mode:
 
 .. code-block:: bash
 
-    $ sudo pip install -e .
-
-If you have an older version of pip, use:
-
-.. code-block:: bash
-
-    $ sudo pip -e install --process-dependency-links .
+    $ uv sync --group dev
 
 Finally, you can install all the daemons:
 
@@ -106,7 +114,7 @@ When instantiating each router and each host, their daemons are also
 instantiated and options parsed. However the daemon configurations are not
 built yet.
 
-3. Addressing
+4. Addressing
 ^^^^^^^^^^^^^
 
 After creating all the devices and their interfaces,
@@ -171,24 +179,18 @@ Running the tests
 -----------------
 
 The `pytest <https://docs.pytest.org/en/latest/index.html>`_ framework is used
-for the test suite and are `integrated within setuptools
-<https://docs.pytest.org/en/latest/goodpractices.html
-#integrating-with-setuptools-python-setup-py-test-pytest-runner>`_.
-Currently the suite has end-to-end tests that check if the daemons work as
-expected. Therefore, the tests require an operating environment, i.e. daemons
-have to be installed and must be in PATH.
-
-To run the whole test suite go the top level directory and run:
+for the test suite. The suite is end-to-end and requires root and the daemons
+to be installed and in PATH. Run it in parallel as CI does:
 
 .. code-block:: bash
 
-    sudo pytest
+    sudo scripts/run-tests-parallel.sh
 
-You can also run a single test by passing options to pytest:
+Or run a single test by passing options to pytest:
 
 .. code-block:: bash
 
-    sudo pytest ipmininet/tests/test_sshd.py --fulltrace
+    sudo uv run pytest ipmininet/tests/test_sshd.py --fulltrace
 
 Some tests are skipped conditionally based on the environment (e.g. running
 as a non-root user, or a missing routing daemon). See the "Test-skip policy"

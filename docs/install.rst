@@ -4,7 +4,7 @@ Installation
 
 IPMininet needs at minimum:
 
-- Python_ (with pip) **3.6+**
+- Python_ (with pip) **3.12+**
 - Mininet_
 
 IPMininet needs some daemon executables to be installed
@@ -50,18 +50,11 @@ Manual installation
 -------------------
 
 You can download and install IPMininet.
-You can change the installed version by replacing "v1.1" in the following commands.
-If you have pip above **18.1**, execute:
+You can change the installed version by replacing the version tag in the following command:
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade git+https://github.com/cnp3/ipmininet.git@v1.1
-
-If you have an older version of pip, use:
-
-.. code-block:: bash
-
-    $ sudo pip install --process-dependency-links --upgrade git+https://github.com/cnp3/ipmininet.git@v1.1
+    $ sudo pip install --upgrade git+https://github.com/mimi-net/ipmininet.git@v1.2.6
 
 Then, you can install all the daemons:
 

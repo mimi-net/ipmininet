@@ -25,7 +25,15 @@ author = "Olivier Tilmans"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "v0.6"
+release = ""
+
+try:
+    from importlib.metadata import version as _pkg_version
+
+    release = _pkg_version("ipmininet")
+    version = ".".join(release.split(".")[:2])
+except Exception:  # package not installed; docs still build
+    pass
 
 
 # -- General configuration ---------------------------------------------------
