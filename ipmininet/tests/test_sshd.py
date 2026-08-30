@@ -1,11 +1,11 @@
 """This module tests the SSH daemon"""
 import os
-import time
 
 from ipmininet.clean import cleanup
 from ipmininet.examples.sshd import SSHTopo
 from ipmininet.ipnet import IPNet
 from . import require_root
+from .utils import wait_until
 
 
 @require_root
@@ -26,12 +26,10 @@ def test_sshd_example():
         ip = net["r2"].intf("r2-eth0").ip
         cmd = "ssh -oStrictHostKeyChecking=no -oConnectTimeout=1" \
               " -oPasswordAuthentication=no -i %s %s ls" % (ssh_key, ip)
-        t = 0
-        while t < 60 and net["r1"].popen(cmd.split(" ")).wait() != 0:
-            time.sleep(0.5)
-            t += 1
-        p = net["r1"].popen(cmd.split(" "))
-        assert p.wait() == 0, "Cannot connect with SSH to the router"
+        wait_until(
+            lambda: net["r1"].popen(cmd.split(" ")).wait() == 0,
+            timeout=60, interval=0.5,
+            description="SSH from %s to %s to succeed" % (net["r1"], ip))
 
         net.stop()
     finally:

@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import time
 from contextlib import closing
 from ipaddress import IPv4Interface, IPv6Interface
 from ipaddress import ip_network, ip_address, IPv4Address, IPv6Address
@@ -14,6 +13,7 @@ from ipmininet.examples.exabgp_prefix_injector import ExaBGPTopoInjectPrefixes
 from ipmininet.ipnet import IPNet
 from ipmininet.router.config import BGPRoute, BGPAttribute, ExaList
 from ipmininet.tests import require_root, require_exabgp
+from ipmininet.tests.utils import wait_until
 
 exa_routes = {
     'ipv4': [
@@ -102,18 +102,21 @@ def get_rib_routes(node, command, family):
     return json.loads(m.group("rib")).get("routes")
 
 
-def wait_for_expected_routes(node, rib_scripts, topo, timeout=300, poll=5):
+def wait_for_expected_routes(node, rib_scripts, topo, timeout=540, poll=5):
     """Wait until all the routes ExaBGP is expected to inject appear in the
     FRRouting BGP RIB.
 
     ExaBGP is configured to only send its routes after a delay (2 minutes by
     default), and the passive BGP session it uses may take a while to
     establish. A fixed sleep is therefore unreliable under load; poll the RIB
-    instead.
+    instead. The default timeout accounts for that delay plus the slow
+    delivery of the routes under a loaded CI runner.
     """
     expected_routes = topo.routes
-    elapsed = 0
-    while elapsed < timeout:
+    missing = []
+
+    def _all_routes_present():
+        nonlocal missing
         missing = []
         for command, family in rib_scripts:
             rib_routes = get_rib_routes(node, command, family)
@@ -123,14 +126,13 @@ def wait_for_expected_routes(node, rib_scripts, topo, timeout=300, poll=5):
                 for route in expected_routes[family]:
                     if str(route.IPNetwork) not in rib_routes:
                         missing.append((family, str(route.IPNetwork)))
-        if not missing:
-            return
-        time.sleep(poll)
-        elapsed += poll
-    pytest.fail(
-        "The routes injected by ExaBGP did not appear in the BGP RIB within "
-        "{timeout}s. Missing: {missing}".format(timeout=timeout, missing=missing)
-    )
+        return not missing
+
+    wait_until(
+        _all_routes_present, timeout=timeout, interval=poll,
+        description=lambda: "the routes injected by ExaBGP to appear in the "
+                            "BGP RIB within %ds. Missing: %s"
+                            % (timeout, missing))
 
 
 def check_correct_rib(node, rib_scripts, topo):
@@ -199,6 +201,7 @@ def check_as_path(as_path_rib: str, as_path_us: ExaList):
 
 @require_root
 @require_exabgp
+@pytest.mark.timeout(1200)
 @pytest.mark.parametrize('topo_test,frr_bgp_node', [
     (ExaBGPTopoInjectPrefixes(routes=exa_routes), 'as2'),  # default IPs, custom routes,
     (ExaBGPTopoInjectPrefixes(), 'as2'),  # default IPs, random routes

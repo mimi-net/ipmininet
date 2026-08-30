@@ -26,13 +26,23 @@ text = "GPLv2"
 Homepage = "https://github.com/cnp3/ipmininet"
 
 [project.optional-dependencies]
-testing = [ "pytest", "pytest-xdist",]
+testing = [ "pytest", "pytest-timeout", "pytest-xdist",]
 
 [dependency-groups]
 docs = [ "sphinx", "sphinx_rtd_theme", "sphinxcontrib-apidoc", "sphinx-mdinclude",]
 
 [tool.aliases]
 test = "pytest"
+
+[tool.pytest.ini_options]
+timeout = 600
+timeout_method = "signal"
+markers = [
+    "require_root: test requires root privileges",
+    "require_exabgp: test requires a working ExaBGP daemon",
+    "require_openr: test requires the OpenR daemon",
+    "require_mimidump: test requires the mimidump capture tool",
+]
 
 [tool.setuptools]
 include-package-data = true

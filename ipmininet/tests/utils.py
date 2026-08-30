@@ -2,6 +2,7 @@ import pytest
 import re
 import signal
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Tuple, Dict, Pattern, Match, Optional
 
@@ -15,6 +16,41 @@ from ipmininet.ipswitch import IPSwitch
 from ipmininet.host.config.named import DNSRecord
 
 
+def wait_until(predicate: Callable[[], bool], timeout: float = 60,
+               interval: float = 0.5, description=None):
+    """Wait until ``predicate()`` returns a truthy value.
+
+    Polls every ``interval`` seconds up to ``timeout`` seconds and returns
+    ``True`` as soon as the predicate succeeds. Fails the test with a
+    descriptive error if the timeout is reached.
+
+    Use this instead of a fixed ``time.sleep()`` whenever the test waits for
+    an asynchronous effect (daemon startup, routing convergence, packet
+    flush, ...): a fixed sleep is either too short (flaky under load) or too
+    long (slow for no reason).
+
+    :param predicate: Zero-argument callable returning whether the awaited
+                      condition is satisfied.
+    :param timeout: Maximum time, in seconds, to wait for the condition.
+    :param interval: Time, in seconds, between two polls.
+    :param description: Human-readable description of the awaited condition.
+                        May be a callable returning a string, evaluated only
+                        on timeout so it can include the last observed state.
+    """
+    if description is None:
+        description = "the condition"
+    elapsed = 0
+    while elapsed < timeout:
+        if predicate():
+            return True
+        time.sleep(interval)
+        elapsed += interval
+    if callable(description):
+        description = description()
+    pytest.fail("Timed out after %ds while waiting for %s"
+                % (int(elapsed), description))
+
+
 def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
                poll=1.0) -> List[str]:
     require_cmd("traceroute", help_str="traceroute is required to run tests")
@@ -23,7 +59,7 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
     old_path_ips = []  # type: List[str]
     same_path_count = 0
     white_space = re.compile(r" +")
-    while t != timeout / poll:
+    while t < timeout / poll:
         out = net[src].cmd(["traceroute", "-w", "0.05", "-q", "1", "-n",
                             "-m", len(net.routers) + len(net.hosts), dst_ip])
         lines = out.split("\n")[1:-1]
@@ -140,7 +176,7 @@ def assert_connectivity(net: IPNet, v6=False, attempts=1500,
                         translate_address=True):
     t = 0
     connected = False
-    while t != attempts and not connected:
+    while t < attempts and not connected:
         connected = host_connected(net, v6=v6,
                                    translate_address=translate_address)
         if not connected:
@@ -165,7 +201,7 @@ def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
     client_cmd = "nc -z -w 1 -v %s %d" % (server_ip, server_port)
 
     client_p = client.popen(client_cmd.split(" "))
-    while t != timeout * 2 and client_p.wait() != 0:
+    while t < timeout * 2 and client_p.wait() != 0:
         t += 1
         if server_p.poll() is not None:
             out, err = server_p.communicate()
@@ -197,18 +233,17 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
     # In these states the STP has not converged
     ignore_state = "listening", "learning"
     cmd = ("%s %s" % (partial_cmd, switch.name))
-    out = switch.cmd(cmd)
-    states = re.findall(possible_states, out)
-    # wait for the ports to be bounded
-    count = 0
-    while any(item in states for item in ignore_state):
-        if count == timeout:
-            pytest.fail("Timeout of %d seconds while waiting for the spanning"
-                        " tree to be computed" % timeout)
-        time.sleep(1)
-        count += 1
+    out = None
+    states = None
+
+    def _converged():
+        nonlocal out, states
         out = switch.cmd(cmd)
         states = re.findall(possible_states, out)
+        return not any(item in states for item in ignore_state)
+
+    wait_until(_converged, timeout=timeout, interval=1,
+               description="the spanning tree to be computed")
 
     interfaces = re.findall(switch.name + r"-eth[0-9]+", out)
     state_map = {interfaces[i]: states[i] for i in range(len(states))}
@@ -236,21 +271,21 @@ def assert_routing_table(router: IPNode, expected_prefixes: List[str],
     """
     expected = set(expected_prefixes)
     cmd = "ip -%d route" % ip_network(str(next(iter(expected)))).version
-    t = 0
-    while True:
+    found = set()
+
+    def _satisfied():
+        nonlocal found
         found = set(re.findall(r"|".join(re.escape(p) for p in expected),
                                router.cmd(cmd)))
-        satisfied = (expected <= found) if present else not (expected & found)
-        if satisfied:
-            return
-        if t >= timeout:
-            pytest.fail("Expected prefixes %s to be %s in the routing table "
-                        "of %s within %ds (found: %s)"
-                        % (expected_prefixes,
-                           "present" if present else "absent",
-                           router.name, timeout, sorted(found)))
-        time.sleep(1)
-        t += 1
+        return (expected <= found) if present else not (expected & found)
+
+    wait_until(
+        _satisfied, timeout=timeout, interval=1,
+        description=lambda: "prefixes %s to be %s in the routing table "
+                            "of %s within %ds (found: %s)"
+                            % (expected_prefixes,
+                               "present" if present else "absent",
+                               router.name, timeout, sorted(found)))
 
 
 def search_dns_reply(reply: str, regex: Pattern) \
@@ -282,14 +317,22 @@ def assert_dns_record(node: IPNode, dns_server_address: str, record: DNSRecord,
                                    name=record.domain_name,
                                    rdata=record.rdata))
 
-    t = 0
-    out = node.cmd(server_cmd.split(" "))
-    got_answer, match = search_dns_reply(out, out_regex)
-    while t < timeout * 2 and match is None:
-        t += 1
-        time.sleep(.5)
+    out = None
+    got_answer = False
+    match = None
+
+    def _answered():
+        nonlocal out, got_answer, match
         out = node.cmd(server_cmd.split(" "))
         got_answer, match = search_dns_reply(out, out_regex)
+        return match is not None
+
+    wait_until(
+        _answered, timeout=timeout, interval=0.5,
+        description=lambda: "the expected data '%s' to be found in the DNS "
+                            "reply of '%s' received by %s from %s:\n%s"
+                            % (out_regex.pattern, server_cmd, node.name,
+                               dns_server_address, out))
 
     assert got_answer, "No answer was received in %s" \
                        " from server %s in the reply of '%s':\n%s" \

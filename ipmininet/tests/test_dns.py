@@ -1,6 +1,4 @@
 """This module tests the Named daemon"""
-import time
-
 import pytest
 
 from ipmininet.clean import cleanup
@@ -113,7 +111,6 @@ def test_dns_network(named_cfg, zone_args, exp_named_cfg, exp_zone_cfg):
         for node in [net["master"], net["slave"]]:
             for record in records:
                 assert_dns_record(node, "localhost", record)
-            time.sleep(10)
 
         net.stop()
     finally:
@@ -163,7 +160,6 @@ def test_zone_delegation():
             for node in nodes:
                 for record in zone_records:
                     assert_dns_record(node, "localhost", record)
-                time.sleep(10)
 
         net.stop()
     finally:

@@ -2,7 +2,6 @@
 import json
 import re
 import subprocess
-import time
 
 import pytest
 
@@ -11,7 +10,7 @@ from ipmininet.examples.tc_advanced_network import TCAdvancedNet
 from ipmininet.examples.tc_network import TCNet
 from ipmininet.ipnet import IPNet
 from ipmininet.router import IPNode
-from ipmininet.tests.utils import assert_connectivity
+from ipmininet.tests.utils import assert_connectivity, wait_until
 from . import require_root
 from .utils import require_cmd
 
@@ -49,8 +48,15 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1,
     require_cmd("iperf3", help_str="iperf3 is required to run tests")
 
     iperf = dst.popen("iperf3 -s -J --one-off", universal_newlines=True)
-    time.sleep(1)
     dst_ip = dst.intf().ip6 if v6 else dst.intf().ip
+    # Wait for the server to be listening. We must not probe the port (e.g.
+    # with nc), since iperf3 --one-off accepts a single connection and the
+    # probe would consume it, leaving nothing for the client below.
+    wait_until(
+        lambda: ":5201" in dst.cmd("ss -ltn"),
+        timeout=30, interval=0.2,
+        description="iperf3 server on {ip} to start listening"
+                    .format(ip=dst_ip))
     src.popen("iperf3 -c {}".format(dst_ip), stdout=subprocess.DEVNULL,
               stderr=subprocess.DEVNULL)
     out, err = iperf.communicate()
@@ -60,6 +66,8 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1,
 
     bws = []
     data = json.loads(out)
+    assert "intervals" in data, "No intervals in the iperf3 output:\n{}" \
+        .format(out)
     for sample in data["intervals"]:
         bw = int(sample["sum"]["bits_per_second"]) / 10 ** 6
         if bw_target - tolerance <= bw <= bw_target + tolerance:

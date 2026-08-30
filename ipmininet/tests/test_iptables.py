@@ -1,17 +1,13 @@
 """This module tests iptables"""
-import time
-
 from ipmininet.clean import cleanup
 from ipmininet.examples.iptables import IPTablesTopo
 from ipmininet.ipnet import IPNet
-from ipmininet.tests.utils import check_tcp_connectivity
+from ipmininet.tests.utils import check_tcp_connectivity, wait_until
 from . import require_root
 
 
 @require_root
 def test_iptables_example():
-    attempts = 10
-
     try:
         net = IPNet(topo=IPTablesTopo())
         net.start()
@@ -26,16 +22,11 @@ def test_iptables_example():
 
         ip6 = net["r2"].intf("r2-eth0").ip6
         cmd = "ping6 -W 1 -c 1 %s" % ip6
-        chk = False
-
-        for _ in range(attempts):
-            time.sleep(5)
-            p = net["r1"].popen(cmd.split(" "))
-            chk = p.wait() != 0
-            if chk:
-                break
-
-        assert chk, "Pings over IPv6 should be blocked"
+        wait_until(
+            lambda: net["r1"].popen(cmd.split(" ")).wait() != 0,
+            timeout=50, interval=5,
+            description="IPv6 pings from %s to %s to be blocked"
+                        % (net["r1"], ip6))
 
         ret, _, _ = check_tcp_connectivity(net["r1"], net["r2"],
                                            server_port=80,

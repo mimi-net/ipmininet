@@ -1,6 +1,4 @@
 """"This module test the Link Failure API"""
-import os
-
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.overlay import NetworkCapture
@@ -12,21 +10,18 @@ from ..examples.network_capture import NetworkCaptureTopo
 @require_mimidump
 @require_root
 def test_network_capture_example():
-    capture_files = ["/tmp/capture_r1.pcapng", "/tmp/capture_r2-eth0.pcapng",
-                     "/tmp/capture_s1.pcapng", "/tmp/capture_s2-eth1.pcapng"]
     try:
-        # Delete pre-existing capture files
-        for file_name in capture_files:
-            if os.path.exists(file_name):
-                os.unlink(file_name)
-
         net = IPNet(topo=NetworkCaptureTopo())
         net.start()
+        overlay = next(o for o in net.topo.overlays
+                       if isinstance(o, NetworkCapture))
 
-        # Check files existence
-        for file_name in capture_files:
-            assert os.path.exists(file_name), \
-                f"The capture file {file_name} was not created"
+        # Capture readiness is asynchronous; wait for it instead of asserting
+        # file existence immediately after net.start().
+        assert overlay.wait_until_capturing("r2-eth0", timeout=10)
+        assert overlay.wait_until_capturing("s2-eth1", timeout=10)
+        assert overlay.wait_until_capturing("r1", timeout=10)
+        assert overlay.wait_until_capturing("s1", timeout=10)
 
         # Check example connectivity
         assert_connectivity(net, v6=False)

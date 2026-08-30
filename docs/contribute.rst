@@ -195,6 +195,69 @@ as a non-root user, or a missing routing daemon). See the "Test-skip policy"
 comment at the top of ``ipmininet/tests/__init__.py`` for the full matrix and
 reasons; skipped tests and their reasons are shown with ``pytest -rs``.
 
+Writing reliable tests
+----------------------
+
+The test suite runs end-to-end against real daemons (FRRouting, named,
+ExaBGP, ...) in parallel CI workers, so asynchronous effects (daemon startup,
+routing convergence, DNS zone transfer, packet capture) are subject to load.
+Follow these rules to keep the suite deterministic:
+
+- **Never wait a fixed wall-clock amount of time for an asynchronous
+  effect.** A fixed ``time.sleep()`` is either too short (flaky under load)
+  or too long (slow for no reason). Instead, poll for the *observable
+  effect* until it appears, with a hard timeout, using the
+  ``wait_until(predicate, timeout=..., interval=..., description=...)``
+  helper in ``ipmininet/tests/utils.py`` (check-then-sleep, fails the test
+  with a descriptive error on timeout). The ``description`` may be a callable
+  so the failure can include the last observed state.
+- **Reuse the existing poll helpers** built on ``wait_until`` rather than
+  hand-rolling loops: ``assert_routing_table``, ``assert_dns_record``,
+  ``assert_stp_state``, ``assert_connectivity``,
+  ``check_tcp_connectivity``, ``traceroute``/``assert_path``.
+- **Assert before you index.** Check that a key/row exists *before*
+  dereferencing it; otherwise a not-ready state surfaces as a bare
+  ``KeyError``/``IndexError`` instead of the intended assertion message.
+- **Bound every poll loop.** Never use ``while t != ...`` as a loop sentinel
+  (a skipped increment runs forever); prefer ``while t < bound`` or
+  ``wait_until``.
+- **Wait for the effect's own notification, not for a proxy of it.** A
+  process being alive (or a file existing) does not mean the effect has
+  landed. This is subtle: a freshly started ``tshark`` prints "Capturing
+  on ..." *before* the capture is functionally live, so even that message is
+  a proxy. The reliable notification that a capture is live is its output
+  file growing past the header (packets are being written); wait for that by
+  probing until every node's capture has grown, then send the measurement and
+  stop the capture with ``SIGINT`` (which flushes) before asserting in the
+  read-back that the measurement actually landed. Beware of nodes that never
+  see the measurement (off-path hosts): never require them to record it.
+  When the measurement has to be spread over several probes, the analysis
+  must group the observations per probe (they are well apart in time) or the
+  path repeats once per probe.
+- **Probes must not perturb the thing under test.** A readiness probe can
+  consume the very resource being measured (e.g. ``nc -z`` consumes the single
+  connection that an ``iperf3 --one-off`` server accepts, so the real client
+  gets nothing). Prefer a passive observation such as ``ss -ltn``.
+- **Size poll timeouts to the protocol's worst case, not the median.** If a
+  daemon is documented to delay its actions by up to N seconds, the poll
+  timeout must exceed N. Raise the per-test ceiling with
+  ``@pytest.mark.timeout(...)`` where needed.
+- **Avoid shared hard-coded paths and ports.** Prefer per-test temporary
+  files over fixed ``/tmp/`` paths that leak across parametrized cases.
+- **Let timeouts fail fast.** ``pytest-timeout`` is configured with a
+  600-second per-test limit, so a stuck test fails instead of eating the CI
+  budget; keep the ``timeout`` of poll helpers comfortably below it and only
+  raise the per-test limit with ``@pytest.mark.timeout(...)`` for the rare
+  test whose protocol requires more.
+- **Schedule long-waiting tests first.** ``scripts/run-tests-parallel.sh``
+  lists the slow modules first and runs under ``--dist=loadscope`` (one module
+  per worker at a time), so a module that mostly *waits* overlaps with the
+  CPU-bound work of the modules behind it. A waiting test is cheap to
+  co-schedule, so order by waiting time, not by CPU time.
+
+The full flaky-pattern catalog used by reviewers is in
+``.tmp/FLAKY_REVIEW.md`` (local scratch, not committed).
+
 
 Building the documentation
 --------------------------

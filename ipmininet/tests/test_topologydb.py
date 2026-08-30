@@ -1,6 +1,8 @@
 """This module tests the TopologyDB class"""
 import itertools
 import os
+import shutil
+import tempfile
 from typing import Type
 
 import pytest
@@ -27,12 +29,11 @@ from ipmininet.utils import realIntfList, otherIntf
 ])
 def test_topologydb(topology: Type[IPTopo]):
     net = IPNet(topo=topology())
+    db_dir = tempfile.mkdtemp()
     try:
         db = TopologyDB(net=net)
 
-        db_path = "/tmp/.test_topologydb.json"
-        if os.path.exists(db_path):
-            os.unlink(db_path)
+        db_path = os.path.join(db_dir, "topology.json")
         db.save(db_path)
 
         assert os.path.exists(db_path), \
@@ -107,3 +108,4 @@ def test_topologydb(topology: Type[IPTopo]):
 
     finally:
         net.stop()
+        shutil.rmtree(db_dir, ignore_errors=True)

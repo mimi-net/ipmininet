@@ -1,6 +1,4 @@
 """This module tests the RIPng daemon"""
-import time
-
 import pytest
 
 from ipmininet.clean import cleanup
@@ -177,7 +175,6 @@ def test_ripng_flush_routing_tables():
     try:
         net = IPNet(topo=MinimalRIPngNet(is_test_flush=True))
         net.start()
-        time.sleep(10)
 
         routing_tables = {
             "r1": ["2042:22::/64", "2042:33::/64", "2042:23::/64"],
