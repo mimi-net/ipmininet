@@ -11,8 +11,8 @@ class IPCLI(CLI):
         """route destination: Print all the routes towards that destination
         for every router in the network"""
         for r in self.mn.routers:
-            lg.output("[%s] " % r.name)
-            self.default("%s ip route get %s" % (r.name, line))
+            lg.output(f"[{r.name}] ")
+            self.default(f"{r.name} ip route get {line}")
 
     def do_ip(self, line: str):
         """ip IP1 IP2 ...: return the node associated to the given IP"""
@@ -84,7 +84,7 @@ class IPCLI(CLI):
 
         if first in self.mn:
             if not args:
-                lg.error("*** Enter a command for node: %s <cmd>" % first)
+                lg.error(f"*** Enter a command for node: {first} <cmd>")
                 return
             node = self.mn[first]
             rest = args.split(" ")
@@ -106,4 +106,4 @@ class IPCLI(CLI):
             node.sendCmd(" ".join([ip_map.get(r, r) for r in rest]))
             self.waitForNode(node)
         else:
-            lg.error("*** Unknown command: %s\n" % line)
+            lg.error(f"*** Unknown command: {line}\n")

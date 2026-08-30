@@ -2,6 +2,7 @@
 For more information about SRv6, see https://segment-routing.org"""
 
 import abc
+import contextlib
 import shlex
 import subprocess
 from collections.abc import Iterable
@@ -28,7 +29,7 @@ def enable_srv6(node: IPNode):
     node.nconfig.sysctl = "net.ipv6.conf.all.seg6_enabled=1"
     node.nconfig.sysctl = "net.ipv6.conf.default.seg6_enabled=1"
     for intf in realIntfList(node):
-        node.nconfig.sysctl = "net.ipv6.conf.%s.seg6_enabled=1" % intf.name
+        node.nconfig.sysctl = f"net.ipv6.conf.{intf.name}.seg6_enabled=1"
 
 
 def check_srv6_compatibility() -> bool:
@@ -37,9 +38,10 @@ def check_srv6_compatibility() -> bool:
     """
     try:
         subprocess.check_output(shlex.split("sysctl net.ipv6.conf.all.seg6_enabled"))
-        return True
     except subprocess.CalledProcessError:
         return False
+    else:
+        return True
 
 
 def srv6_segment_space(
@@ -53,7 +55,7 @@ def srv6_segment_space(
     """
     if isinstance(intf, str):
         if not isinstance(node, IPNode):
-            raise ValueError(
+            raise TypeError(
                 "Cannot retrieve an IPIntf from name without "
                 "passing its node as parameter"
             )
@@ -90,7 +92,7 @@ class LocalSIDTable:
             elif isinstance(destination, IPIntf):
                 self.prefixes.extend(srv6_segment_space(intf=destination))
             else:
-                raise ValueError(
+                raise TypeError(
                     "The LocalSIDTable cannot be created because "
                     f"the destination {destination} cannot be matched"
                 )
@@ -101,15 +103,13 @@ class LocalSIDTable:
         lines = out.split("\n")
         for line in lines:
             if "lookup " in line:
-                try:
+                with contextlib.suppress(ValueError):
                     tables.append(int(line.split("lookup ")[-1]))
-                except ValueError:
-                    pass
         self.num = 1
         while self.num in tables:
             self.num += 1
         if self.num >= 253:
-            raise Exception("Cannot find a free table number on the host")
+            raise RuntimeError("Cannot find a free table number on the host")
 
         # Create the table
         self.create()
@@ -168,15 +168,15 @@ class SRv6Route(metaclass=abc.ABCMeta):
         itfs = realIntfList(self.source)
         if len(itfs) == 0:
             raise ValueError(
-                "Cannot install SRv6Route %s without"
-                " a real interface on node %s\n" % (self, self.source.name)
+                f"Cannot install SRv6Route {self} without"
+                f" a real interface on node {self.source.name}\n"
             )
         self.dev = itfs[0].name
 
         # Check SRv6 capability
         if not self.is_available():
             raise ValueError(
-                "Cannot create %s because the distribution does not support it" % self
+                f"Cannot create {self} because the distribution does not support it"
             )
 
         # Activate SRv6 on all routers and hosts
@@ -199,18 +199,20 @@ class SRv6Route(metaclass=abc.ABCMeta):
             prefixes.append(str(self.destination))
         except (AddressValueError, NetmaskValueError):
             if isinstance(self.destination, str):
-                try:
+                with contextlib.suppress(KeyError):
                     self.destination = self.net[self.destination]
-                except KeyError:
-                    pass
 
             if isinstance(self.destination, IPNode):
-                for itf in self.destination.intfList():
-                    for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=True):
-                        prefixes.append(ip6.network.with_prefixlen)
+                prefixes.extend(
+                    ip6.network.with_prefixlen
+                    for itf in self.destination.intfList()
+                    for ip6 in itf.ip6s(exclude_lls=True, exclude_lbs=True)
+                )
             elif isinstance(self.destination, IPIntf):
-                for ip6 in self.destination.ip6s(exclude_lls=True, exclude_lbs=True):
-                    prefixes.append(ip6.network.with_prefixlen)
+                prefixes.extend(
+                    ip6.network.with_prefixlen
+                    for ip6 in self.destination.ip6s(exclude_lls=True, exclude_lbs=True)
+                )
 
             if len(prefixes) == 0:
                 log.error(
@@ -240,21 +242,20 @@ class SRv6Route(metaclass=abc.ABCMeta):
                 # This is an IPv6 or IPv4 address
                 s.append(str(nh))
             except (AddressValueError, NetmaskValueError):
-                if isinstance(nh, str):
-                    try:
-                        nh = self.net[nh]
-                    except KeyError:
-                        pass
+                h = nh
+                if isinstance(h, str):
+                    with contextlib.suppress(KeyError):
+                        h = self.net[h]
                 ip = None
-                if isinstance(nh, IPNode):
-                    ip = address_pair(nh, use_v4=not v6)[1 if v6 else 0]
-                elif isinstance(nh, IPIntf):
-                    ip = nh.ip6 if v6 else nh.ip
+                if isinstance(h, IPNode):
+                    ip = address_pair(h, use_v4=not v6)[1 if v6 else 0]
+                elif isinstance(h, IPIntf):
+                    ip = h.ip6 if v6 else h.ip
                 if ip is None:
                     raise ValueError(
-                        "Cannot find for the nexthop %s"
-                        " a global IPv%d address\n" % (nh, 6 if v6 else 4)
-                    )
+                        f"Cannot find for the nexthop {nh}"
+                        f" a global IPv{6 if v6 else 4} address\n"
+                    ) from None
                 s.append(ip)
         return s
 
@@ -269,12 +270,12 @@ class SRv6Route(metaclass=abc.ABCMeta):
         self._run_cmds(prefix="ip -6 route add ")
 
     def _run_cmds(self, prefix: str = "ip -6 route add ") -> int:
-        for cmd in self.cmds:
-            cmd = prefix + cmd
+        for c in self.cmds:
+            cmd = prefix + c
             if self.table is not None:
                 cmd = cmd + f" table {self.table.num}"
             out, err, code = self.source.pexec(shlex.split(cmd))
-            log.debug("Installing route on router %s: '%s'\n" % (self.source.name, cmd))
+            log.debug(f"Installing route on router {self.source.name}: '{cmd}'\n")
             if code:
                 log.error(
                     "Cannot install SRv6Route",
@@ -292,10 +293,8 @@ class SRv6Route(metaclass=abc.ABCMeta):
         return -1
 
     def __str__(self):
-        return "SRv6Route<on=%s, to=%s, cost=%s>" % (
-            self.source.name,
-            self.destination,
-            self.cost,
+        return (
+            f"SRv6Route<on={self.source.name}, to={self.destination}, cost={self.cost}>"
         )
 
 
@@ -365,20 +364,18 @@ class SRv6Encap(SRv6Route):
             return cmds
 
         # Build iproute2 commands
-        for prefix in prefixes:
-            cmds.append(
-                "%s encap seg6 mode %s segs %s metric %s dev %s"
-                % (prefix, self.mode, ",".join(nexthops), self.cost, self.dev)
+        cmds.extend(
+            "{} encap seg6 mode {} segs {} metric {} dev {}".format(
+                prefix, self.mode, ",".join(nexthops), self.cost, self.dev
             )
+            for prefix in prefixes
+        )
         return cmds
 
     def __str__(self):
-        return "SRv6Encap<on=%s, to=%s, through=%s, mode=%s, cost=%s>" % (
-            self.source.name,
-            self.destination,
-            self.nexthops,
-            self.mode,
-            self.cost,
+        return (
+            f"SRv6Encap<on={self.source.name}, to={self.destination}, "
+            f"through={self.nexthops}, mode={self.mode}, cost={self.cost}>"
         )
 
 
@@ -412,20 +409,17 @@ class SRv6EndFunction(SRv6Route):
             return cmds
 
         # Build iproute2 commands
-        for prefix in prefixes:
-            cmds.append(
-                f"{prefix} encap seg6local action {self.ACTION} {self.params}"
-                f" metric {self.cost} dev {self.dev}"
-            )
+        cmds.extend(
+            f"{prefix} encap seg6local action {self.ACTION} {self.params}"
+            f" metric {self.cost} dev {self.dev}"
+            for prefix in prefixes
+        )
         return cmds
 
     def __str__(self):
-        return "SRv6Function<action=%s, on=%s, to=%s, cost=%s, params=%s>" % (
-            self.ACTION,
-            self.source.name,
-            self.destination,
-            self.cost,
-            self.params,
+        return (
+            f"SRv6Function<action={self.ACTION}, on={self.source.name}, "
+            f"to={self.destination}, cost={self.cost}, params={self.params}>"
         )
 
 

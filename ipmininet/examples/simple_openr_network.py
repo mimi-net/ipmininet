@@ -33,7 +33,7 @@ class SimpleOpenrNet(IPTopo):
         for router in (r_1, r_2, r_3):
             for i in range(HOSTS_PER_ROUTER):
                 self.addLink(
-                    router, self.addHost("h%s%s" % (i, router)), params2={"v4_width": 5}
+                    router, self.addHost(f"h{i}{router}"), params2={"v4_width": 5}
                 )
 
         super().build(*args, **kwargs)

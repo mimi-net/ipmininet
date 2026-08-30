@@ -33,7 +33,7 @@ class DHCPRelay(RouterDaemon):
 
     @property
     def cfg_filenames(self):
-        return [self._file(suffix="%s.cfg" % self.listening_ip)]
+        return [self._file(suffix=f"{self.listening_ip}.cfg")]
 
     def set_defaults(self, defaults):
         pass

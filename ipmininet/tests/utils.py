@@ -52,9 +52,7 @@ def wait_until(
         elapsed += interval
     if callable(description):
         description = description()
-    pytest.fail(
-        "Timed out after %ds while waiting for %s" % (int(elapsed), description)
-    )
+    pytest.fail(f"Timed out after {int(elapsed)}s while waiting for {description}")
 
 
 def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300, poll=1.0) -> list[str]:
@@ -138,15 +136,14 @@ def assert_path(
                     path.append(n.name)
                     break
             assert found, (
-                "Traceroute returned the address '%s' "
-                "that cannot be linked to a node" % path_ip
+                f"Traceroute returned the address '{path_ip}' "
+                "that cannot be linked to a node"
             )
         i += 1
 
     assert path == expected_path, (
-        "We expected the path from %s to %s to go "
-        "through %s but it went through %s"
-        % (src, dst, expected_path[1:-1], path[1:-1])
+        f"We expected the path from {src} to {dst} to go "
+        f"through {expected_path[1:-1]} but it went through {path[1:-1]}"
     )
 
 
@@ -170,10 +167,9 @@ def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) ->
                     dst_ip = dst.defaultIntf().ip6 if v6 else dst.defaultIntf().ip
                 else:
                     dst_ip = dst
-                cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" % (
-                    " -6" if v6 else "",
-                    int(timeout * 1000),
-                    dst_ip,
+                cmd = (
+                    f"nmap{' -6' if v6 else ''} -sn -n --max-retries 0 "
+                    f"--max-rtt-timeout {int(timeout * 1000)}ms {dst_ip}"
                 )
                 out = src.cmd(cmd.split(" "))
                 if "0 hosts up" in out:
@@ -195,15 +191,15 @@ def assert_node_not_connected(src: IPNode, dst: IPNode, v6=False, timeout=0.2):
     dst.defaultIntf().updateIP()
     dst.defaultIntf().updateIP6()
     dst_ip = dst.defaultIntf().ip6 if v6 else dst.defaultIntf().ip
-    cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" % (
-        " -6" if v6 else "",
-        int(timeout * 1000),
-        dst_ip,
+    cmd = (
+        f"nmap{' -6' if v6 else ''} -sn -n --max-retries 0 "
+        f"--max-rtt-timeout {int(timeout * 1000)}ms {dst_ip}"
     )
     out = src.cmd(cmd.split(" "))
 
-    assert "0 hosts up" in out, "Node {} is connected to node {} over {}".format(
-        src.name, dst.name, "IPv4" if not v6 else "IPv6"
+    assert "0 hosts up" in out, (
+        f"Node {src.name} is connected to node {dst.name} "
+        f"over {'IPv4' if not v6 else 'IPv6'}"
     )
 
 
@@ -231,20 +227,20 @@ def check_tcp_connectivity(
     if server_itf is None:
         server_itf = server.defaultIntf()
     server_ip = server_itf.ip6 if v6 else server_itf.ip
-    server_cmd = "nc %s -l %d" % ("-6" if v6 else "-4", server_port)
+    server_cmd = f"nc {'-6' if v6 else '-4'} -l {server_port}"
     server_p = server.popen(server_cmd.split(" "))
 
     t = 0
-    client_cmd = "nc -z -w 1 -v %s %d" % (server_ip, server_port)
+    client_cmd = f"nc -z -w 1 -v {server_ip} {server_port}"
 
     client_p = client.popen(client_cmd.split(" "))
     while t < timeout * 2 and client_p.wait() != 0:
         t += 1
         if server_p.poll() is not None:
             out, err = server_p.communicate()
-            assert False, (
+            raise AssertionError(
                 "The netcat server used to check TCP connectivity failed"
-                " with the output:\n[stdout]\n%s\n[stderr]\n%s" % (out, err)
+                f" with the output:\n[stdout]\n{out}\n[stderr]\n{err}"
             )
         time.sleep(0.5)
         client_p = client.popen(client_cmd.split(" "))
@@ -269,7 +265,7 @@ def assert_stp_state(switch: IPSwitch, expected_states: dict[str, str], timeout=
     possible_states = "listening|learning|forwarding|blocking"
     # In these states the STP has not converged
     ignore_state = "listening", "learning"
-    cmd = "%s %s" % (partial_cmd, switch.name)
+    cmd = f"{partial_cmd} {switch.name}"
     out = None
     states = None
 
@@ -288,14 +284,14 @@ def assert_stp_state(switch: IPSwitch, expected_states: dict[str, str], timeout=
 
     interfaces = re.findall(switch.name + r"-eth[0-9]+", out)
     state_map = {interfaces[i]: states[i] for i in range(len(states))}
-    for itf, _ in expected_states.items():
+    for itf, expected in expected_states.items():
         assert itf in state_map, (
-            "The port %s of switch %s was not mentioned in the output of "
-            "'brctl showstp':\n%s" % (itf, switch.name, out)
+            f"The port {itf} of switch {switch.name} was not mentioned "
+            f"in the output of 'brctl showstp':\n{out}"
         )
-        assert state_map[itf] == expected_states[itf], (
-            "The state of port %s of switch %s wasn't correct: excepted '%s' "
-            "got '%s'" % (itf, switch.name, expected_states[itf], state_map[itf])
+        assert state_map[itf] == expected, (
+            f"The state of port {itf} of switch {switch.name} wasn't correct: "
+            f"expected '{expected}' got '{state_map[itf]}'"
         )
 
 
@@ -316,7 +312,7 @@ def assert_routing_table(
     :param timeout: Time to wait for the routing convergence
     """
     expected = set(expected_prefixes)
-    cmd = "ip -%d route" % ip_network(str(next(iter(expected)))).version
+    cmd = f"ip -{ip_network(str(next(iter(expected)))).version} route"
     found = set()
 
     def _satisfied():
@@ -331,15 +327,9 @@ def assert_routing_table(
         timeout=timeout,
         interval=1,
         description=lambda: (
-            "prefixes %s to be %s in the routing table "
-            "of %s within %ds (found: %s)"
-            % (
-                expected_prefixes,
-                "present" if present else "absent",
-                router.name,
-                timeout,
-                sorted(found),
-            )
+            f"prefixes {expected_prefixes} to be "
+            f"{'present' if present else 'absent'} in the routing table "
+            f"of {router.name} within {timeout}s (found: {sorted(found)})"
         ),
     )
 
@@ -387,22 +377,21 @@ def assert_dns_record(
         timeout=timeout,
         interval=0.5,
         description=lambda: (
-            "the expected data '%s' to be found in the DNS "
-            "reply of '%s' received by %s from %s:\n%s"
-            % (out_regex.pattern, server_cmd, node.name, dns_server_address, out)
+            f"the expected data '{out_regex.pattern}' to be found in the DNS "
+            f"reply of '{server_cmd}' received by {node.name} from "
+            f"{dns_server_address}:\n{out}"
         ),
     )
 
     assert got_answer, (
-        "No answer was received in %s"
-        " from server %s in the reply of '%s':\n%s"
-        % (node.name, dns_server_address, server_cmd, out)
+        f"No answer was received in {node.name}"
+        f" from server {dns_server_address} in the reply of '{server_cmd}':\n{out}"
     )
 
     assert match is not None, (
-        "The expected data '%s' cannot be found "
-        "in the DNS reply of '%s' received by %s from "
-        "%s:\n%s" % (out_regex.pattern, server_cmd, node.name, dns_server_address, out)
+        f"The expected data '{out_regex.pattern}' cannot be found "
+        f"in the DNS reply of '{server_cmd}' received by {node.name} from "
+        f"{dns_server_address}:\n{out}"
     )
 
 

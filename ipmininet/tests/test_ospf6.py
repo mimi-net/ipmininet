@@ -121,7 +121,7 @@ high_igp_cost_paths = [
             {},
             {},
             {"params1": {"ospf_dead_int": "minimal hello-multiplier 2"}},
-            ["  ipv6 ospf6 dead-interval %d" % OSPF6.DEAD_INT],
+            [f"  ipv6 ospf6 dead-interval {OSPF6.DEAD_INT}"],
             unit_igp_cost_paths,
         ),
         (
@@ -150,8 +150,8 @@ def test_ospf6_daemon_params(
             cfg = fileobj.readlines()
             for line in exp_cfg:
                 assert line + "\n" in cfg, (
-                    "Cannot find the line '%s' in the generated"
-                    " configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated"
+                    " configuration:\n{}".format(line, "".join(cfg))
                 )
 
         # Check reachability

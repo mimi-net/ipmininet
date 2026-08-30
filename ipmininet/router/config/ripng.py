@@ -40,7 +40,7 @@ class RIPng(QuaggaDaemon):
         """Return the list of RIP networks to advertize from the list of
         active RIP interfaces"""
         return [
-            RIPNetwork(domain=ip_interface("%s/%s" % (i.ip6, i.prefixLen6)))
+            RIPNetwork(domain=ip_interface(f"{i.ip6}/{i.prefixLen6}"))
             for i in interfaces
             if i.ip6
         ]
@@ -55,7 +55,7 @@ class RIPng(QuaggaDaemon):
                 # Is the interface between two routers?
                 active=self.is_active_interface(i),
                 cost=i.igp_metric - 1,
-                domain=ip_interface("%s/%s" % (i.ip6, i.prefixLen6)),
+                domain=ip_interface(f"{i.ip6}/{i.prefixLen6}"),
             )
             for i in interfaces
         ]

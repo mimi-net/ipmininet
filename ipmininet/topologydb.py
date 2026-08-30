@@ -3,7 +3,6 @@ auto-allocated properties of a topology: ip addresses, router ids, ..."""
 
 import itertools
 import json
-from builtins import str
 from ipaddress import ip_interface
 
 from mininet.log import lg
@@ -55,7 +54,7 @@ class TopologyDB:
         try:
             return self._network[x]
         except KeyError:
-            raise ValueError("No node named %s in the network" % x)
+            raise ValueError(f"No node named {x} in the network") from None
 
     __getitem__ = node = _node
 
@@ -63,7 +62,7 @@ class TopologyDB:
         try:
             return self._node(x)[y]
         except KeyError:
-            raise ValueError("The link %s-%s does not exist" % (x, y))
+            raise ValueError(f"The link {x}-{y} does not exist") from None
 
     def interface(self, x, y):
         """Return the ip address of the interface of x facing y
@@ -104,7 +103,7 @@ class TopologyDB:
         :return: the routerid"""
         n = self._node(x)
         if n["type"] != "router":
-            raise TypeError("%s is not a router" % x)
+            raise TypeError(f"{x} is not a router")
         return n["routerid"]
 
     def parse_net(self, net):
@@ -124,7 +123,7 @@ class TopologyDB:
         for itf in itfs:
             nh = otherIntf(itf)
             itf_props = {
-                "ip": "%s/%s" % (itf.ip, itf.prefixLen),
+                "ip": f"{itf.ip}/{itf.prefixLen}",
                 "ips": [
                     ip.with_prefixlen for ip in itertools.chain(itf.ips(), itf.ip6s())
                 ],

@@ -81,15 +81,15 @@ def test_dns_network(named_cfg, zone_args, exp_named_cfg, exp_zone_cfg):
             cfg = fileobj.readlines()
             for line in exp_named_cfg:
                 assert line + "\n" in cfg, (
-                    "Cannot find the line '%s' in the generated "
-                    "main configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated "
+                    "main configuration:\n{}".format(line, "".join(cfg))
                 )
         with open("/tmp/named_master2.test.org.zone.cfg") as fileobj:
             cfg = fileobj.readlines()
             for line in exp_zone_cfg:
                 assert line + "\n" in cfg, (
-                    "Cannot find the line '%s' in the generated zone "
-                    "configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated zone "
+                    "configuration:\n{}".format(line, "".join(cfg))
                 )
 
         # Check port number configuration
@@ -163,12 +163,12 @@ def test_zone_delegation():
         records = [
             (
                 [net["master"], net["slave"]],
-                mydomain_delegation_records
-                + [
+                [
+                    *mydomain_delegation_records,
                     ARecord("server.mydomain.org", net["server"].defaultIntf().ip),
                     AAAARecord("server.mydomain.org", net["server"].defaultIntf().ip6),
-                ]
-                + root_hints,
+                    *root_hints,
+                ],
             ),
             (
                 [net["orgdns"]],

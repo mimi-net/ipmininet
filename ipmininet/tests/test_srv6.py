@@ -41,7 +41,7 @@ class SRv6TestTopo(SRv6Topo):
     def post_build(self, net):
         super().post_build(net)
 
-        for r in self.new_routes.keys():
+        for r in self.new_routes:
             route_class, route_params = self.new_routes[r]
 
             if issubclass(route_class, SRv6EndFunction):
@@ -52,9 +52,9 @@ class SRv6TestTopo(SRv6Topo):
                 route_params["table"] = self.tables[r]
             try:
                 route_class(net=net, node=net[r], **route_params)
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
-                raise e
+                raise
 
 
 def _tshark_capturing(tsharks: list, stderr_buf: dict) -> bool:
@@ -134,7 +134,7 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
     require_cmd("nmap", help_str="nmap is required to run tests")
 
     # Check connectivity
-    ping_cmd = "ping -6 -c 1 -W %d %s" % (int(timeout), dst_ip)
+    ping_cmd = f"ping -6 -c 1 -W {int(timeout)} {dst_ip}"
     out = net[src].cmd(shlex.split(ping_cmd))
     if ", 0% packet loss" not in out:
         return []

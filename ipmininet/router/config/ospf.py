@@ -37,11 +37,11 @@ class OSPFArea(Overlay):
     def apply(self, topo):
         # Add all links for the routers
         for r in self.nodes:
-            self.add_link(*[(r, x) for x in topo.g[r].keys()])
+            self.add_link(*[(r, x) for x in topo.g[r]])
         super().apply(topo)
 
     def __str__(self):
-        return "<OSPF area %s>" % self.area
+        return f"<OSPF area {self.area}>"
 
 
 class OSPF(QuaggaDaemon):
@@ -54,7 +54,7 @@ class OSPF(QuaggaDaemon):
     KILL_PATTERNS = (NAME,)
 
     def __init__(self, node, *args, **kwargs):
-        super().__init__(node=node, *args, **kwargs)
+        super().__init__(*args, node=node, **kwargs)
 
     def build(self):
         cfg = super().build()
@@ -70,9 +70,7 @@ class OSPF(QuaggaDaemon):
         active OSPF interfaces"""
         # Check that we have at least one IPv4 network on that interface ...
         return [
-            OSPFNetwork(
-                domain=ip_interface("%s/%s" % (i.ip, i.prefixLen)), area=i.igp_area
-            )
+            OSPFNetwork(domain=ip_interface(f"{i.ip}/{i.prefixLen}"), area=i.igp_area)
             for i in interfaces
             if i.ip
         ]

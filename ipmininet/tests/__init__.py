@@ -40,6 +40,7 @@ def _exabgp_usable() -> bool:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=10,
+                check=False,
             ).returncode
             == 0
         )

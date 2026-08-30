@@ -78,4 +78,4 @@ def ip(*args):
         log.info("Calling: %s", cmd)
         return check_output(cmd).decode("utf-8")
     except (OSError, CalledProcessError):
-        log.error("Command failed!")
+        log.exception("Command failed!")

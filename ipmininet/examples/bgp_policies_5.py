@@ -49,7 +49,7 @@ class BGPPoliciesTopo5(IPTopo):
         )
 
         routers = self.routers()
-        prefix = {routers[i]: "2001:db:%04x::/48" % i for i in range(len(routers))}
+        prefix = {routers[i]: f"2001:db:{i:04x}::/48" for i in range(len(routers))}
         as1r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as1r],)),))
         as2r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as2r],)),))
         as3r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as3r],)),))
@@ -99,6 +99,6 @@ class BGPPoliciesTopo5(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            link = self.addLink(r, self.addHost("h%s" % r))
+            link = self.addLink(r, self.addHost(f"h{r}"))
             self.addSubnet(links=[link], subnets=[prefix[r]])
         super().build(*args, **kwargs)

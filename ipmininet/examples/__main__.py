@@ -134,8 +134,8 @@ if __name__ == "__main__":
     if args.log == "debug":
         ipmininet.DEBUG_FLAG = True
     kwargs = {}
-    for arg in args.args.strip(" \r\t\n").split(","):
-        arg = arg.strip(" \r\t\n")
+    for raw in args.args.strip(" \r\t\n").split(","):
+        arg = raw.strip(" \r\t\n")
         if not arg:
             continue
         try:

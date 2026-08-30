@@ -143,7 +143,7 @@ class RADVD(RouterDaemon):
                 for line in f:
                     if len(line) > 1:
                         pid = int(line[:-1])
-                        self._node._processes.call("kill -9 %d " % pid)
+                        self._node._processes.call(f"kill -9 {pid} ")
         except OSError:
             pass
         super().cleanup()

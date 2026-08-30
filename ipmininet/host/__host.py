@@ -19,7 +19,7 @@ class IPHost(IPNode):
         *args,
         **kwargs,
     ):
-        super().__init__(name, config=config, *args, **kwargs)
+        super().__init__(name, *args, config=config, **kwargs)
 
     def setDefaultRoute(self, intf: IPIntf | str | None = None, v6=False):
         """Set the default routes to go through the intfs.
@@ -36,7 +36,7 @@ class IPHost(IPNode):
                 if opt == "dev":
                     intf = self.intf(option_list[i + 1])
         else:
-            params = "dev %s" % intf
+            params = f"dev {intf}"
 
         # Set command to be re-executed if interface is downed
         # and then brought back up

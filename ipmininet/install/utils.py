@@ -24,7 +24,7 @@ def sh(*cmds, **kwargs) -> subprocess.Popen | None:
         except OSError as e:
             if not may_fail:
                 raise
-            sys.stderr.write("*** failed to run %s: %s\n" % (cmd, e))
+            sys.stderr.write(f"*** failed to run {cmd}: {e}\n")
             continue
 
         if output_stdout:
@@ -59,20 +59,20 @@ class Distribution:
 
         if find_executable(pip) is None:
             return ""
-        p = sh("%s -V" % pip, output_stdout=False)
+        p = sh(f"{pip} -V", output_stdout=False)
         if p is None or p.wait() != 0:
-            print("Print cannot get the version of %s" % pip)
+            print(f"Print cannot get the version of {pip}")
             return ""
         content, _ = p.communicate()
         try:
             v = content.decode("utf-8").split(" ")[1]
-
+        except (ValueError, IndexError):
+            print(f"Cannot retrieve version number of {pip}")
+            sys.exit(1)
+        else:
             if parse_version(v) >= parse_version(self.SpinPipVersion):
                 return ""
             return "--process-dependency-links"
-        except (ValueError, IndexError):
-            print("Cannot retrieve version number of %s" % pip)
-            sys.exit(1)
 
     def install(self, *packages: str):
         if self.INSTALL_CMD:
@@ -94,7 +94,7 @@ class Distribution:
 
     def require_pip(self):
         if find_executable(self.PIP_CMD) is None:
-            raise RuntimeError("Cannot find %s" % self.PIP_CMD)
+            raise RuntimeError(f"Cannot find {self.PIP_CMD}")
 
 
 class Ubuntu(Distribution):

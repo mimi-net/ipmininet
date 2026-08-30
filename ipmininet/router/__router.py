@@ -74,7 +74,8 @@ class ProcessHelper:
                 # if the process has not terminated yet,
                 # we send a SIGKILL as ultimate resort.
                 p.kill()
-                p.wait()  # use p.wait to free kernel resources and clean the process table
+                # p.wait frees kernel resources and cleans the process table
+                p.wait()
 
             except OSError:
                 pass  # Process is already dead
@@ -117,7 +118,7 @@ class IPNode(Node):
             except ValueError:
                 lg.error(
                     "Expected a tuple (class, kwargs) for the config "
-                    "parameter but got instead %s" % str(config)
+                    f"parameter but got instead {config!s}"
                 )
         else:
             self.nconfig = config(self)
@@ -179,7 +180,8 @@ class IPNode(Node):
                 tentative_chk = self._processes.call(tentative_cmd)
             lg.debug(
                 self._processes.node.name,
-                "All IPv6 addresses has passed the Duplicate address detection mechanism",
+                "All IPv6 addresses have passed the Duplicate address "
+                "detection mechanism",
             )
 
         # Fire up all daemons
@@ -227,7 +229,7 @@ class IPNode(Node):
         except IndexError:
             v = None
         if v != val:
-            self._processes.call("sysctl", "-w", "%s=%s" % (key, val))
+            self._processes.call("sysctl", "-w", f"{key}={val}")
         return v
 
     def _mklogdirs(self, logdir) -> tuple[str, str, int]:
@@ -290,7 +292,7 @@ class Router(IPNode, L3Router):
         """:param password: The password for the routing daemons vtysh access
         :param lo_addresses: The list of addresses to set on the loopback
                              interface"""
-        super().__init__(name, config=config, *args, **kwargs)
+        super().__init__(name, *args, config=config, **kwargs)
         self.password = password
 
         # This interface already exists in the node,
@@ -315,17 +317,19 @@ class OpenrRouter(Router):
         *args,
         config: type[OpenrRouterConfig],
         lo_addresses: Sequence[str | IPv4Interface | IPv6Interface] | None = None,
-        privateDirs=["/tmp"],
+        privateDirs=None,
         **kwargs,
     ):
+        if privateDirs is None:
+            privateDirs = ["/tmp"]
         if not lo_addresses:
             lo_addresses = ()
         super().__init__(
             name,
+            *args,
             config=config,
             lo_addresses=lo_addresses,
             password=None,
             privateDirs=privateDirs,
-            *args,
             **kwargs,
         )

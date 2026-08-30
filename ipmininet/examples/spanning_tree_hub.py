@@ -49,6 +49,6 @@ class SpanningTreeHub(IPTopo):
         )
 
         for s in self.switches():
-            self.addLink(s, self.addHost("h%s" % s))
+            self.addLink(s, self.addHost(f"h{s}"))
 
         super().build(*args, **kwargs)

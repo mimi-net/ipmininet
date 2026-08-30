@@ -19,9 +19,9 @@ def has_cmd(cmd: str) -> bool:
     if os.path.isfile(cmd) and os.access(cmd, os.X_OK):
         return True
     # Try to find the cmd in each directory in $PATH
-    for path in os.environ["PATH"].split(os.path.pathsep):
-        path = path.strip('"')
-        exe = os.path.join(path, cmd)
+    for raw in os.environ["PATH"].split(os.path.pathsep):
+        p = raw.strip('"')
+        exe = os.path.join(p, cmd)
         if os.path.isfile(exe) and os.access(exe, os.X_OK):
             return True
     return False
@@ -39,7 +39,7 @@ def require_cmd(cmd: str, help_str: str | None = None):
 
     if help_str:
         log.error(help_str)
-    raise RuntimeError("[%s] is not available in $PATH" % cmd)
+    raise RuntimeError(f"[{cmd}] is not available in $PATH")
 
 
 def otherIntf(intf: Intf) -> Optional["IPIntf"]:
@@ -88,12 +88,15 @@ def is_subnet_of(a: IPv4Network | IPv6Network, b: IPv4Network | IPv6Network) -> 
         # Always false if one is v4 and the other is v6.
         if a.version != b.version:
             raise TypeError(f"{a} and {b} are not of the same version")
+    except AttributeError:
+        raise TypeError(
+            f"Unable to test subnet containment between {a} and {b}"
+        ) from None
+    else:
         return (
             b.network_address <= a.network_address
             and b.broadcast_address >= a.broadcast_address
         )
-    except AttributeError:
-        raise TypeError(f"Unable to test subnet containment between {a} and {b}")
 
 
 def is_container(x) -> bool:

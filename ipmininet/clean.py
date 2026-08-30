@@ -27,7 +27,7 @@ def cleanup(level: str = "info"):
                 killp = [killp]
             patterns.extend(killp)
     log.info("*** Cleaning up daemons:\n")
-    killprocs(['"^%s"' % p for p in patterns])
+    killprocs([f'"^{p}"' for p in patterns])
     log.info("\n")
 
 
@@ -36,7 +36,7 @@ def killprocs(patterns, timeout=10):
 
     # Try clean kill
     for p in patterns:
-        mnclean.sh("pkill -SIGINT -f %s" % p)
+        mnclean.sh(f"pkill -SIGINT -f {p}")
 
     # Make sure they are gone
     t = 0

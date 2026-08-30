@@ -83,7 +83,7 @@ class BGPTopoFull(IPTopo):
 
         super().build(*args, **kwargs)
 
-    def bgp(self, name, family=AF_INET6()):
+    def bgp(self, name, family=None):
         r = self.addRouter(name)
-        r.addDaemon(BGP, address_families=(family,))
+        r.addDaemon(BGP, address_families=(family or AF_INET6(),))
         return r

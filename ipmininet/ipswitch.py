@@ -39,9 +39,7 @@ class IPSwitch(LinuxBridge):
 
     def start(self, _controllers):
         """Start Linux bridge"""
-        require_cmd(
-            "brctl", help_str="You need brctl to use %s objects" % self.__class__
-        )
+        require_cmd("brctl", help_str=f"You need brctl to use {self.__class__} objects")
 
         self.cmd("ifconfig", self, "down")
         self.cmd("brctl delbr", self)
@@ -61,8 +59,8 @@ class IPSwitch(LinuxBridge):
             if self.name in i.name:
                 self.cmd("brctl addif", self, i)
                 self.cmd(
-                    "brctl setpathcost"
-                    " %s %s %d" % (self.name, i.name, i.params.get("stp_cost", 1))
+                    f"brctl setpathcost {self.name} {i.name} "
+                    f"{i.params.get('stp_cost', 1)}"
                 )
         # Start the captures on this switch
         for capture in self.params.get("captures", []):

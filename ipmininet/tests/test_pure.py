@@ -8,6 +8,7 @@ in the other test modules.
 
 import time
 from ipaddress import IPv4Network, IPv6Network, ip_network
+from typing import ClassVar
 
 import pytest
 
@@ -66,9 +67,9 @@ class TestWaitUntil:
 class TestInferSubPaths:
     """Tests for the SRv6 capture-path inference (burst-of-probes aware)."""
 
-    _NODES = ["h6", "r6", "r5", "r4", "h4"]
-    _DEST = "fc00:0:d::1"
-    _BURST = [0.3 + k for k in range(20)]
+    _NODES: ClassVar[list[str]] = ["h6", "r6", "r5", "r4", "h4"]
+    _DEST: ClassVar[str] = "fc00:0:d::1"
+    _BURST: ClassVar[list[float]] = [0.3 + k for k in range(20)]
 
     @staticmethod
     def _burst_events(gaps, probes):

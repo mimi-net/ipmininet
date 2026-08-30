@@ -36,9 +36,8 @@ class SimpleBGPTopo(IPTopo):
         ebgp_session(self, as3r1, as2r2)
         # Add test hosts
         for r in self.routers():
-            self.addLink(r, self.addHost("h%s" % r))
+            self.addLink(r, self.addHost(f"h{r}"))
         super().build(*args, **kwargs)
 
     def bgp(self, name):
-        r = self.addRouter(name, config=BorderRouterConfig)
-        return r
+        return self.addRouter(name, config=BorderRouterConfig)

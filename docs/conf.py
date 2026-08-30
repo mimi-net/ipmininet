@@ -62,12 +62,12 @@ class MockStdIn(object):
         self.old_stdin = sys.stdin
         sys.stdin = self.new_stdin
         self.write_pipe_fd = w_mod__
-    
+
     def clean(self):
         self.new_stdin.close
         os.close(self.write_pipe_fd)
         sys.stdin = self.old_stdin
-    
+
     def close_on_start_cli(self):
         os.write(self.write_pipe_fd, "exit\\r\\n".encode())
 """

@@ -4,7 +4,6 @@ import signal
 import subprocess
 import threading
 import time
-from builtins import str
 from collections import defaultdict
 from collections.abc import Sequence
 from ipaddress import ip_network
@@ -42,8 +41,8 @@ class Overlay:
         :param lprops: the properties shared by all links in this overlay"""
         self.nodes = list(nodes)
         self.links = list(links)
-        self.nodes_properties = {} if not nprops else nprops
-        self.links_properties = {} if not lprops else lprops
+        self.nodes_properties = nprops or {}
+        self.links_properties = lprops or {}
         self.per_link_properties = defaultdict(dict)  # type: Mapping
         self.per_node_properties = defaultdict(dict)  # type: Mapping
 
@@ -52,8 +51,8 @@ class Overlay:
         # First set the common properties, then the element-specific ones
         for n in self.nodes:
             topo.nodeInfo(n).update(self.node_property(n))
-        for l in self.links:
-            topo.linkInfo(l[0], l[1]).update(self.link_property(l))
+        for link in self.links:
+            topo.linkInfo(link[0], link[1]).update(self.link_property(link))
 
     def check_consistency(self, topo: "IPTopo") -> bool:
         """Check that this overlay is consistent"""
@@ -133,9 +132,9 @@ class Subnet(Overlay):
                 for value in self.node_links[node]:
                     attrs = value
 
-                    addr = "%s/%d" % (subnet[i + 1], subnet.prefixlen)
-                    addrs = tuple(attrs.get("ip", tuple()))
-                    attrs["ip"] = addrs + (addr,)
+                    addr = f"{subnet[i + 1]}/{subnet.prefixlen}"
+                    addrs = tuple(attrs.get("ip", ()))
+                    attrs["ip"] = (*addrs, addr)
 
     def _check_subnets(self) -> bool:
         """
@@ -146,12 +145,12 @@ class Subnet(Overlay):
             for subnet in self.subnets:
                 if ip_network(str(subnet)).num_addresses - 1 < len(self.nodes):
                     lg.error(
-                        "The subnet %s does not contain enough addresses."
-                        " We need %s addresses\n" % (subnet, len(self.nodes))
+                        f"The subnet {subnet} does not contain enough addresses."
+                        f" We need {len(self.nodes)} addresses\n"
                     )
                     return False
         except ValueError as e:
-            lg.error("One of the subnet is invalid: %s\n" % e)
+            lg.error(f"One of the subnet is invalid: {e}\n")
             return False
         return True
 
@@ -189,9 +188,9 @@ class Subnet(Overlay):
         count_nodes = 0
         count_links = 0
         for previous, n_start, k_start, n_start_value in adjacencies[nodes[0]]:
-            nodes_0_value = [
+            nodes_0_value = next(
                 x for x in adjacencies[n_start] if x[1] == nodes[0] and x[2] == k_start
-            ][0][3]
+            )[3]
             node_links = {nodes[0]: [nodes_0_value]}
             count_nodes = 1
 
@@ -233,18 +232,19 @@ class Subnet(Overlay):
                 break  # Found the LAN that includes all the nodes
 
         if count_nodes != len(nodes):
-            lg.error("The nodes of %s are not in the same LAN\n" % self)
+            lg.error(f"The nodes of {self} are not in the same LAN\n")
             return False
 
         self.node_links = node_links
         return True
 
     def __str__(self):
-        return "<SubnetOverlay nodes=%s subnets=%s>" % (self.nodes, self.subnets)
+        return f"<SubnetOverlay nodes={self.nodes} subnets={self.subnets}>"
 
 
 class NetworkCapture(Overlay):
-    """This overlays capture traffic on multiple interfaces before starting the daemons and stores the result"""
+    """Overlay capturing traffic on multiple interfaces before starting the
+    daemons, and stores the result"""
 
     def __init__(
         self,
@@ -254,12 +254,16 @@ class NetworkCapture(Overlay):
         extra_arguments: str = "",
     ):
         """
-        :param nodes: The routers and hosts that needs to capture traffic on every of their interfaces
+        :param nodes: The routers and hosts that need to capture traffic on
+                      every of their interfaces
         :param interfaces: The interfaces on which traffic should be captured
-        :param base_filename: The base name of the network capture. One file by router or interface will be created
-            of the form "{base_filename}_{router/interface}.pcapng" in the working directory of the node on which
-            each capture is made.
-        :param extra_arguments: The string encoding any additional argument for the tcpdump call
+        :param base_filename: The base name of the network capture. One file
+                              by router or interface will be created
+                              of the form "{base_filename}_{router/interface}
+                              .pcapng" in the working directory of the node
+                              on which each capture is made.
+        :param extra_arguments: The string encoding any additional argument
+                                for the tcpdump call
         """
 
         self.base_filename = base_filename
@@ -284,13 +288,17 @@ class NetworkCapture(Overlay):
         self, node: Optional["IPNode"] = None, intf: Optional["IPIntf"] = None
     ) -> Popen:
         if node is not None:
-            # We need to specify the interfaces explicitly because switches that are loaded on the root namespace
-            # and therefore using '-i any' would listen on all the switches
+            # Specify the interfaces explicitly because switches that are
+            # loaded on the root namespace would otherwise use '-i any' and
+            # listen on all the switches
             interfaces = [itf.name for itf in node.intfList()]
             file_path = os.path.join(
                 node.cwd, self.base_filename + "_" + node.name + ".pcapng"
             )
-            cmd = f"tcpdump -Z root -i {' -i '.join(interfaces)} -w {file_path} {self.extra_arguments}"
+            cmd = (
+                f"tcpdump -Z root -i {' -i '.join(interfaces)} "
+                f"-w {file_path} {self.extra_arguments}"
+            )
             process = node.popen(shlex.split(cmd))
             self._output_files[node.name] = file_path
             self.ongoing_captures[node.name] = process
@@ -306,7 +314,10 @@ class NetworkCapture(Overlay):
             file_path_out = os.path.join(
                 intf.node.cwd, self.base_filename + "_" + intf.name + "_out.pcapng"
             )
-            cmd = f"mimidump {intf.name} {file_path} {file_path_out} {self.extra_arguments}"
+            cmd = (
+                f"mimidump {intf.name} {file_path} {file_path_out} "
+                f"{self.extra_arguments}"
+            )
 
             process = intf.node.popen(shlex.split(cmd))
             self._output_files[intf.name] = file_path_out

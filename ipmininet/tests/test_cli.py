@@ -48,7 +48,7 @@ def perm(*args):
         s = s + "(" + arg + ")"
         if i != len(args) - 1:
             s += "|"
-    s = s + r")(?!.*\1)){%d}" % len(args)
+    s = s + rf")(?!.*\1)){{{len(args)}}}"
     print(s)
     return s
 
@@ -86,14 +86,14 @@ def perm(*args):
         (
             "pingall",
             [
-                re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 ")),
-                re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 ")),
+                re.compile(r"h1 --IPv4--> {}".format(perm("h2 ", "h3 ", "h4 "))),
+                re.compile(r"h1 --IPv6--> {}".format(perm("h2 ", "h3 ", "h4 "))),
+                re.compile(r"h2 --IPv4--> {}".format(perm("h1 ", "h3 ", "h4 "))),
+                re.compile(r"h2 --IPv6--> {}".format(perm("h1 ", "h3 ", "h4 "))),
+                re.compile(r"h3 --IPv4--> {}".format(perm("h1 ", "h2 ", "h4 "))),
+                re.compile(r"h3 --IPv6--> {}".format(perm("h1 ", "h2 ", "h4 "))),
+                re.compile(r"h4 --IPv4--> {}".format(perm("h1 ", "h2 ", "h3 "))),
+                re.compile(r"h4 --IPv6--> {}".format(perm("h1 ", "h2 ", "h3 "))),
             ],
         ),
         (
@@ -108,20 +108,20 @@ def perm(*args):
         (
             "ping4all",
             [
-                re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 ")),
+                re.compile(r"h1 --IPv4--> {}".format(perm("h2 ", "h3 ", "h4 "))),
+                re.compile(r"h2 --IPv4--> {}".format(perm("h1 ", "h3 ", "h4 "))),
+                re.compile(r"h3 --IPv4--> {}".format(perm("h1 ", "h2 ", "h4 "))),
+                re.compile(r"h4 --IPv4--> {}".format(perm("h1 ", "h2 ", "h3 "))),
             ],
         ),
         ("ping4pair h1 h2", ["h1 --IPv4--> h2 ", "h2 --IPv4--> h1 "]),
         (
             "ping6all",
             [
-                re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 ")),
+                re.compile(r"h1 --IPv6--> {}".format(perm("h2 ", "h3 ", "h4 "))),
+                re.compile(r"h2 --IPv6--> {}".format(perm("h1 ", "h3 ", "h4 "))),
+                re.compile(r"h3 --IPv6--> {}".format(perm("h1 ", "h2 ", "h4 "))),
+                re.compile(r"h4 --IPv6--> {}".format(perm("h1 ", "h2 ", "h3 "))),
             ],
         ),
         ("ping6pair", ["h1 --IPv6--> h2 ", "h2 --IPv6--> h1 "]),
@@ -136,22 +136,20 @@ def test_cli(tmp, net, input_line, expected_lines):
     with open(tmp, "w") as fileobj:
         fileobj.write(input_line + "\n")
 
-    with CLICapture("info") as capture:
-        f = open(tmp)
-        try:
-            IPCLI(net, stdin=f, script=tmp)
-        finally:
-            f.close()
+    with CLICapture("info") as capture, open(tmp) as f:
+        IPCLI(net, stdin=f, script=tmp)
 
     pattern = re.compile("")
     for line in expected_lines:
         if isinstance(line, type(pattern)):
             assert len([x for x in capture.out if line.match(x) is not None]) > 0, (
-                "Regex '%s' does not match the output of '%s':\n%s"
-                % (line, input_line, "\n".join(capture.out))
+                "Regex '{}' does not match the output of '{}':\n{}".format(
+                    line, input_line, "\n".join(capture.out)
+                )
             )
         else:
             assert line in capture.out, (
-                "Line '%s' cannot be found in the output of '%s':\n%s"
-                % (line, input_line, "\n".join(capture.out))
+                "Line '{}' cannot be found in the output of '{}':\n{}".format(
+                    line, input_line, "\n".join(capture.out)
+                )
             )

@@ -13,7 +13,7 @@ class PIMD(QuaggaDaemon):
     KILL_PATTERNS = (NAME,)
 
     def __init__(self, node, *args, **kwargs):
-        super().__init__(node=node, *args, **kwargs)
+        super().__init__(*args, node=node, **kwargs)
 
     def build(self):
         cfg = super().build()

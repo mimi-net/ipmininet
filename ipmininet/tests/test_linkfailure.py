@@ -25,7 +25,7 @@ def _wait_reconvergence(net: IPNet, timeout=120):
             itf = far.defaultIntf()
             far_ip = itf.ip6 if v6 else itf.ip
             plen = itf.prefixLen6 if v6 else itf.prefixLen
-            prefix = str(ip_network("%s/%s" % (far_ip, plen), strict=False))
+            prefix = str(ip_network(f"{far_ip}/{plen}", strict=False))
             assert_routing_table(net[router], [prefix], present=True, timeout=timeout)
 
 

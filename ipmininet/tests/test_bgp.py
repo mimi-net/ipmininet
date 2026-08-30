@@ -102,13 +102,13 @@ class BGPTopo(IPTopo):
         # Add test hosts
         self.addLink(
             as1r1,
-            self.addHost("h%s" % as1r1),
+            self.addHost(f"h{as1r1}"),
             params1={"ip": ("10.1.0.1/24", "fd00:1::1/64")},
             params2={"ip": ("10.1.0.2/24", "fd00:1::2/64")},
         )
         self.addLink(
             as3r1,
-            self.addHost("h%s" % as3r1),
+            self.addHost(f"h{as3r1}"),
             params1={"ip": ("10.3.0.1/24", "fd00:3::1/64")},
             params2={"ip": ("10.3.0.2/24", "fd00:3::2/64")},
         )
@@ -171,8 +171,8 @@ def test_bgp_daemon_params(bgp_params, expected_cfg):
             cfg = [line for line in (line.strip() for line in fileobj) if line]
             for line in expected_cfg:
                 assert line in cfg, (
-                    "Cannot find the line '%s' in the generated "
-                    "configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated "
+                    "configuration:\n{}".format(line, "".join(cfg))
                 )
 
         # Check reachability

@@ -44,7 +44,7 @@ class SimpleOSPFNet(IPTopo):
         self.addLink(r3, r2)
         for r in (r1, r2, r3):
             for i in range(HOSTS_PER_ROUTER):
-                self.addLink(r, self.addHost("h%s%s" % (i, r)), params2={"v4_width": 5})
+                self.addLink(r, self.addHost(f"h{i}{r}"), params2={"v4_width": 5})
 
         # Area 1.1.1.1 is delimited by an OSPFArea overlay
         r4, r5 = self.addRouters("r4", "r5", use_v4=True, use_v6=False)
@@ -53,7 +53,7 @@ class SimpleOSPFNet(IPTopo):
         self.addLink(r4, r5, igp_metric=10)
         for r in (r4, r5):
             for i in range(HOSTS_PER_ROUTER):
-                self.addLink(r, self.addHost("h%s%s" % (i, r)))
+                self.addLink(r, self.addHost(f"h{i}{r}"))
         self.addOSPFArea(routers=(r4, r5), area="1.1.1.1")
 
         # Area 2.2.2.2 is delimited by the igp_area parameter of addLink()
@@ -63,7 +63,7 @@ class SimpleOSPFNet(IPTopo):
         self.addLink(r6, r7, igp_area="2.2.2.2")
         for r in (r6, r7):
             for i in range(HOSTS_PER_ROUTER):
-                self.addLink(r, self.addHost("h%s%s" % (i, r)), igp_area="2.2.2.2")
+                self.addLink(r, self.addHost(f"h{i}{r}"), igp_area="2.2.2.2")
 
         # Management network
         s1 = self.addSwitch("s1")

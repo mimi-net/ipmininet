@@ -97,13 +97,13 @@ class IPNet(Mininet):
         self.allocate_IPs = allocate_IPs
         self.physical_interface = {}  # type: Dict[IPIntf, Node]
         super().__init__(
+            *args,
             ipBase=ipBase,
             host=host,
             switch=switch,
             link=link,
             intf=intf,
             controller=controller,
-            *args,
             **kwargs,
         )
 
@@ -124,8 +124,7 @@ class IPNet(Mininet):
     def __iter__(self):
         for r in self.routers:
             yield r.name
-        for n in super().__iter__():
-            yield n
+        yield from super().__iter__()
 
     def __len__(self):
         return len(self.routers) + super().__len__()
@@ -204,7 +203,7 @@ class IPNet(Mininet):
                 # Only iff not already specified
                 if k not in p:
                     p[k] = v
-        return super().addLink(node1=node1, node2=node2, *args, **params)
+        return super().addLink(*args, node1=node1, node2=node2, **params)
 
     def addHost(self, name: str, **params) -> IPHost:
         """Prevent Mininet from forcing the allocation of IPv4 addresses
@@ -237,7 +236,7 @@ class IPNet(Mininet):
             if "defaultRoute" in h.params:
                 continue  # Skipping hosts with explicit default route
             if not h.createDefaultRoutes():
-                log.info("skipping %s , " % h.name)
+                log.info(f"skipping {h.name} , ")
         log.info("\n")
 
     def stop(self):
@@ -396,15 +395,16 @@ class IPNet(Mininet):
                 )
             log.debug("Allocating prefix", plen, "for interfaces", d.interfaces)
             # Try to find a suitable subnet in the list
-            for i, net in enumerate(subnets):
+            for i, subnet in enumerate(subnets):
                 nets = []
+                cur = subnet
                 # if the subnet is too big for the prefix, perform a left
                 # expansion (only expand one at a time to keep subnets as
                 # aggregated as possible).
-                while plen > net.prefixlen:
+                while plen > cur.prefixlen:
                     # Get list of subnets and append to list of previous
                     # expanded subnets as it is bigger wrt. prefixlen
-                    net, next_net = tuple(net.subnets(prefixlen_diff=1))
+                    cur, next_net = tuple(cur.subnets(prefixlen_diff=1))
                     # If not a subnet of an allocated subnet
                     if (
                         len(
@@ -419,7 +419,7 @@ class IPNet(Mininet):
                     ):
                         nets.append(next_net)
                 # Check if we have an appropriately-sized subnet
-                if plen == net.prefixlen:
+                if plen == cur.prefixlen:
                     # If the network overlaps with an allocated subnet,
                     # we pass it
                     if (
@@ -427,7 +427,7 @@ class IPNet(Mininet):
                             list(
                                 filter(
                                     lambda y: (
-                                        is_subnet_of(net, y) or is_subnet_of(y, net)
+                                        is_subnet_of(cur, y) or is_subnet_of(y, cur)
                                     ),
                                     allocated_subnets,
                                 )
@@ -436,7 +436,7 @@ class IPNet(Mininet):
                         == 0
                     ):
                         # Register the allocation
-                        setattr(d, net_key, net)
+                        setattr(d, net_key, cur)
                     # Delete the expanded/used subnet
                     del subnets[i]
                     # Insert the created subnets if any
@@ -457,9 +457,9 @@ class IPNet(Mininet):
             for intf in realIntfList(n)
         }
         interfaces.update({r.intf("lo"): False for r in self.routers})
-        for intf in interfaces:
+        for intf, visited in interfaces.items():
             # the interface already belongs to a broadcast domain
-            if interfaces[intf]:
+            if visited:
                 continue
             # create a new domain and explore the interface
             bd = BroadcastDomain(intf)
@@ -490,17 +490,17 @@ class IPNet(Mininet):
         packets = 0
         opts = ""
         if timeout:
-            opts = "-W %s" % timeout
+            opts = f"-W {timeout}"
 
-        log.output("%s --%s--> " % (src.name, "IPv4" if v4 else "IPv6"))
+        log.output("{} --{}--> ".format(src.name, "IPv4" if v4 else "IPv6"))
         for dst, dst_ip in dst_dict.items():
             result = src.cmd(
-                "%s -c1 %s %s" % ("ping" if v4 else PING6_CMD, opts, dst_ip)
+                "{} -c1 {} {}".format("ping" if v4 else PING6_CMD, opts, dst_ip)
             )
             sent, received = self._parsePing(result)
             lost += sent - received
             packets += sent
-            log.output("%s " % dst.name if received else "X ")
+            log.output(f"{dst.name} " if received else "X ")
         log.output("\n")
 
         return lost, packets
@@ -537,8 +537,7 @@ class IPNet(Mininet):
             return 0
 
         log.output(
-            "*** Ping: testing reachability over %s%s%s\n"
-            % (
+            "*** Ping: testing reachability over {}{}{}\n".format(
                 "IPv4" if use_v4 else "",
                 " and " if use_v4 and use_v6 else "",
                 "IPv6" if use_v6 else "",
@@ -575,16 +574,15 @@ class IPNet(Mininet):
         for node1, incompatibilities in incompatible_hosts.items():
             for node2 in incompatibilities:
                 log.output(
-                    "*** Warning: %s and %s have no global address "
-                    "in the same IP version\n" % (node1, node2)
+                    f"*** Warning: {node1} and {node2} have no global address "
+                    "in the same IP version\n"
                 )
 
         if packets > 0:
             ploss = 100.0 * lost / packets
             received = packets - lost
             log.output(
-                "*** Results: %i%% dropped (%d/%d received)\n"
-                % (ploss, received, packets)
+                f"*** Results: {ploss}% dropped ({received}/{packets} received)\n"
             )
         else:
             ploss = 0
@@ -693,7 +691,7 @@ class BroadcastDomain:
     # FIXME Where do we put middleboxes in this model ?
     BOUNDARIES = (Host, IPHost, Router)
 
-    def __init__(self, interfaces: None | list[IPIntf] | IPIntf = None):
+    def __init__(self, interfaces: list[IPIntf] | IPIntf | None = None):
         """Initialize the broadcast domain and optionally explore a set of
         interfaces
 
@@ -737,23 +735,15 @@ class BroadcastDomain:
     def len_v4(self) -> int:
         """The number of IPv4 addresses in this broadcast domain"""
         return sum(
-            map(
-                lambda x: x.interface_width[0] if len(list(x.ips())) > 0 else 0,
-                self.interfaces,
-            )
+            x.interface_width[0] if len(list(x.ips())) > 0 else 0
+            for x in self.interfaces
         )
 
     def len_v6(self) -> int:
         """The number of IPv6 addresses in this broadcast domain"""
         return sum(
-            map(
-                lambda x: (
-                    x.interface_width[1]
-                    if len(list(x.ip6s(exclude_lls=True))) > 0
-                    else 0
-                ),
-                self.interfaces,
-            )
+            x.interface_width[1] if len(list(x.ip6s(exclude_lls=True))) > 0 else 0
+            for x in self.interfaces
         )
 
     def explore(self, itfs: list[IPIntf]):
@@ -786,15 +776,12 @@ class BroadcastDomain:
         """Return the maximal IPv4 prefix suitable for this domain"""
         # IPv4 reserves 2 addresses for broadcast/subnet addresses
         return 32 - math.ceil(
-            math.log(
+            math.log2(
                 2
                 + sum(
-                    map(
-                        lambda x: x.interface_width[1] if x.node.use_v4 else 0,
-                        self.interfaces,
-                    )
-                ),
-                2,
+                    x.interface_width[1] if x.node.use_v4 else 0
+                    for x in self.interfaces
+                )
             )
         )
 
@@ -804,15 +791,12 @@ class BroadcastDomain:
         # IPv6 should use whole subnet space for addressing
         # But see FIXME in constructor
         return 128 - math.ceil(
-            math.log(
+            math.log2(
                 1
                 + sum(
-                    map(
-                        lambda x: x.interface_width[1] if x.node.use_v6 else 0,
-                        self.interfaces,
-                    )
-                ),
-                2,
+                    x.interface_width[1] if x.node.use_v6 else 0
+                    for x in self.interfaces
+                )
             )
         )
 
@@ -831,9 +815,9 @@ class BroadcastDomain:
         try:
             addr = self.net[self._allocated_v4]
             self._allocated_v4 += 1
-            return ip_interface("%s/%d" % (addr, self.net.prefixlen))
+            return ip_interface(f"{addr}/{self.net.prefixlen}")
         except IndexError:
-            raise ValueError("No more available IPv4 address")
+            raise ValueError("No more available IPv4 address") from None
 
     def next_ipv6(self) -> IPv6Interface:
         """Allocate and return the next available IPv6 address in this
@@ -845,9 +829,9 @@ class BroadcastDomain:
         try:
             addr = self.net6[self._allocated_v6]
             self._allocated_v6 += 1
-            return ip_interface("%s/%d" % (addr, self.net6.prefixlen))
+            return ip_interface(f"{addr}/{self.net6.prefixlen}")
         except IndexError:
-            raise ValueError("No more available IPv6 address")
+            raise ValueError("No more available IPv6 address") from None
 
     def use_ip_version(self, ip_version) -> bool:
         """Checks whether there are nodes using this IP version

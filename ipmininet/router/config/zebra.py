@@ -42,7 +42,9 @@ class QuaggaDaemon(RouterDaemon):
     @property
     def zebra_socket(self):
         """Return the path towards the zebra API socket for the given node"""
-        return os.path.join(self._node.cwd, "%s_%s.api" % ("quagga", self._node.name))
+        return os.path.join(
+            self._node.cwd, "{}_{}.api".format("quagga", self._node.name)
+        )
 
     def build(self):
         cfg = super().build()
@@ -98,10 +100,11 @@ class Zebra(QuaggaDaemon):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             sock.connect(self.zebra_socket)
-            sock.close()
-            return True
         except OSError:
             return False
+        else:
+            sock.close()
+            return True
 
 
 class CommunityList:
@@ -120,13 +123,15 @@ class CommunityList:
         :param community:
         """
         CommunityList.count += 1
-        self.name = name or "cml%d" % CommunityList.count
+        self.name = name or f"cml{CommunityList.count}"
         self.action = action
         self.community = community
         self.family = "community"
 
     def __eq__(self, other):
         return self.name == other.name and self.action == other.action
+
+    __hash__ = None
 
 
 class Entry:
@@ -147,8 +152,7 @@ class Entry:
                 _prefix = ip_network(prefix)
                 if family is not None:
                     assert get_family(_prefix) == family, (
-                        "prefix family %s != family (%s)"
-                        % (get_family(_prefix), family)
+                        f"prefix family {get_family(_prefix)} != family ({family})"
                     )
         else:
             _prefix = prefix
@@ -196,16 +200,15 @@ class PrefixListEntry(Entry):
 
         if le is not None:
             assert 0 <= le <= type_mask[self.family], (
-                "assertion %d <= le (%d) <= %d failed" % (0, le, type_mask[self.family])
+                f"assertion 0 <= le ({le}) <= {type_mask[self.family]} failed"
             )
         if ge is not None:
             assert 0 <= ge <= type_mask[self.family], (
-                "assertion %d <= ge (%d) <= %d failed" % (0, ge, type_mask[self.family])
+                f"assertion 0 <= ge ({ge}) <= {type_mask[self.family]} failed"
             )
         if le is not None and ge is not None:
             assert le >= ge, (
-                "assertion le (%d) >= ge (%d) failed! le must be lower than ge"
-                % (le, ge)
+                f"assertion le ({le}) >= ge ({ge}) failed! le must be lower than ge"
             )
 
         self.le = le
@@ -246,12 +249,12 @@ class ZebraList(ABC):
         """
 
         assert family in {"ipv4", "ipv6"}, (
-            "PrefixList unknown %s type. type must be either ipv4 or ipv6" % family
+            f"PrefixList unknown {family} type. type must be either ipv4 or ipv6"
         )
 
         ZebraList.count += 1
 
-        self.name = name or "%s%d" % (self.prefix_name, ZebraList.count)
+        self.name = name or f"{self.prefix_name}{ZebraList.count}"
         self.entries = []
         for e in entries:
             if isinstance(e, self.Entry):
@@ -259,21 +262,19 @@ class ZebraList(ABC):
                 self.entries.append(e)
             elif isinstance(e, str) and e == "any":
                 self.entries.append(self.Entry(prefix=e, family=family))
-            elif (
-                isinstance(e, IPv4Network)
-                or isinstance(e, IPv6Network)
-                or isinstance(e, str)
-            ):
+            elif isinstance(e, (IPv4Network, IPv6Network, str)):
                 self.entries.append(self.Entry(prefix=e))
             else:
                 raise ValueError(
-                    '"%s" is not a valid prefix entry for the %s family' % (e, family)
+                    f'"{e}" is not a valid prefix entry for the {family} family'
                 )
 
         self.family = family
 
     def __eq__(self, other):
         return self.name == other.name
+
+    __hash__ = None
 
 
 class PrefixList(ZebraList):
@@ -327,7 +328,7 @@ class RouteMapMatchCond:
         """
         if family:
             assert family in {"ipv4", "ipv6", "community"}, (
-                "Unrecognized family type (%s)" % family
+                f"Unrecognized family type ({family})"
             )
         self.condition = condition
         self.cond_type = cond_type
@@ -342,7 +343,7 @@ class RouteMapMatchCond:
         if self.family == "community":
             return "community"
 
-        raise ValueError("Unsupported family; %s" % self.family)
+        raise ValueError(f"Unsupported family; {self.family}")
 
     def __eq__(self, other):
         return (
@@ -350,6 +351,8 @@ class RouteMapMatchCond:
             and self.cond_type == other.cond_type
             and self.family == other.family
         )
+
+    __hash__ = None
 
 
 class RouteMapSetAction:
@@ -367,6 +370,8 @@ class RouteMapSetAction:
 
     def __eq__(self, other):
         return self.action_type == other.action_type and self.value == other.value
+
+    __hash__ = None
 
 
 class RouteMapEntry:
@@ -472,15 +477,16 @@ class RouteMap:
 
         assert family in {"ipv4", "ipv6", "community"}, "Unrecognized family"
 
-        self.name = name or "rm%d" % RouteMap.count
+        self.name = name or f"rm{RouteMap.count}"
 
-        self.entries = dict()  # type: Dict[int, 'RouteMapEntry']
+        self.entries = {}  # type: Dict[int, 'RouteMapEntry']
 
         self.neighbor = neighbor
         self.direction = direction
         self.proto = proto
         self.family = family
-        self._hi_order = 0  # used when adding a route map entry. Represents the highest route map entry added
+        # Highest route-map entry order added so far
+        self._hi_order = 0
 
         # used to indicate that the current route map has a default
         # entry that accepts all routes as default policy.
@@ -492,7 +498,7 @@ class RouteMap:
     def _inc_order(self):
         self._hi_order += 10
         assert self._hi_order < self.DEFAULT_POLICY, (
-            "Maximum route-map order exceeded (> %d)" % self.DEFAULT_POLICY
+            f"Maximum route-map order exceeded (> {self.DEFAULT_POLICY})"
         )
 
     def default_policy_set(self):
@@ -524,13 +530,14 @@ class RouteMap:
         if self != rm:
             raise ValueError("Attempting to update incompatible RouteMaps")
 
-        for order in rm.entries.keys():
+        for order in rm.entries:
             self.entry(rm.entries[order], order)
 
     def find_entry_by_match_condition(self, condition: Sequence["RouteMapMatchCond"]):
         for entry in self.entries:
             if self.entries[entry].match_cond == condition:
                 return self.entries[entry]
+        return None
 
     def __len__(self):
         return len(self.entries)
@@ -543,6 +550,8 @@ class RouteMap:
             and self.proto == other.proto
             and self.neighbor == other.neighbor
         )
+
+    __hash__ = None
 
     @property
     def describe(self):

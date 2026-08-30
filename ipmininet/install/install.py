@@ -16,7 +16,7 @@ ExaBGPVersion = "4.2.25"
 #      https://github.com/mininet/mininet/issues/1120
 MininetInstallCommit = "c3ba039a9781c6c5f475b7c88ff577185747a1da"
 
-os.environ["PATH"] = "%s:/sbin:/usr/sbin/:/usr/local/sbin" % os.environ["PATH"]
+os.environ["PATH"] = "{}:/sbin:/usr/sbin/:/usr/local/sbin".format(os.environ["PATH"])
 
 
 def _needs_rebuild(*paths: str) -> bool:
@@ -51,13 +51,13 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--install-frrouting",
-        help="Install FRRouting (version %s) daemons" % FRRoutingVersion,
+        help=f"Install FRRouting (version {FRRoutingVersion}) daemons",
         action="store_true",
     )
     parser.add_argument(
         "-e",
         "--install-exabgp",
-        help="Install ExaBGP (version %s) daemon" % ExaBGPVersion,
+        help=f"Install ExaBGP (version {ExaBGPVersion}) daemon",
         action="store_true",
     )
     parser.add_argument(
@@ -108,7 +108,7 @@ def install_mininet(output_dir: str, pip_install=True):
                 cwd=output_dir,
             )
             sh(
-                "git checkout %s" % MininetVersion,
+                f"git checkout {MininetVersion}",
                 cwd=os.path.join(output_dir, "mininet"),
             )
             sh("make mnexec", cwd=os.path.join(output_dir, "mininet"))
@@ -118,15 +118,15 @@ def install_mininet(output_dir: str, pip_install=True):
         sh("git clone https://github.com/mininet/mininet.git", cwd=output_dir)
     # Save valid version of mininet install script
     sh(
-        "git checkout %s" % MininetInstallCommit,
+        f"git checkout {MininetInstallCommit}",
         cwd=os.path.join(output_dir, "mininet/util"),
     )
     sh("cp install.sh install.tmp.sh", cwd=os.path.join(output_dir, "mininet/util"))
     # Use it in the fixed version of Mininet
-    sh("git checkout %s" % MininetVersion, cwd=os.path.join(output_dir, "mininet/util"))
+    sh(f"git checkout {MininetVersion}", cwd=os.path.join(output_dir, "mininet/util"))
     sh("mv install.tmp.sh install.sh", cwd=os.path.join(output_dir, "mininet/util"))
     sh(
-        "./install.sh %s -s ." % mininet_opts,
+        f"./install.sh {mininet_opts} -s .",
         cwd=os.path.join(output_dir, "mininet/util"),
     )
 
@@ -150,7 +150,7 @@ def install_libyang(output_dir: str):
         cwd=output_dir,
     )
     cloned_repo = os.path.join(output_dir, "libyang")
-    sh("git checkout %s" % LibyangVersion, "mkdir build", cwd=cloned_repo)
+    sh(f"git checkout {LibyangVersion}", "mkdir build", cwd=cloned_repo)
     sh(
         'cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="Release" ..',
         "make",
@@ -217,23 +217,23 @@ def install_frrouting(output_dir: str):
 
     frrouting_install = os.path.join(output_dir, "frr")
     if _needs_rebuild(os.path.join(frrouting_install, "sbin", "zebra")):
-        frrouting_src = os.path.join(output_dir, "frr-%s" % FRRoutingVersion)
+        frrouting_src = os.path.join(output_dir, f"frr-{FRRoutingVersion}")
         frrouting_tar = frrouting_src + ".tar.gz"
         sh(
             f"wget https://github.com/FRRouting/frr/releases/download/frr-{FRRoutingVersion}/"
             f"frr-{FRRoutingVersion}.tar.gz",
-            "tar -zxvf '%s'" % frrouting_tar,
+            f"tar -zxvf '{frrouting_tar}'",
             cwd=output_dir,
         )
 
         sh(
-            "./configure '--prefix=%s'" % frrouting_install,
+            f"./configure '--prefix={frrouting_install}'",
             "make",
             "make install",
             cwd=frrouting_src,
         )
 
-        sh("rm -r '%s' '%s'" % (frrouting_src, frrouting_tar))
+        sh(f"rm -r '{frrouting_src}' '{frrouting_tar}'")
 
     sh("groupadd frr", may_fail=True)
     sh("groupadd frrvty", may_fail=True)
@@ -242,7 +242,7 @@ def install_frrouting(output_dir: str):
 
     for curr_dir in ("sbin", "bin"):
         link_to_standard_dir(
-            os.path.join(frrouting_install, curr_dir), "/usr/%s" % curr_dir
+            os.path.join(frrouting_install, curr_dir), f"/usr/{curr_dir}"
         )
 
 
@@ -270,7 +270,7 @@ def install_openr(output_dir: str, may_fail=False):
 
 def install_exabgp(output_dir: str, may_fail=False):
     git_url = "https://github.com/Exa-Networks/exabgp.git"
-    exabgp_src_folder = "exabgp-%s-src" % ExaBGPVersion
+    exabgp_src_folder = f"exabgp-{ExaBGPVersion}-src"
     exabgp_path_src_dir = os.path.join(output_dir, exabgp_src_folder)
     exabgp_self_executable = os.path.join(output_dir, "exabgp")
     final_link = "/usr/sbin/exabgp"
@@ -286,7 +286,7 @@ def install_exabgp(output_dir: str, may_fail=False):
         may_fail=may_fail,
     )
 
-    sh("git checkout %s" % ExaBGPVersion, cwd=exabgp_path_src_dir, may_fail=may_fail)
+    sh(f"git checkout {ExaBGPVersion}", cwd=exabgp_path_src_dir, may_fail=may_fail)
 
     # create self-contained executable
     sh(
@@ -317,8 +317,8 @@ def enable_ipv6():
     grub_cfg = "/etc/default/grub"
     if not os.path.exists(grub_cfg):
         print(
-            "Skipping IPv6 grub configuration: %s not present"
-            " (e.g. inside a container)" % grub_cfg,
+            f"Skipping IPv6 grub configuration: {grub_cfg} not present"
+            " (e.g. inside a container)",
             file=sys.stderr,
         )
         return
@@ -350,6 +350,6 @@ if os.getuid() != 0:
 dist = identify_distribution()
 if dist is None:
     supported = ", ".join([d.NAME for d in supported_distributions()])
-    print("The installation script only supports %s" % supported)
+    print(f"The installation script only supports {supported}")
     sys.exit(1)
 dist.update()

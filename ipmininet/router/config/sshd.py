@@ -10,7 +10,7 @@ from .base import Daemon
 
 # Generate a new ssh keypair at each run
 KEYFILE = tempfile.mktemp(dir="/tmp")
-PUBKEY = "%s.pub" % KEYFILE
+PUBKEY = f"{KEYFILE}.pub"
 if os.path.exists(KEYFILE):
     os.unlink(KEYFILE)
 if os.path.exists(PUBKEY):
@@ -31,7 +31,7 @@ class SSHd(Daemon):
 
     @property
     def dry_run(self):
-        return "%s -t" % self.startup_line
+        return f"{self.startup_line} -t"
 
     def set_defaults(self, defaults):
         super().set_defaults(defaults)

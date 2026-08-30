@@ -61,7 +61,7 @@ class BGPPoliciesAdjustTopo(IPTopo):
         )
 
         routers = self.routers()
-        prefix = {routers[i]: "2001:db:%04x::/48" % i for i in range(len(routers))}
+        prefix = {routers[i]: f"2001:db:{i:04x}::/48" for i in range(len(routers))}
         as1r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as1r],)),))
         as2r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as2r],)),))
         as3r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as3r],)),))
@@ -105,7 +105,7 @@ class BGPPoliciesAdjustTopo(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            link = self.addLink(r, self.addHost("h%s" % r))
+            link = self.addLink(r, self.addHost(f"h{r}"))
             self.addSubnet(links=[link], subnets=[prefix[r]])
         super().build(*args, **kwargs)
 
@@ -118,19 +118,22 @@ class BGPPoliciesAdjustTopo(IPTopo):
         routers = self.routers()
         if self.as_start not in routers:
             raise ValueError(
-                "as_start '%s' is not an AS router among %s"
-                % (self.as_start, ", ".join(routers))
+                "as_start '{}' is not an AS router among {}".format(
+                    self.as_start, ", ".join(routers)
+                )
             )
         if self.as_end not in routers:
             raise ValueError(
-                "as_end '%s' is not an AS router among %s"
-                % (self.as_end, ", ".join(routers))
+                "as_end '{}' is not an AS router among {}".format(
+                    self.as_end, ", ".join(routers)
+                )
             )
         if self.bgp_policy not in [CLIENT_PROVIDER, SHARE]:
             raise ValueError(
-                "bgp_policy '%s' is not a BGP policy among %s"
-                % (self.bgp_policy, ", ".join([CLIENT_PROVIDER, SHARE]))
+                "bgp_policy '{}' is not a BGP policy among {}".format(
+                    self.bgp_policy, f"{CLIENT_PROVIDER}, {SHARE}"
+                )
             )
 
-        self.as_start = [r for r in routers if r == self.as_start][0]
-        self.as_end = [r for r in routers if r == self.as_end][0]
+        self.as_start = next(r for r in routers if r == self.as_start)
+        self.as_end = next(r for r in routers if r == self.as_end)

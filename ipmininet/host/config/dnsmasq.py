@@ -50,11 +50,11 @@ class Dnsmasq(HostDaemon):
 
     @property
     def cfg_filenames(self):
-        return [self._file(suffix="%s.cfg" % "_".join(self.intfs))]
+        return [self._file(suffix="{}.cfg".format("_".join(self.intfs)))]
 
     @property
     def template_filenames(self):
-        return super().template_filenames + ["%s.mako" % self.NAME]
+        return [*super().template_filenames, f"{self.NAME}.mako"]
 
     def set_defaults(self, defaults):
         pass

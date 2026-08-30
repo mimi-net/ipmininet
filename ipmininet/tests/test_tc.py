@@ -23,11 +23,12 @@ def assert_delay(
     src: IPNode, dst: IPNode, delay_target: float, tolerance=1.5, v6=False
 ):
     executable = "ping{v6}".format(v6="6" if v6 else "")
-    require_cmd(executable, help_str=f"{executable} is required to run tests")
-
-    cmd = "{executable} -c 10 {dst}".format(
-        executable=executable, dst=dst.intf().ip6 if v6 else dst.intf().ip
+    require_cmd(
+        executable,
+        help_str=f"{executable} is required to run tests",
     )
+
+    cmd = f"{executable} -c 10 {dst.intf().ip6 if v6 else dst.intf().ip}"
     out, err, exitcode = src.pexec(cmd)
 
     assert exitcode == 0, f"Cannot ping between {src} and {dst}: {err}"
@@ -59,7 +60,9 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1, v6=False)
         description=f"iperf3 server on {dst_ip} to start listening",
     )
     src.popen(
-        f"iperf3 -c {dst_ip}", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        f"iperf3 -c {dst_ip}",
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     out, err = iperf.communicate()
 

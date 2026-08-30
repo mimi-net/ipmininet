@@ -4,7 +4,7 @@ import subprocess
 
 import pytest
 
-import ipmininet.utils as utils
+from ipmininet import utils
 from ipmininet.clean import cleanup
 from ipmininet.examples.static_address_network import StaticAddressNet
 from ipmininet.ipnet import IPNet
@@ -100,10 +100,10 @@ def test_ip_address_format():
 def test_require_cmd(cmd, present):
     try:
         utils.require_cmd(cmd)
-        assert present, "The command [%s] was found while it is not present" % cmd
+        assert present, f"The command [{cmd}] was found while it is not present"
     except RuntimeError:
         assert not present, (
-            "The command [%s] could not be found while it is present" % cmd
+            f"The command [{cmd}] could not be found while it is present"
         )
 
 
@@ -145,13 +145,12 @@ def test_find_node(start, node, present):
         net.start()
         i = utils.find_node(net[start], node)
         if present:
-            assert i is not None, "Node %s not found from node %s" % (node, start)
-            assert i.node.name == node, "Node %s was found while we expected %s" % (
-                i.node.name,
-                node,
+            assert i is not None, f"Node {node} not found from node {start}"
+            assert i.node.name == node, (
+                f"Node {i.node.name} was found while we expected {node}"
             )
         else:
-            assert i is None, "Node %s should not be found from node %s" % (node, start)
+            assert i is None, f"Node {node} should not be found from node {start}"
         net.stop()
     finally:
         cleanup()

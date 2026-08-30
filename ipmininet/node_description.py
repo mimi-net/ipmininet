@@ -1,5 +1,5 @@
 import functools
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from ipmininet.host.config import HostConfig
 from ipmininet.router.config import (
@@ -9,6 +9,9 @@ from ipmininet.router.config import (
     OpenrRouterConfig,
 )
 from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
+
+if TYPE_CHECKING:
+    from ipmininet.iptopo import IPTopo
 
 
 class NodeDescription(str):
@@ -113,7 +116,7 @@ class LinkDescription:
             return self.src_intf
         if item == self.dst:
             return self.dst_intf
-        raise KeyError("Node '%s' is not on this link" % item)
+        raise KeyError(f"Node '{item}' is not on this link")
 
     # The following methods allow this object to behave like an edge key
     # for mininet.topo.MultiGraph

@@ -9,7 +9,8 @@ from .utils import ConfigDict
 class Representable(ABC):
     """
     String representation for ExaBGP configuration
-    Each sub-part of any ExaBGP route must be representable and must override the default __str__ function
+    Each sub-part of any ExaBGP route must be representable and must override
+    the default __str__ function
     """
 
     @abstractmethod
@@ -79,11 +80,11 @@ class ExaList(HexRepresentable):
         return self.lst
 
     def __init__(self, lst: list[int | str]):
-        assert isinstance(lst, list), "%s is not a list" % type(lst)
+        assert isinstance(lst, list), f"{type(lst)} is not a list"
         self.lst = lst
 
     def __str__(self) -> str:
-        return "[ %s ]" % " ".join([str(it) for it in self.lst])
+        return "[ {} ]".format(" ".join([str(it) for it in self.lst]))
 
 
 class BGPAttributeFlags(HexRepresentable):
@@ -93,15 +94,18 @@ class BGPAttributeFlags(HexRepresentable):
     When :
 
     * bit `O` is set to 0: the attribute is Well-Known. If 1, it is optional
-    * bit `T` is set to 0: the attribute is not Transitive. If 1, it is transitive
+    * bit `T` is set to 0: the attribute is not Transitive. If 1, it is
+      transitive
     * bit `P` is set to 0: the attribute is complete; If 1, partial
-    * bit `E` is set to 0: the attribute is of length < 256 bits. If set to 1: 256 <= length < 2^{16}
+    * bit `E` is set to 0: the attribute is of length < 256 bits. If set to
+      1: 256 <= length < 2^{16}
 
     The last 4 bits are unused
 
-    This class is notably used to define new attributes unknown from ExaBGP or change
-    the flags of a already known attribute. For example, the MED value is not transitive.
-    To make it transitive, put the transitive bit to 1.
+    This class is notably used to define new attributes unknown from ExaBGP
+    or change the flags of an already known attribute. For example, the MED
+    value is not transitive. To make it transitive, put the transitive bit
+    to 1.
     """
 
     @staticmethod
@@ -132,27 +136,25 @@ class BGPAttributeFlags(HexRepresentable):
 
     def __repr__(self):
         return (
-            "BGPAttributeFlags(opt=%d, transitive=%d, partial=%d, ext=%d, _hex=%s (%s))"
-            % (
-                self.optional,
-                self.transitive,
-                self.partial,
-                self.extended,
-                hex(self._hex),
-                bin(self._hex),
-            )
+            "BGPAttributeFlags("
+            f"opt={self.optional}, transitive={self.transitive}, "
+            f"partial={self.partial}, ext={self.extended}, "
+            f"_hex={hex(self._hex)} ({bin(self._hex)})"
+            ")"
         )
 
 
 class BGPAttribute(Representable):
     """
-    A BGP attribute as represented in ExaBGP. Either the Attribute is known from ExaBGP
-    and so the class uses its string representation. Or the attribute is not known, then
-    the class uses its hexadecimal representation. The latter representation is also useful
-    to modify flags of already known attributes. For example the MED value is a known attribute
-    which is not transitive. By passing a BGPAttributeFlags object to the constructor, it is
-    now possible to make is transitive with BGPAttributeFlags(1, 1, 0, 0) (both optional and
-    transitive bits are set to 1)
+    A BGP attribute as represented in ExaBGP. Either the Attribute is known
+    from ExaBGP and so the class uses its string representation. Or the
+    attribute is not known, then the class uses its hexadecimal
+    representation. The latter representation is also useful to modify flags
+    of already known attributes. For example the MED value is a known
+    attribute which is not transitive. By passing a BGPAttributeFlags object
+    to the constructor, it is now possible to make it transitive with
+    BGPAttributeFlags(1, 1, 0, 0) (both optional and transitive bits are set
+    to 1)
     """
 
     @property
@@ -175,7 +177,10 @@ class BGPAttribute(Representable):
         }
 
     def hex_repr(self) -> str:
-        return f"attribute [ {hex(self.type)} {self.flags.hex_repr()} {self.val.hex_repr()} ]"
+        return (
+            f"attribute [ {hex(self.type)} {self.flags.hex_repr()} "
+            f"{self.val.hex_repr()} ]"
+        )
 
     def str_repr(self) -> str:
         return f"{self.type!s} {self.val!s}"
@@ -187,22 +192,27 @@ class BGPAttribute(Representable):
         flags: Optional["BGPAttributeFlags"] = None,
     ):
         """
-        Constructs an Attribute known from ExaBGP or an unknown attribute if flags is
-        not None. It raises a ValueError if the initialisation of BGPAttribute fails. Either because type_attr
-        is not an int (for an unknown attribute), or the string of type_attr is not recognised
-        by ExaBGP (for a known attribute)
+        Constructs an Attribute known from ExaBGP or an unknown attribute if
+        flags is not None. It raises a ValueError if the initialisation of
+        BGPAttribute fails. Either because type_attr is not an int (for an
+        unknown attribute), or the string of type_attr is not recognised by
+        ExaBGP (for a known attribute)
 
-        :param attr_type: In the case of a Known attribute, attr_type is a valid string
-                          recognised by ExaBGP. In the case of an unknown attribute, attr_type is the integer
-                          ID of the attribute. If attr_type is a string it must be a valid string recognized
-                          by ExaBGP. Valid strings are:
-                          'next-hop', 'origin', 'med', 'as-path', 'local-preference', 'atomic-aggregate',
-                          'aggregator', 'originator-id', 'cluster-list','community', 'large-community',
-                          'extended-community', 'name', 'aigp'
+        :param attr_type: In the case of a Known attribute, attr_type is a
+                          valid string recognised by ExaBGP. In the case of
+                          an unknown attribute, attr_type is the integer ID
+                          of the attribute. Valid strings are:
+                          'next-hop', 'origin', 'med', 'as-path',
+                          'local-preference', 'atomic-aggregate',
+                          'aggregator', 'originator-id', 'cluster-list',
+                          'community', 'large-community', 'extended-community',
+                          'name', 'aigp'
         :param val: The actual value of the attribute
-        :param flags: If None, the BGPAttribute object contains a known attribute from ExaBGP.
-                      In this case, the representation of this attribute will be a string.
-                      If flags is an instance of BGPAttribute, the hexadecimal representation will be used
+        :param flags: If None, the BGPAttribute object contains a known
+                      attribute from ExaBGP. In this case, the representation
+                      of this attribute will be a string. If flags is an
+                      instance of BGPAttribute, the hexadecimal representation
+                      will be used
         """
 
         if flags is None:
@@ -244,7 +254,7 @@ class BGPRoute(Representable):
     def __str__(self):
         route = f"unicast {self.IPNetwork!s}"
         for attr in self.attributes:
-            route += " %s" % str(attr)
+            route += f" {attr!s}"
 
         return route
 
@@ -256,9 +266,8 @@ class BGPRoute(Representable):
             return self.IPNetwork
 
         for attr in self.attributes:
-            if isinstance(attr.type, str):
-                if attr.type == item:
-                    return attr
+            if isinstance(attr.type, str) and attr.type == item:
+                return attr
         return None
 
 
@@ -267,7 +276,7 @@ class ExaBGPDaemon(AbstractBGP):
     KILL_PATTERNS = (NAME,)
 
     def __init__(self, node, port=BGP_DEFAULT_PORT, *args, **kwargs):
-        super().__init__(node=node, *args, **kwargs)
+        super().__init__(*args, node=node, **kwargs)
         self.port = port
 
     def build(self):
@@ -294,11 +303,11 @@ class ExaBGPDaemon(AbstractBGP):
 
     @property
     def cfg_filenames(self):
-        return super().cfg_filenames + [self.env_filename]
+        return [*super().cfg_filenames, self.env_filename]
 
     @property
     def template_filenames(self):
-        return super().template_filenames + ["%s_env.mako" % self.NAME]
+        return [*super().template_filenames, f"{self.NAME}_env.mako"]
 
     @property
     def startup_line(self) -> str:
@@ -312,21 +321,24 @@ class ExaBGPDaemon(AbstractBGP):
         """
         Modifies the default configuration of this ExaBGP daemon
 
-        :param env: a dictionary of all the environment variables that configure ExaBGP.
-                    Type "exabgp --help" to take a look on every environment variable.
-                    env.tcp.delay is set by default to 2 min as FRRouting BGPD daemon
-                    seems to reject routes if ExaBGP injects routes to early.
-                    Each environment variable is either a string or an int.
+        :param env: a dictionary of all the environment variables that
+                    configure ExaBGP. Type "exabgp --help" to take a look on
+                    every environment variable. env.tcp.delay is set by
+                    default to 2 min as FRRouting BGPD daemon seems to reject
+                    routes if ExaBGP injects routes to early. Each environment
+                    variable is either a string or an int.
 
                     The following environment variable are set :
 
                     * daemon.user = 'root'
                     * daemon.drop = 'false'
                     * daemon.daemonize = 'false'
-                    * daemon.pid = <default configuration folder /tmp/exabgp_<node>.pid>
+                    * daemon.pid = <default configuration folder
+                      /tmp/exabgp_<node>.pid>
 
                     * log.level = 'CRIT'
-                    * log.destination = <default configuration folder /tmp/exabgp_<node>.log>
+                    * log.destination = <default configuration folder
+                      /tmp/exabgp_<node>.log>
                     * log.reactor = 'false'
                     * log.processes = false'
                     * log.network = 'false'
@@ -334,10 +346,12 @@ class ExaBGPDaemon(AbstractBGP):
                     * api.cli = 'false'
 
                     * tcp.delay = 2 # waits at most 2 minutes
-        :param address_families: the routes to inject for both IPv4 and IPv6 unicast AFI.
-        :param passive: Tells to ExaBGP to not send active BGP Open messages. The daemon
-                        waits until the remote peer sends first the Open message to start
-                        the BGP session. Its default value is set to True.
+        :param address_families: the routes to inject for both IPv4 and IPv6
+                                 unicast AFI.
+        :param passive: Tells to ExaBGP to not send active BGP Open messages.
+                        The daemon waits until the remote peer sends first
+                        the Open message to start the BGP session. Its default
+                        value is set to True.
         """
         defaults.base_env = ConfigDict(
             daemon=ConfigDict(
@@ -357,8 +371,9 @@ class ExaBGPDaemon(AbstractBGP):
                 delay=2  # wait at most 2 minutes before sending UPDATE, the other peer
                 # may not be ready yet. FRRouting do not accept incoming routes
                 # if ExaBGP sends directly its routes. Debugging information
-                # says that routes are denied due to a "deny" action from a route map
-                # (rcvd UPDATE about 8.8.8.0/24 IPv4 unicast -- DENIED due to: route-map;)
+                # says that routes are denied due to a "deny" action from a
+                # route map
+                # (rcvd UPDATE about 8.8.8.0/24 -- DENIED due to route-map;)
                 # However, if the daemon waits a little bit, routes are all
                 # accepted...
             ),

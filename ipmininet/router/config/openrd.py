@@ -17,8 +17,7 @@ class OpenrDaemon(RouterDaemon):
         return f"{self.NAME} {self._cfg_options()} {self.STARTUP_LINE_EXTRA}"
 
     def build(self):
-        cfg = ConfigDict()
-        return cfg
+        return ConfigDict()
 
     def _defaults(self, **kwargs):
         """

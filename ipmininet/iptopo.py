@@ -1,7 +1,7 @@
 """This module defines topology class that supports adding L3 routers"""
 
 import itertools
-from typing import Any
+from typing import Any, ClassVar
 
 from mininet.log import lg
 from mininet.topo import Topo
@@ -28,7 +28,7 @@ from ipmininet.utils import get_set, is_container
 class IPTopo(Topo):
     """A topology that supports L3 routers"""
 
-    OVERLAYS = {
+    OVERLAYS: ClassVar[dict[str, type["Overlay"]]] = {
         cls.__name__: cls
         for cls in (
             AS,
@@ -104,14 +104,12 @@ class IPTopo(Topo):
             # and the specific options of the router
             n, opt = router_info if is_container(router_info) else (router_info, {})
             # Merge router options by giving precedence to specific ones
-            router_opts = {
-                k: v for k, v in itertools.chain(common_opts.items(), opt.items())
-            }
+            router_opts = dict(itertools.chain(common_opts.items(), opt.items()))
             try:
                 new_routers.append(self.addRouter(n, **router_opts))
-            except Exception as e:
+            except Exception:
                 lg.error(f"Cannot create router '{n}' with options '{router_opts}'")
-                raise e
+                raise
 
         return new_routers
 
@@ -130,10 +128,9 @@ class IPTopo(Topo):
         )
 
         # Create an abstraction to allow additional calls
-        link_description = LinkDescription(
+        return LinkDescription(
             self, node1, node2, key, self.linkInfo(node1, node2, key)
         )
-        return link_description
 
     def addLinks(
         self, *links: tuple[str, str] | tuple[str, str, dict[str, Any]], **common_opts
@@ -145,20 +142,18 @@ class IPTopo(Topo):
         :param common_opts: common link options (optional)"""
 
         new_links = []
-        for u, v, *opt in links:
+        for u, v, *opts in links:
             # Merge link options by giving precedence to specific ones
-            opt = opt[0] if opt else {}
-            link_opts = {
-                k: v for k, v in itertools.chain(common_opts.items(), opt.items())
-            }
+            opt = opts[0] if opts else {}
+            link_opts = dict(itertools.chain(common_opts.items(), opt.items()))
             try:
                 new_links.append(self.addLink(u, v, **link_opts))
-            except Exception as e:
+            except Exception:
                 lg.error(
                     f"Cannot create link between '{u}' and '{v}'"
                     f" with options '{link_opts}'"
                 )
-                raise e
+                raise
 
         return new_links
 
@@ -200,8 +195,7 @@ class IPTopo(Topo):
         returns: hub name"""
         if not opts and self.sopts:
             opts = self.sopts
-        result = self.addSwitch(name, stp=False, hub=True, **opts)
-        return result
+        return self.addSwitch(name, stp=False, hub=True, **opts)
 
     def isRouter(self, n: str) -> bool:
         """Check whether the given node is a router
@@ -242,7 +236,7 @@ class IPTopo(Topo):
             except KeyError:
                 pass
         raise AttributeError(
-            "%s is neither a method of IPTopo nor refers to any known overlay" % item
+            f"{item} is neither a method of IPTopo nor refers to any known overlay"
         )
 
     def getNodeInfo(self, n: str, key, default: type):

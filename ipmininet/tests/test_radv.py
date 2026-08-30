@@ -98,8 +98,8 @@ def test_radvd_daemon_params(link_params, expected_cfg):
             cfg = fileobj.readlines()
             for line in expected_cfg:
                 assert line + "\n" in cfg, (
-                    "Cannot find the line '%s' in the generated"
-                    " configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated"
+                    " configuration:\n{}".format(line, "".join(cfg))
                 )
 
         # Check reachability
@@ -119,9 +119,9 @@ def test_radvd_cleanup():
         try:
             net["r"].nconfig.daemon(RADVD).cleanup()
         except Exception as e:
-            assert False, (
-                "An exception '%s' was raised while cleaning twice RADVD daemon" % e
-            )
+            raise AssertionError(
+                f"An exception '{e}' was raised while cleaning twice RADVD daemon"
+            ) from e
         net.stop()
     finally:
         cleanup()

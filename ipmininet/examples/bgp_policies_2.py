@@ -73,7 +73,7 @@ class BGPPoliciesTopo2(IPTopo):
         ebgp_session(self, as4r1, as3r1, link_type=SHARE)
         # Add test hosts
         for r in self.routers():
-            self.addLink(r, self.addHost("h%s" % r))
+            self.addLink(r, self.addHost(f"h{r}"))
         super().build(*args, **kwargs)
 
     def bgp(self, name):

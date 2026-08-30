@@ -164,9 +164,9 @@ get_rib = (
 
 
 def prepare_rib_lookup_script(rib_script) -> Sequence[tuple[str, str]]:
-    scripts = list()
+    scripts = []
     for family in ("ipv4", "ipv6"):
-        super_path = "/tmp/_get_%s_rib.sh" % family
+        super_path = f"/tmp/_get_{family}_rib.sh"
         scripts.append((super_path, family))
         with closing(open(super_path, "w")) as f:
             f.write(rib_script.format(host="localhost", port=2605, family=family))
@@ -177,9 +177,9 @@ def prepare_rib_lookup_script(rib_script) -> Sequence[tuple[str, str]]:
 def get_rib_routes(node, command, family):
     """Return the parsed BGP RIB routes for the given family, or None if the
     RIB cannot be read yet (e.g. the router has not fully started)."""
-    my_output = node.popen("sh %s" % command)
+    my_output = node.popen(f"sh {command}")
     my_output.wait()
-    out, err = my_output.communicate()
+    out, _err = my_output.communicate()
 
     output = out.decode(errors="ignore")
 
@@ -222,8 +222,8 @@ def wait_for_expected_routes(node, rib_scripts, topo, timeout=540, poll=5):
         timeout=timeout,
         interval=poll,
         description=lambda: (
-            "the routes injected by ExaBGP to appear in the "
-            "BGP RIB within %ds. Missing: %s" % (timeout, missing)
+            f"the routes injected by ExaBGP to appear in the "
+            f"BGP RIB within {timeout}s. Missing: {missing}"
         ),
     )
 
@@ -249,11 +249,8 @@ def check_correct_rib(node, rib_scripts, topo):
             rib_route = rib_routes[str_ipnet][0]
 
             assert rib_route["origin"].lower() == our_route["origin"].val, (
-                "Bad origin for route {route}. Expected {origin_expect}. Received {origin_real}".format(
-                    route=our_route.IPNetwork,
-                    origin_expect=our_route["origin"].val,
-                    origin_real=rib_route["origin"],
-                )
+                f"Bad origin for route {our_route.IPNetwork}. Expected "
+                f"{our_route['origin'].val}. Received {rib_route['origin']}"
             )
 
             check_as_path(rib_route["path"], our_route["as-path"].val)
@@ -276,12 +273,16 @@ def check_next_hop(
     for next_hop in next_hops:
         rib_next_hop = ip_address(next_hop["ip"])
 
-        if isinstance(rib_next_hop, IPv4Address):
-            if rib_next_hop == expected_nh["ipv4"].ip:
-                return True
-        elif isinstance(rib_next_hop, IPv6Address):
-            if rib_next_hop == expected_nh["ipv6"].ip:
-                return True
+        if (
+            isinstance(rib_next_hop, IPv4Address)
+            and rib_next_hop == expected_nh["ipv4"].ip
+        ):
+            return True
+        if (
+            isinstance(rib_next_hop, IPv6Address)
+            and rib_next_hop == expected_nh["ipv6"].ip
+        ):
+            return True
 
     return False
 
@@ -296,9 +297,12 @@ def check_as_path(as_path_rib: str, as_path_us: ExaList):
         expected=as_rib_us, received=as_path_rib
     )
 
-    for idx, asn_received, asn_expected in zip(range(len(as_rib)), as_rib, as_rib_us):
+    for idx, asn_received, asn_expected in zip(
+        range(len(as_rib)), as_rib, as_rib_us, strict=False
+    ):
         assert asn_received == asn_expected, (
-            f"Bad ASN at index {idx}. Expected AS{asn_expected}. Received AS{asn_received}"
+            f"Bad ASN at index {idx}. Expected AS{asn_expected}. "
+            f"Received AS{asn_received}"
         )
 
 

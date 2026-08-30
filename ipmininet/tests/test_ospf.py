@@ -185,8 +185,8 @@ def test_ospf_daemon_params(node_params, ospf_params, link_params, exp_cfg, exp_
             cfg = fileobj.readlines()
             for line in exp_cfg:
                 assert line + "\n" in cfg, (
-                    "Cannot find the line '%s' in the generated "
-                    "configuration:\n%s" % (line, "".join(cfg))
+                    "Cannot find the line '{}' in the generated "
+                    "configuration:\n{}".format(line, "".join(cfg))
                 )
 
         # Check reachability and paths

@@ -81,9 +81,12 @@ class Named(HostDaemon):
 
     def build_zone(self, zone: "DNSZone") -> ConfigDict:
         master_ips = []
-        for s_name in (
-            zone.servers + [zone.dns_master] + zone.dns_slaves + zone.delegation_servers
-        ):
+        for s_name in [
+            *zone.servers,
+            zone.dns_master,
+            *zone.dns_slaves,
+            *zone.delegation_servers,
+        ]:
             server_itf = find_node(self._node, dns_base_name(s_name))
             if server_itf is None:
                 lg.error(
@@ -240,7 +243,7 @@ class Named(HostDaemon):
         super().set_defaults(defaults)
 
     def zone_filename(self, domain_name: str) -> str:
-        return self._file(suffix="%szone.cfg" % domain_name)
+        return self._file(suffix=f"{domain_name}zone.cfg")
 
     @property
     def cfg_filenames(self):
@@ -253,7 +256,7 @@ class Named(HostDaemon):
     @property
     def template_filenames(self):
         return super().template_filenames + [
-            "%s-zone.mako" % self.NAME
+            f"{self.NAME}-zone.mako"
             for _ in self._node.get("dns_zones", []) + self.additional_zone_filenames
         ]
 
@@ -416,10 +419,10 @@ class DNSZone(Overlay):
             expire_time=expire_time,
             min_ttl=min_ttl,
         )
-        super().__init__(nodes=[dns_master] + list(dns_slaves))
+        super().__init__(nodes=[dns_master, *list(dns_slaves)])
 
         self.consistent = True
-        for node_name in [dns_master] + self.dns_slaves + self.servers:
+        for node_name in [dns_master, *self.dns_slaves, *self.servers]:
             if "." in node_name:
                 lg.error(
                     f"Cannot create zone {self.name} because the node name"
@@ -495,7 +498,7 @@ class DNSZone(Overlay):
 
         for zone in self.delegated_zones:
             # Create NSRecords for the delegated subdomains
-            for ns in [zone.dns_master] + zone.dns_slaves:
+            for ns in [zone.dns_master, *zone.dns_slaves]:
                 record = NSRecord(zone.name, dns_join_name(ns, zone.ns_domain_name))
                 self.add_record(record)
                 self.delegation_servers.append(record.name_server)

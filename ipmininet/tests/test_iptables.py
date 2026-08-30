@@ -15,22 +15,21 @@ def test_iptables_example():
         net.start()
 
         ip = net["r2"].intf("r2-eth0").ip
-        cmd = "ping -W 1 -c 1 %s" % ip
+        cmd = f"ping -W 1 -c 1 {ip}"
         p = net["r1"].popen(cmd.split(" "))
         out, err = p.communicate()
         ret = p.poll()
         assert ret == 0, (
-            "Pings over IPv4 should not be blocked.\n"
-            "[stdout]\n%s\n[stderr]\n%s" % (out, err)
+            f"Pings over IPv4 should not be blocked.\n[stdout]\n{out}\n[stderr]\n{err}"
         )
 
         ip6 = net["r2"].intf("r2-eth0").ip6
-        cmd = "ping6 -W 1 -c 1 %s" % ip6
+        cmd = f"ping6 -W 1 -c 1 {ip6}"
         wait_until(
             lambda: net["r1"].popen(cmd.split(" ")).wait() != 0,
             timeout=50,
             interval=5,
-            description="IPv6 pings from %s to %s to be blocked" % (net["r1"], ip6),
+            description="IPv6 pings from {} to {} to be blocked".format(net["r1"], ip6),
         )
 
         ret, _, _ = check_tcp_connectivity(
@@ -69,7 +68,7 @@ def test_iptables_example():
         )
         assert ret == 0, (
             "TCP over port 80 should not be blocked over IPv6.\n"
-            "[stdout]\n%s\n[stderr]\n%s" % (out, err)
+            f"[stdout]\n{out}\n[stderr]\n{err}"
         )
 
         net.stop()

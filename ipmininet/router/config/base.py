@@ -6,7 +6,7 @@ configuration for a router."""
 import abc
 import os
 from collections.abc import Iterable, Sequence
-from contextlib import closing
+from contextlib import closing, suppress
 from ipaddress import ip_address
 from operator import attrgetter
 from typing import (
@@ -30,8 +30,6 @@ if TYPE_CHECKING:
 DaemonOption = Union[
     "Daemon", type["Daemon"], tuple[Union["Daemon", type["Daemon"]], dict]
 ]
-
-last_routerid = ip_address("0.0.0.1")
 
 __TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 router_template_lookup = TemplateLookup(directories=[__TEMPLATES_DIR])
@@ -117,8 +115,8 @@ class NodeConfig:
                 cls, kw = cls
             except ValueError:
                 raise TypeError(
-                    "Expected a tuple (Daemon, dict)  but got %s" % str(cls)
-                )
+                    f"Expected a tuple (Daemon, dict)  but got {cls!s}"
+                ) from None
             daemon_opts.update(kw)
         if cls.NAME in self._daemons:
             return
@@ -127,7 +125,7 @@ class NodeConfig:
                 cls = cls(self._node, **daemon_opts)
             else:
                 raise TypeError(
-                    "Expected an object or a subclass of Daemon, got %s instead" % cls
+                    f"Expected an object or a subclass of Daemon, got {cls} instead"
                 )
         else:
             cls.options.update(daemon_opts)
@@ -152,9 +150,8 @@ class NodeConfig:
                 self._sysctl[key] = val
             except ValueError:
                 raise ValueError(
-                    "sysctl must be specified using `key=val` "
-                    "format. Ignoring %s" % value
-                )
+                    f"sysctl must be specified using `key=val` format. Ignoring {value}"
+                ) from None
 
     @property
     def daemons(self):
@@ -166,10 +163,7 @@ class NodeConfig:
         :param key: the daemon name or a daemon class or instance
         :return: the Daemon object
         :raise KeyError: if not found"""
-        if not isinstance(key, str):
-            key_str = key.NAME
-        else:
-            key_str = key
+        key_str = key.NAME if not isinstance(key, str) else key
         return self._daemons[key_str]
 
     def add_private_fs_path(self, loc: Sequence[str | tuple[str, str]] = ()):
@@ -195,11 +189,14 @@ class NodeConfig:
 
 
 class RouterConfig(NodeConfig):
+    # Last generated router id
+    _last_routerid = ip_address("0.0.0.1")
+
     def __init__(self, node: "Router", sysctl=None, *args, **kwargs):
         self._sysctl = {"net.ipv4.ip_forward": 1, "net.ipv6.conf.all.forwarding": 1}
         if sysctl:
             self._sysctl.update(sysctl)
-        super().__init__(node, sysctl=self._sysctl, *args, **kwargs)
+        super().__init__(node, *args, sysctl=self._sysctl, **kwargs)
         self.routerid = None
 
     def post_register_daemons(self):
@@ -207,16 +204,15 @@ class RouterConfig(NodeConfig):
         # Set the router id
         self.routerid = self.compute_routerid()
 
-    @staticmethod
-    def incr_last_routerid():
-        global last_routerid
-        last_routerid += 1
+    @classmethod
+    def incr_last_routerid(cls):
+        cls._last_routerid += 1
 
     def _equal_routerid(self, n: "Router") -> bool:
 
         # Router id of 'n' already set
         if n.nconfig.routerid:
-            return str(n.nconfig.routerid) != str(last_routerid)
+            return str(n.nconfig.routerid) != str(self._last_routerid)
 
         # Check that a router id explicitly set
         # in any other daemon is not in conflict
@@ -225,7 +221,7 @@ class RouterConfig(NodeConfig):
             if (
                 d != self
                 and d.options.routerid
-                and str(d.options.routerid) == str(last_routerid)
+                and str(d.options.routerid) == str(self._last_routerid)
             ):
                 return True
 
@@ -234,10 +230,9 @@ class RouterConfig(NodeConfig):
         ip_list = sorted(
             (ip for itf in n.intfList() for ip in itf.ips()), key=OrderedAddress
         )
-        if len(ip_list) != 0 and str(ip_list.pop().ip) == str(last_routerid):
-            return True
-
-        return False
+        return bool(
+            len(ip_list) != 0 and str(ip_list.pop().ip) == str(self._last_routerid)
+        )
 
     def compute_routerid(self) -> str:
         """Computes the default router id for all daemons.
@@ -272,7 +267,7 @@ class RouterConfig(NodeConfig):
                             break  # We need to change the router id
                         to_visit.extend(realIntfList(n.node))
                 to_visit = realIntfList(self._node) if to_visit else []
-            return last_routerid.compressed
+            return self._last_routerid.compressed
         return ip_list.pop().ip.compressed
 
 
@@ -327,10 +322,8 @@ class Daemon(metaclass=abc.ABCMeta):
     def cleanup(self):
         """Cleanup the files belonging to this daemon"""
         for f in self.files:
-            try:
+            with suppress(OSError):
                 os.unlink(f)
-            except OSError:
-                pass
         self.files = []
 
     def render(self, cfg, **kwargs) -> dict[str, str]:
@@ -342,7 +335,7 @@ class Daemon(metaclass=abc.ABCMeta):
         self.files.extend(self.cfg_filenames)
         cfg_content = {}
         for i, filename in enumerate(self.cfg_filenames):
-            log.debug("Generating %s\n" % filename)
+            log.debug(f"Generating {filename}\n")
             try:
                 cfg.current_filename = filename
                 kwargs["node"] = cfg
@@ -356,9 +349,8 @@ class Daemon(metaclass=abc.ABCMeta):
                 )
                 log.error(mako.exceptions.text_error_template().render())
                 raise ValueError(
-                    "Cannot render a configuration [%s: %s]"
-                    % (self._node.name, self.NAME)
-                )
+                    f"Cannot render a configuration [{self._node.name}: {self.NAME}]"
+                ) from None
         return cfg_content
 
     def write(self, cfg: dict[str, str]):
@@ -383,7 +375,7 @@ class Daemon(metaclass=abc.ABCMeta):
     def _filename(self, suffix: str) -> str:
         """Return a filename for this daemon and node,
         with the specified suffix"""
-        return "%s_%s.%s" % (self.NAME, self._node.name, suffix)
+        return f"{self.NAME}_{self._node.name}.{suffix}"
 
     def _filepath(self, f: str) -> str:
         """Return a path towards a given file"""
@@ -407,7 +399,7 @@ class Daemon(metaclass=abc.ABCMeta):
 
     @property
     def template_filenames(self) -> list[str]:
-        return ["%s.mako" % self.NAME]
+        return [f"{self.NAME}.mako"]
 
     def _defaults(self, **kwargs) -> ConfigDict:
         """Return the default options for this daemon
@@ -477,7 +469,7 @@ class BasicRouterConfig(RouterConfig):
         if node.use_v6:
             d.append(OSPF6)
         d.extend(additional_daemons)
-        super().__init__(node, daemons=d, *args, **kwargs)
+        super().__init__(node, *args, daemons=d, **kwargs)
 
 
 class BorderRouterConfig(BasicRouterConfig):
@@ -505,7 +497,7 @@ class BorderRouterConfig(BasicRouterConfig):
         if af:
             d = list(daemons)
             d.append((BGP, {"address_families": af}))
-        super().__init__(node, daemons=d, *args, **kwargs)
+        super().__init__(node, *args, daemons=d, **kwargs)
 
 
 class OpenrRouterConfig(RouterConfig):
@@ -528,4 +520,4 @@ class OpenrRouterConfig(RouterConfig):
         daemon_list = list(daemons)
         daemon_list.append(Openr)
         daemon_list.extend(additional_daemons)
-        super().__init__(node, daemons=daemon_list, *args, **kwargs)
+        super().__init__(node, *args, daemons=daemon_list, **kwargs)

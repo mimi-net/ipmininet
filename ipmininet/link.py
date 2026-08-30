@@ -167,7 +167,7 @@ class IPIntf(_m.TCIntf):
         | IPv6Interface
         | Sequence[str | IPv4Interface | IPv6Interface],
         prefixLen: int | None = None,
-    ) -> None | list[str] | str:
+    ) -> list[str] | str | None:
         """Set one or more IP addresses, possibly from different families.
         This will remove previously set addresses of the affected families.
 
@@ -186,18 +186,19 @@ class IPIntf(_m.TCIntf):
         # We want to iterate over the new ip sets
         if not is_container(ip):
             ip = (ip,)
-        for addr in ip:
+        for a in ip:
             # Make sure we have ip_interface-like objects
+            addr = a
             if isinstance(addr, str):
                 if "/" not in addr and prefixLen is not None:
                     # And use the default prefix if absent
-                    addr = ip_interface("%s/%s" % (addr, prefixLen))
+                    addr = ip_interface(f"{addr}/{prefixLen}")
                 else:
                     # no prefixLen defaults to full /128 or /32
                     addr = ip_interface(str(addr))
 
             # Prepare assignment commands
-            cmds.append("ip address add dev %s %s" % (self.name, addr.with_prefixlen))
+            cmds.append(f"ip address add dev {self.name} {addr.with_prefixlen}")
             # Record assignment family
             if addr.version == 4:
                 setv4 = True
@@ -331,7 +332,7 @@ class IPLink(_m.Link):
         self, node1: str, node2: str, intf: type[IPIntf] = IPIntf, *args, **kwargs
     ):
         """We override Link intf default to use IPIntf"""
-        super().__init__(node1=node1, node2=node2, intf=intf, *args, **kwargs)
+        super().__init__(*args, node1=node1, node2=node2, intf=intf, **kwargs)
 
 
 # This aliases is there for a historical reason: IPIntf used to extend
@@ -346,6 +347,8 @@ class OrderedAddress:
 
     def __eq__(self, other):
         return address_comparator(self.addr, other.addr) == 0
+
+    __hash__ = None
 
     def __lt__(self, other):
         return address_comparator(self.addr, other.addr) < 0
@@ -398,21 +401,18 @@ class PhysicalInterface(IPIntf):
         try:
             node = kw["node"]
         except KeyError:
-            raise ValueError("PhysicalInterface() requires a node= argument")
+            raise ValueError("PhysicalInterface() requires a node= argument") from None
         # Save the addresses from the root namespace
         try:
             _, v4, v6 = _addresses_of(name, node=None)
         except (subprocess.CalledProcessError, OSError):
             log.error("Cannot retrieve the addresses of interface", name, "!")
-            raise ValueError("Unknown physical interface name")
-        if node.inNamespace:
-            # cfr man ip-link; some devices cannot change of net ns
-            if "netns-local: on" in subprocess.check_output(
-                ("ethtool", "-k", name)
-            ).decode("utf-8"):
-                log.error(
-                    "Cannot move interface", name, "into another network namespace!"
-                )
+            raise ValueError("Unknown physical interface name") from None
+        # cfr man ip-link; some devices cannot change of net ns
+        if node.inNamespace and "netns-local: on" in subprocess.check_output(
+            ("ethtool", "-k", name)
+        ).decode("utf-8"):
+            log.error("Cannot move interface", name, "into another network namespace!")
         super().__init__(name, *args, **kw)
         # Exclude link locals ...
         v4.extend(ip for ip in v6 if not ip.is_link_local)
@@ -465,7 +465,7 @@ class GRETunnel:
 
     @staticmethod
     def _gre_name(x) -> str:
-        return "gre-%s" % x
+        return f"gre-{x}"
 
     @staticmethod
     def _add_tunnel(

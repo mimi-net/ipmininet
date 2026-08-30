@@ -5,6 +5,7 @@ daemon instances, one to manage iptables, one to manage ip6tables ..."""
 from itertools import groupby
 from operator import attrgetter
 from os import EX_OK
+from typing import ClassVar
 
 from ipmininet.utils import is_container
 
@@ -91,7 +92,7 @@ class Chain:
     """
 
     # See the iptables doc for the possible table->chains mappings
-    TABLE_CHAINS = {
+    TABLE_CHAINS: ClassVar[dict[str, set[str]]] = {
         "filter": {"INPUT", "OUTPUT", "FORWARD"},
         "nat": {"PREROUTING", "INTPUT", "OUTPUT", "POSTROUTING"},
         "mangle": {"PREROUTING", "INTPUT", "OUTPUT", "FORWARD", "POSTROUTING"},
@@ -112,17 +113,19 @@ class Chain:
             _table = str(table).lower()
             allowed_chains = self.TABLE_CHAINS[_table]
         except KeyError:
-            raise ValueError("%s does not match to an IPTables table name" % table)
+            raise ValueError(
+                f"{table} does not match to an IPTables table name"
+            ) from None
 
         self.table = _table
         _name = str(name).upper()
         if _name not in allowed_chains:
-            raise ValueError("%s is not an allowed Chain for table %s" % (name, table))
+            raise ValueError(f"{name} is not an allowed Chain for table {table}")
 
         self.name = _name
         _default = str(default).upper()
         if _default != "DROP" and _default != "ACCEPT":
-            raise ValueError("%s is an invalid default policy" % default)
+            raise ValueError(f"{default} is an invalid default policy")
 
         self.default = _default
         self.rules = rules
@@ -138,7 +141,7 @@ class ChainRule:
     embedded in a chain."""
 
     # For convenience, provide more readable aliases of common parameters
-    ALIASES = {
+    ALIASES: ClassVar[dict[str, str]] = {
         alias: code
         for code, aliases in (
             ("o", ("oif", "out_intf", "out_interface")),
@@ -172,7 +175,7 @@ class ChainRule:
 
         unknown_args = set(kwargs.keys()).difference(self.ALIASES.keys())
         if unknown_args:
-            raise ValueError("Unknown parameters: %s" % unknown_args)
+            raise ValueError(f"Unknown parameters: {unknown_args}")
 
         args = {self.ALIASES[k]: v for k, v in kwargs.items()}
         self.oif = InterfaceClause("o", args)
@@ -201,7 +204,7 @@ class ChainRule:
             sub_rule.extend(
                 [sub_clause for sub_clause in clause.build() if sub_clause is not None]
             )
-        return "%s -j %s" % (" ".join(sub_rule), self.action)
+        return "{} -j {}".format(" ".join(sub_rule), self.action)
 
 
 class NOT:
@@ -256,7 +259,7 @@ class PortClause(MatchClause):
         else:
             self.val = ",".join(self.val)
         self.prefix = "-m multiport "
-        self.code = "%ss" % self.code
+        self.code = f"{self.code}s"
 
 
 class InterfaceClause(MatchClause):

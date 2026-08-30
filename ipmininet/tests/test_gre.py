@@ -30,8 +30,10 @@ def test_gre_example():
             timeout=60,
             interval=0.5,
             description=lambda: (
-                "the GRE tunnel from %s to 10.0.1.2 to be "
-                "usable\n[stdout]\n%s\n[stderr]\n%s" % (net["h1"], last_out, last_err)
+                "the GRE tunnel from {} to 10.0.1.2 to be "
+                "usable\n[stdout]\n{}\n[stderr]\n{}".format(
+                    net["h1"], last_out, last_err
+                )
             ),
         )
 

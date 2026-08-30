@@ -18,7 +18,7 @@ class ConfigDict(dict):
         try:
             # But preserve i.e. methods
             return super().__getattr__(item)
-        except Exception:
+        except AttributeError:
             try:
                 return self[item]
             except KeyError:

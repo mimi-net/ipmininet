@@ -56,7 +56,7 @@ class AS(Overlay):
         self.nodes_properties["asn"] = x
 
     def __str__(self):
-        return "<AS %s>" % self.asn
+        return f"<AS {self.asn}>"
 
 
 class iBGPFullMesh(AS):
@@ -70,7 +70,7 @@ class iBGPFullMesh(AS):
         super().apply(topo)
 
     def __str__(self):
-        return "<iBGPMesh %s>" % self.asn
+        return f"<iBGPMesh {self.asn}>"
 
 
 def bgp_fullmesh(topo, routers: Sequence[str]):
@@ -91,8 +91,9 @@ def bgp_peering(topo: "IPTopo", a: "RouterDescription", b: "RouterDescription"):
     topo.getNodeInfo(a, "bgp_peers", list).append(b)
     topo.getNodeInfo(b, "bgp_peers", list).append(a)
 
-    # recent versions of BGP must define import/export filters for eBGP sessions (RFC 8212).
-    # This function allows all the routes to be accepted. As depicted, the user can still
+    # recent versions of BGP must define import/export filters for eBGP
+    # sessions (RFC 8212). This function allows all the routes to be accepted.
+    # As depicted, the user can still
     # change the behavior of importation and exportation filters by matching prefixes
     # in the smaller orders of the RM
     filter_allows_all_routes(a, b)
@@ -471,7 +472,7 @@ class BGPConfig:
         family: str,
     ):
         match_cond = []
-        assert family in {"ipv4", "ipv6"}, "Bad family %s" % family
+        assert family in {"ipv4", "ipv6"}, f"Bad family {family}"
         access_lists = self.topo.getNodeInfo(self.router, "bgp_access_lists", list)
         community_list = self.topo.getNodeInfo(self.router, "bgp_community_lists", list)
 
@@ -498,7 +499,7 @@ class BGPConfig:
                     if f not in prefix_list:
                         prefix_list.append(f)
             else:
-                raise Exception("Filter not yet implemented")
+                raise TypeError(f"Filter not yet implemented for {type(f).__name__}")
         return match_cond
 
     def add_set_action(
@@ -612,10 +613,10 @@ class BGP(QuaggaDaemon, AbstractBGP):
     @property
     def STARTUP_LINE_EXTRA(self):
         """We add the port to the standard startup line"""
-        return "-p %s" % self.port
+        return f"-p {self.port}"
 
     def __init__(self, node, port=BGP_DEFAULT_PORT, *args, **kwargs):
-        super().__init__(node=node, *args, **kwargs)
+        super().__init__(*args, node=node, **kwargs)
         self.port = port
 
     def build(self):
@@ -651,7 +652,7 @@ class BGP(QuaggaDaemon, AbstractBGP):
                 )
                 community_lists.append(cl)
                 if isinstance(node_cl.community, int):
-                    cl.community = "%s:%d" % (self._node.asn, node_cl.community)
+                    cl.community = f"{self._node.asn}:{node_cl.community}"
         return community_lists
 
     def build_access_list(self) -> list[AccessList]:
@@ -659,10 +660,10 @@ class BGP(QuaggaDaemon, AbstractBGP):
         Build and return a list of access_filter
         :return:
         """
-        return self._node.get("bgp_access_lists", val=list())
+        return self._node.get("bgp_access_lists", val=[])
 
     def build_prefix_list(self):
-        return self._node.get("bgp_prefix_lists", val=list())
+        return self._node.get("bgp_prefix_lists", val=[])
 
     def build_route_map(self, neighbors: Sequence["Peer"]) -> list[RouteMap]:
         """
@@ -683,9 +684,9 @@ class BGP(QuaggaDaemon, AbstractBGP):
                     return n
             return None
 
-        final_rms = list()
+        final_rms = []
 
-        rms = self._node.get("bgp_route_maps", val=list())  # type: List['RouteMap']
+        rms = self._node.get("bgp_route_maps", val=[])  # type: List['RouteMap']
 
         for rm in rms:
             neigh = find_neighbor(rm)
@@ -729,12 +730,10 @@ class AddressFamily:
         return repr(self)
 
     def __repr__(self) -> str:
-        return "AddressFamily(%s, networks: %s, redistribute: %s, %s, routes: %s)" % (
-            self.name,
-            self.networks,
-            self.redistribute,
-            self.neighbors,
-            self.routes,
+        return (
+            f"AddressFamily({self.name}, networks: {self.networks}, "
+            f"redistribute: {self.redistribute}, {self.neighbors}, "
+            f"routes: {self.routes})"
         )
 
     def extend(self, af: "AddressFamily"):
@@ -753,7 +752,7 @@ class AddressFamily:
             return "ip"
         if self.name == "ipv6":
             return "ip6"
-        raise ValueError("Unsupported AddressFamily %s" % self.name)
+        raise ValueError(f"Unsupported AddressFamily {self.name}")
 
 
 def AF_INET(*args, **kwargs):
@@ -770,7 +769,7 @@ class Peer:
     """A BGP peer"""
 
     class PQNode:
-        """Class representing an element of the priority queue used in _find_peer_address"""
+        """Element of the priority queue used in _find_peer_address"""
 
         def __init__(self, key, extra_val):
             self.key = key
@@ -805,7 +804,7 @@ class Peer:
         # We enable eBGP multihop if eBGP is in use
         ebgp = self.asn != base.asn
         self.ebgp_multihop = ebgp
-        self.description = "%s (%sBGP)" % (node, "e" if ebgp else "i")
+        self.description = "{} ({}BGP)".format(node, "e" if ebgp else "i")
 
     @staticmethod
     def _find_peer_address(

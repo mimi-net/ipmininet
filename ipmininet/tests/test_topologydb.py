@@ -59,11 +59,13 @@ def test_topologydb(topology: type[IPTopo]):
             assert "type" in node_info, f"No info on the type of node {node}"
             node_type = node_info["type"]
             if node_type == "host":
-                assert type(net[node]) == IPHost, f"The node {node} is not an host"
+                assert isinstance(net[node], IPHost), f"The node {node} is not an host"
             elif node_type == "router":
-                assert type(net[node]) == Router, f"The node {node} is not a router"
+                assert isinstance(net[node], Router), f"The node {node} is not a router"
             elif node_type == "switch":
-                assert type(net[node]) == IPSwitch, f"The node {node} is not a switch"
+                assert isinstance(net[node], IPSwitch), (
+                    f"The node {node} is not a switch"
+                )
             else:
                 pytest.fail(f"The node type {node_type} of node {node} is invalid")
 
@@ -98,9 +100,9 @@ def test_topologydb(topology: type[IPTopo]):
                     )
 
                 # Checks the IP address
-                assert info_value["ip"] == "%s/%s" % (intf.ip, intf.prefixLen), (
-                    f"The IP address of the record {info_key} of node {node} does not "
-                    "match"
+                assert info_value["ip"] == f"{intf.ip}/{intf.prefixLen}", (
+                    f"The IP address of the record {info_key} of node {node} "
+                    "does not match"
                 )
 
                 # Checks the IP prefixes
@@ -108,8 +110,8 @@ def test_topologydb(topology: type[IPTopo]):
                     ip.with_prefixlen for ip in itertools.chain(intf.ips(), intf.ip6s())
                 }
                 assert set(info_value["ips"]) == prefixes, (
-                    f"The IP prefixes of the record {info_key} of node {node} do not "
-                    "match"
+                    f"The IP prefixes of the record {info_key} of node {node} "
+                    "do not match"
                 )
 
     finally:
