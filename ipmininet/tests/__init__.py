@@ -11,6 +11,7 @@ wherever the daemon is available and are skipped with a reason otherwise. The
 reasons are surfaced in CI via `pytest -rs`; these files are intentionally not
 --ignore'd at the workflow level so the skip reason stays next to the test.
 """
+
 import os
 import subprocess
 
@@ -19,7 +20,8 @@ import pytest
 from ipmininet.utils import has_cmd
 
 require_root = pytest.mark.skipif(
-        os.getuid() != 0, reason='Running this test requires to be root')
+    os.getuid() != 0, reason="Running this test requires to be root"
+)
 
 
 def _exabgp_usable() -> bool:
@@ -29,24 +31,33 @@ def _exabgp_usable() -> bool:
     ``six.moves``), so simply being on PATH is not enough: the daemon must
     also start (--version) cleanly.
     """
-    if not has_cmd('exabgp'):
+    if not has_cmd("exabgp"):
         return False
     try:
-        return subprocess.run(['exabgp', '--version'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL,
-                              timeout=10).returncode == 0
+        return (
+            subprocess.run(
+                ["exabgp", "--version"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            ).returncode
+            == 0
+        )
     except (OSError, subprocess.SubprocessError):
         return False
 
 
 require_openr = pytest.mark.skipif(
-        not has_cmd('openr'),
-        reason='OpenR daemon not available (needs build, not run in CI)')
+    not has_cmd("openr"),
+    reason="OpenR daemon not available (needs build, not run in CI)",
+)
 
 require_exabgp = pytest.mark.skipif(
-        not _exabgp_usable(),
-        reason='ExaBGP daemon not available (broken vendored six on Py3.12)')
+    not _exabgp_usable(),
+    reason="ExaBGP daemon not available (broken vendored six on Py3.12)",
+)
 
 require_mimidump = pytest.mark.skipif(
-        not has_cmd('mimidump'),
-        reason='interface captures rely on mimidump which is not shipped')
+    not has_cmd("mimidump"),
+    reason="interface captures rely on mimidump which is not shipped",
+)

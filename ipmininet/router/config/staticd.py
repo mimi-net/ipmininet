@@ -1,12 +1,10 @@
-from ipaddress import ip_network, IPv4Network, IPv6Network, IPv4Address, \
-    IPv6Address
-from typing import Union
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_network
 
 from ipmininet.router.config.zebra import QuaggaDaemon, Zebra
 
 
 class STATIC(QuaggaDaemon):
-    NAME = 'staticd'
+    NAME = "staticd"
     DEPENDS = (Zebra,)
     KILL_PATTERNS = (NAME,)
 
@@ -26,8 +24,12 @@ class STATIC(QuaggaDaemon):
 class StaticRoute:
     """A class representing a static route"""
 
-    def __init__(self, prefix: Union[str, IPv4Network, IPv6Network],
-                 nexthop: Union[str, IPv4Address, IPv6Address], distance=1):
+    def __init__(
+        self,
+        prefix: str | IPv4Network | IPv6Network,
+        nexthop: str | IPv4Address | IPv6Address,
+        distance=1,
+    ):
         """:param prefix: The prefix for this static route
         :param nexthop: The nexthop for this prefix, one of: <IP address,
                         interface name, null0, blackhole, reject>

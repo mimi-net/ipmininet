@@ -1,6 +1,6 @@
 import ipmininet.router.config.bgp as _bgp
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, CLIENT_PROVIDER, SHARE
+from ipmininet.router.config import BGP, CLIENT_PROVIDER, SHARE, ebgp_session
 
 
 class BGPPoliciesTopo2(IPTopo):
@@ -15,6 +15,7 @@ class BGPPoliciesTopo2(IPTopo):
     This topology is taken from
     https://www.computer-networking.info/exercises/html/ex-routing-policies.html
     """
+
     def build(self, *args, **kwargs):
         """
                       =
@@ -33,10 +34,10 @@ class BGPPoliciesTopo2(IPTopo):
            +----------------------+
         """
         # Add all routers
-        as1r1 = self.bgp('as1')
-        as2r1 = self.bgp('as2')
-        as3r1 = self.bgp('as3')
-        as4r1 = self.bgp('as4')
+        as1r1 = self.bgp("as1")
+        as2r1 = self.bgp("as2")
+        as3r1 = self.bgp("as3")
+        as4r1 = self.bgp("as4")
 
         # Add links
         las12 = self.addLink(as1r1, as2r1)
@@ -72,12 +73,16 @@ class BGPPoliciesTopo2(IPTopo):
         ebgp_session(self, as4r1, as3r1, link_type=SHARE)
         # Add test hosts
         for r in self.routers():
-            self.addLink(r, self.addHost('h%s' % r))
+            self.addLink(r, self.addHost("h%s" % r))
         super().build(*args, **kwargs)
 
     def bgp(self, name):
         r = self.addRouter(name, use_v4=False, use_v6=True)
-        r.addDaemon(BGP, address_families=(
-            _bgp.AF_INET(redistribute=('connected',)),
-            _bgp.AF_INET6(redistribute=('connected',))))
+        r.addDaemon(
+            BGP,
+            address_families=(
+                _bgp.AF_INET(redistribute=("connected",)),
+                _bgp.AF_INET6(redistribute=("connected",)),
+            ),
+        )
         return r

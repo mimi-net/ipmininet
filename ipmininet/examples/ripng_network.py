@@ -6,7 +6,6 @@ from ipmininet.router.config.ripng import RIPng
 
 
 class RIPngNetwork(IPTopo):
-
     def __init__(self, ripng_timers=None, *args, **kwargs):
         """:param ripng_timers: optional dict of RIPng daemon options applied
         to every router (e.g. {'update_timer': 2} to speed up convergence)"""
@@ -27,14 +26,14 @@ class RIPngNetwork(IPTopo):
         | h4  +-----+ r4  +-----+ r5  +-----+ h5  |
         +-----+     +-----+     +-----+     +-----+
         """
-        r1, r2, r3, r4, r5 = self.addRouters('r1', 'r2', 'r3', 'r4', 'r5',
-                                             use_v4=False, use_v6=True,
-                                             config=RouterConfig)
+        r1, r2, r3, r4, r5 = self.addRouters(
+            "r1", "r2", "r3", "r4", "r5", use_v4=False, use_v6=True, config=RouterConfig
+        )
 
-        h1 = self.addHost('h1')
-        h3 = self.addHost('h3')
-        h4 = self.addHost('h4')
-        h5 = self.addHost('h5')
+        h1 = self.addHost("h1")
+        h3 = self.addHost("h3")
+        h4 = self.addHost("h4")
+        h5 = self.addHost("h5")
 
         self.addLinks((h1, r1), (h3, r3), (h4, r4), (h5, r5))
 

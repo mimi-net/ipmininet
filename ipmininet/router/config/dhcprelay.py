@@ -1,6 +1,9 @@
-from .base import RouterDaemon
-from ipmininet.router.config.utils import ConfigDict
 import tempfile
+
+from ipmininet.router.config.utils import ConfigDict
+
+from .base import RouterDaemon
+
 
 class DHCPRelay(RouterDaemon):
     NAME = "dhcprelay"
@@ -10,28 +13,28 @@ class DHCPRelay(RouterDaemon):
         self.node = node
         self.dhcp_server_ip = dhcp_server_ip
         self.listening_ip = listening_ip
-        self.pid_file = tempfile.mktemp(dir='/tmp')
+        self.pid_file = tempfile.mktemp(dir="/tmp")
         super().__init__(node, **kwargs)
-    
+
     def build(self) -> ConfigDict:
         cfg = super().build()
         cfg.pid_file = self.pid_file
         cfg.dhcp_server_ip = self.dhcp_server_ip
         cfg.listening_ip = self.listening_ip
         return cfg
-    
+
     @property
     def startup_line(self):
         return f"dnsmasq --conf-file={self.cfg_filenames[0]}"
-    
+
     @property
     def dry_run(self):
         return ""
-    
+
     @property
     def cfg_filenames(self):
-        return [self._file(suffix=f"%s.cfg" % self.listening_ip)]
-    
+        return [self._file(suffix="%s.cfg" % self.listening_ip)]
+
     def set_defaults(self, defaults):
         pass
 

@@ -1,23 +1,28 @@
-import pytest
 import re
 import signal
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Tuple, Dict, Pattern, Match, Optional
-
-import mininet.log
 from io import StringIO
 from ipaddress import ip_address, ip_network
-from ipmininet.utils import require_cmd
-from ipmininet.ipnet import IPNet
-from ipmininet.router import IPNode
-from ipmininet.ipswitch import IPSwitch
+from re import Match, Pattern
+
+import mininet.log
+import pytest
+
 from ipmininet.host.config.named import DNSRecord
+from ipmininet.ipnet import IPNet
+from ipmininet.ipswitch import IPSwitch
+from ipmininet.router import IPNode
+from ipmininet.utils import require_cmd
 
 
-def wait_until(predicate: Callable[[], bool], timeout: float = 60,
-               interval: float = 0.5, description=None):
+def wait_until(
+    predicate: Callable[[], bool],
+    timeout: float = 60,
+    interval: float = 0.5,
+    description=None,
+):
     """Wait until ``predicate()`` returns a truthy value.
 
     Polls every ``interval`` seconds up to ``timeout`` seconds and returns
@@ -47,12 +52,12 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 60,
         elapsed += interval
     if callable(description):
         description = description()
-    pytest.fail("Timed out after %ds while waiting for %s"
-                % (int(elapsed), description))
+    pytest.fail(
+        "Timed out after %ds while waiting for %s" % (int(elapsed), description)
+    )
 
 
-def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
-               poll=1.0) -> List[str]:
+def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300, poll=1.0) -> list[str]:
     require_cmd("traceroute", help_str="traceroute is required to run tests")
 
     t = 0
@@ -60,13 +65,27 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
     same_path_count = 0
     white_space = re.compile(r" +")
     while t < timeout / poll:
-        out = net[src].cmd(["traceroute", "-w", "0.05", "-q", "1", "-n",
-                            "-m", len(net.routers) + len(net.hosts), dst_ip])
+        out = net[src].cmd(
+            [
+                "traceroute",
+                "-w",
+                "0.05",
+                "-q",
+                "1",
+                "-n",
+                "-m",
+                len(net.routers) + len(net.hosts),
+                dst_ip,
+            ]
+        )
         lines = out.split("\n")[1:-1]
         if "*" not in out and "!" not in out and "unreachable" not in out:
             path_ips = [str(white_space.split(line)[2]) for line in lines]
-            if len(path_ips) > 0 and path_ips[-1] == str(dst_ip) \
-                    and old_path_ips == path_ips:
+            if (
+                len(path_ips) > 0
+                and path_ips[-1] == str(dst_ip)
+                and old_path_ips == path_ips
+            ):
                 same_path_count += 1
                 if same_path_count > 2:
                     # Network has converged
@@ -85,8 +104,15 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300,
     return []
 
 
-def assert_path(net: IPNet, expected_path: List[str], v6=False, retry=5,
-                timeout=300, traceroute_fun=traceroute, **kwargs):
+def assert_path(
+    net: IPNet,
+    expected_path: list[str],
+    v6=False,
+    retry=5,
+    timeout=300,
+    traceroute_fun=traceroute,
+    **kwargs,
+):
     src = expected_path[0]
     dst = expected_path[-1]
     dst_ip = net[dst].defaultIntf().ip6 if v6 else net[dst].defaultIntf().ip
@@ -111,17 +137,20 @@ def assert_path(net: IPNet, expected_path: List[str], v6=False, retry=5,
                 if found:
                     path.append(n.name)
                     break
-            assert found, "Traceroute returned the address '%s' " \
-                          "that cannot be linked to a node" % path_ip
+            assert found, (
+                "Traceroute returned the address '%s' "
+                "that cannot be linked to a node" % path_ip
+            )
         i += 1
 
-    assert path == expected_path, "We expected the path from %s to %s to go " \
-                                  "through %s but it went through %s" \
-                                  % (src, dst, expected_path[1:-1], path[1:-1])
+    assert path == expected_path, (
+        "We expected the path from %s to %s to go "
+        "through %s but it went through %s"
+        % (src, dst, expected_path[1:-1], path[1:-1])
+    )
 
 
-def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) \
-        -> bool:
+def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) -> bool:
     require_cmd("nmap", help_str="nmap is required to run tests")
 
     hosts = list(net.hosts)
@@ -138,12 +167,14 @@ def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) \
         for dst in hosts:
             if src != dst:
                 if translate_address:
-                    dst_ip = dst.defaultIntf().ip6 if v6 \
-                        else dst.defaultIntf().ip
+                    dst_ip = dst.defaultIntf().ip6 if v6 else dst.defaultIntf().ip
                 else:
                     dst_ip = dst
-                cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s"\
-                      % (" -6" if v6 else "", int(timeout * 1000), dst_ip)
+                cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" % (
+                    " -6" if v6 else "",
+                    int(timeout * 1000),
+                    dst_ip,
+                )
                 out = src.cmd(cmd.split(" "))
                 if "0 hosts up" in out:
                     return False
@@ -164,31 +195,37 @@ def assert_node_not_connected(src: IPNode, dst: IPNode, v6=False, timeout=0.2):
     dst.defaultIntf().updateIP()
     dst.defaultIntf().updateIP6()
     dst_ip = dst.defaultIntf().ip6 if v6 else dst.defaultIntf().ip
-    cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" \
-          % (" -6" if v6 else "", int(timeout * 1000), dst_ip)
+    cmd = "nmap%s -sn -n --max-retries 0 --max-rtt-timeout %dms %s" % (
+        " -6" if v6 else "",
+        int(timeout * 1000),
+        dst_ip,
+    )
     out = src.cmd(cmd.split(" "))
 
-    assert "0 hosts up" in out, "Node {} is connected to node {} over {}" \
-        .format(src.name, dst.name, "IPv4" if not v6 else "IPv6")
+    assert "0 hosts up" in out, "Node {} is connected to node {} over {}".format(
+        src.name, dst.name, "IPv4" if not v6 else "IPv6"
+    )
 
 
-def assert_connectivity(net: IPNet, v6=False, attempts=1500,
-                        translate_address=True):
+def assert_connectivity(net: IPNet, v6=False, attempts=1500, translate_address=True):
     t = 0
     connected = False
     while t < attempts and not connected:
-        connected = host_connected(net, v6=v6,
-                                   translate_address=translate_address)
+        connected = host_connected(net, v6=v6, translate_address=translate_address)
         if not connected:
             t += 1
             time.sleep(1)
-    assert connected, \
-        "Cannot ping all hosts over %s" % ("IPv4" if not v6 else "IPv6")
+    assert connected, "Cannot ping all hosts over %s" % ("IPv4" if not v6 else "IPv6")
 
 
-def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
-                           server_port=80, server_itf=None, timeout=300) \
-        -> Tuple[int, bytes, bytes]:
+def check_tcp_connectivity(
+    client: IPNode,
+    server: IPNode,
+    v6=False,
+    server_port=80,
+    server_itf=None,
+    timeout=300,
+) -> tuple[int, bytes, bytes]:
     require_cmd("nc", help_str="nc is required to run tests")
 
     if server_itf is None:
@@ -205,10 +242,11 @@ def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
         t += 1
         if server_p.poll() is not None:
             out, err = server_p.communicate()
-            assert False, \
-                "The netcat server used to check TCP connectivity failed" \
+            assert False, (
+                "The netcat server used to check TCP connectivity failed"
                 " with the output:\n[stdout]\n%s\n[stderr]\n%s" % (out, err)
-        time.sleep(.5)
+            )
+        time.sleep(0.5)
         client_p = client.popen(client_cmd.split(" "))
     out, err = client_p.communicate()
     code = client_p.poll()
@@ -217,8 +255,7 @@ def check_tcp_connectivity(client: IPNode, server: IPNode, v6=False,
     return code, out, err
 
 
-def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
-                     timeout=60):
+def assert_stp_state(switch: IPSwitch, expected_states: dict[str, str], timeout=60):
     """
     :param switch: The switch to test
     :param expected_states: Dictionary mapping an interface name to
@@ -232,7 +269,7 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
     possible_states = "listening|learning|forwarding|blocking"
     # In these states the STP has not converged
     ignore_state = "listening", "learning"
-    cmd = ("%s %s" % (partial_cmd, switch.name))
+    cmd = "%s %s" % (partial_cmd, switch.name)
     out = None
     states = None
 
@@ -242,23 +279,32 @@ def assert_stp_state(switch: IPSwitch, expected_states: Dict[str, str],
         states = re.findall(possible_states, out)
         return not any(item in states for item in ignore_state)
 
-    wait_until(_converged, timeout=timeout, interval=1,
-               description="the spanning tree to be computed")
+    wait_until(
+        _converged,
+        timeout=timeout,
+        interval=1,
+        description="the spanning tree to be computed",
+    )
 
     interfaces = re.findall(switch.name + r"-eth[0-9]+", out)
     state_map = {interfaces[i]: states[i] for i in range(len(states))}
     for itf, _ in expected_states.items():
-        assert itf in state_map,\
-            "The port %s of switch %s was not mentioned in the output of " \
+        assert itf in state_map, (
+            "The port %s of switch %s was not mentioned in the output of "
             "'brctl showstp':\n%s" % (itf, switch.name, out)
-        assert state_map[itf] == expected_states[itf],\
-            "The state of port %s of switch %s wasn't correct: excepted '%s' " \
-            "got '%s'"\
-            % (itf, switch.name, expected_states[itf], state_map[itf])
+        )
+        assert state_map[itf] == expected_states[itf], (
+            "The state of port %s of switch %s wasn't correct: excepted '%s' "
+            "got '%s'" % (itf, switch.name, expected_states[itf], state_map[itf])
+        )
 
 
-def assert_routing_table(router: IPNode, expected_prefixes: List[str],
-                         present: bool = True, timeout: int = 120):
+def assert_routing_table(
+    router: IPNode,
+    expected_prefixes: list[str],
+    present: bool = True,
+    timeout: int = 120,
+):
     """
     Wait until all expected prefixes are (present=True) or none are
     (present=False) in the router's IPv4/IPv6 routing table.
@@ -275,21 +321,30 @@ def assert_routing_table(router: IPNode, expected_prefixes: List[str],
 
     def _satisfied():
         nonlocal found
-        found = set(re.findall(r"|".join(re.escape(p) for p in expected),
-                               router.cmd(cmd)))
+        found = set(
+            re.findall(r"|".join(re.escape(p) for p in expected), router.cmd(cmd))
+        )
         return (expected <= found) if present else not (expected & found)
 
     wait_until(
-        _satisfied, timeout=timeout, interval=1,
-        description=lambda: "prefixes %s to be %s in the routing table "
-                            "of %s within %ds (found: %s)"
-                            % (expected_prefixes,
-                               "present" if present else "absent",
-                               router.name, timeout, sorted(found)))
+        _satisfied,
+        timeout=timeout,
+        interval=1,
+        description=lambda: (
+            "prefixes %s to be %s in the routing table "
+            "of %s within %ds (found: %s)"
+            % (
+                expected_prefixes,
+                "present" if present else "absent",
+                router.name,
+                timeout,
+                sorted(found),
+            )
+        ),
+    )
 
 
-def search_dns_reply(reply: str, regex: Pattern) \
-        -> Tuple[bool, Optional[Match]]:
+def search_dns_reply(reply: str, regex: Pattern) -> tuple[bool, Match | None]:
 
     got_answer = False
     for line in reply.split("\n"):
@@ -304,18 +359,18 @@ def search_dns_reply(reply: str, regex: Pattern) \
     return got_answer, None
 
 
-def assert_dns_record(node: IPNode, dns_server_address: str, record: DNSRecord,
-                      port=53, timeout=60):
+def assert_dns_record(
+    node: IPNode, dns_server_address: str, record: DNSRecord, port=53, timeout=60
+):
     require_cmd("dig", help_str="dig is required to run tests")
 
-    server_cmd = "dig @{address} -p {port} -t {rtype} {domain_name}"\
-        .format(address=dns_server_address, rtype=record.rtype,
-                domain_name=record.domain_name, port=port)
-    out_regex = re.compile(r" *{name}.?[ \t]+{ttl}[ \t]+IN[ \t]+{rtype}[ \t]+"
-                           r"{rdata}"
-                           .format(rtype=record.rtype, ttl=record.ttl,
-                                   name=record.domain_name,
-                                   rdata=record.rdata))
+    server_cmd = (
+        f"dig @{dns_server_address} -p {port} -t {record.rtype} {record.domain_name}"
+    )
+    out_regex = re.compile(
+        rf" *{record.domain_name}.?[ \t]+{record.ttl}[ \t]+IN[ \t]+{record.rtype}[ \t]+"
+        rf"{record.rdata}"
+    )
 
     out = None
     got_answer = False
@@ -328,24 +383,30 @@ def assert_dns_record(node: IPNode, dns_server_address: str, record: DNSRecord,
         return match is not None
 
     wait_until(
-        _answered, timeout=timeout, interval=0.5,
-        description=lambda: "the expected data '%s' to be found in the DNS "
-                            "reply of '%s' received by %s from %s:\n%s"
-                            % (out_regex.pattern, server_cmd, node.name,
-                               dns_server_address, out))
+        _answered,
+        timeout=timeout,
+        interval=0.5,
+        description=lambda: (
+            "the expected data '%s' to be found in the DNS "
+            "reply of '%s' received by %s from %s:\n%s"
+            % (out_regex.pattern, server_cmd, node.name, dns_server_address, out)
+        ),
+    )
 
-    assert got_answer, "No answer was received in %s" \
-                       " from server %s in the reply of '%s':\n%s" \
-                       % (node.name, dns_server_address, server_cmd, out)
+    assert got_answer, (
+        "No answer was received in %s"
+        " from server %s in the reply of '%s':\n%s"
+        % (node.name, dns_server_address, server_cmd, out)
+    )
 
-    assert match is not None, "The expected data '%s' cannot be found " \
-                              "in the DNS reply of '%s' received by %s from " \
-                              "%s:\n%s" % (out_regex.pattern, server_cmd,
-                                           node.name, dns_server_address, out)
+    assert match is not None, (
+        "The expected data '%s' cannot be found "
+        "in the DNS reply of '%s' received by %s from "
+        "%s:\n%s" % (out_regex.pattern, server_cmd, node.name, dns_server_address, out)
+    )
 
 
 class CLICapture:
-
     def __init__(self, loglevel: str):
         self.loglevel = loglevel
         self.stream = None

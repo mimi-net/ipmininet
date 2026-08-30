@@ -1,50 +1,51 @@
 # Example topologies
 
 This directory contains example topologies, you can start them using
+
 ```bash
 python -m ipmininet.examples --topo=[topo_name] [--args key=val,key=val]
 ```
+
 Where topo_name is the name of the topology, and args are optional arguments
 for it.
 
 The following sections will detail the topologies.
 
-   - [SimpleOSPFNetwork](#simpleospfnetwork)
-   - [SimpleBGPNetwork](#simplebgpnetwork)
-   - [BGPDecisionProcess](#bgpdecisionprocess)
-   - [BGPLocalPref](#bgplocalpref)
-   - [BGPMED](#bgpmed)
-   - [BGPRR](#bgprr)
-   - [BGPFullConfig](#bgpfullconfig)
-   - [BGPPolicies](#bgppolicies)
-   - [BGPPoliciesAdjust](#bgppoliciesadjust)
-   - [IPTables](#iptables)
-   - [LinkFailure](#linkfailure)
-   - [GRETopo](#gretopo)
-   - [SSHd](#sshd)
-   - [RouterAdvNetwork](#routeradvnetwork)
-   - [SimpleOpenRNetwork](#simpleopenrnetwork)
-   - [StaticAddressNetwork](#staticaddressnetwork)
-   - [PartialStaticAddressNet](#partialstaticaddressnetwork)
-   - [StaticRoutingNet](#staticroutingnet)
-   - [StaticRoutingNetBasic](#staticroutingnetbasic)
-   - [StaticRoutingNetComplex](#staticroutingnetcomplex)
-   - [StaticRoutingNetFailure](#staticroutingnetfailure)
-   - [SpanningTreeNet](#spanningtreenet)
-   - [SpanningTreeHub](#spanningtreehub)
-   - [SpanningTreeBus](#spanningtreebus)
-   - [SpanningTreeIntermediate](#spanningtreeintermediate)
-   - [SpanningTreeFullMesh](#spanningtreefullmesh)
-   - [SpanningTreeAdjust](#spanningtreeadjust)
-   - [SpanningTreeCost](#spanningtreecost)
-   - [DNSNetwork](#dnsnetwork)
-   - [DNSAdvancedNetwork](#dnsadvancednetwork)
-   - [IPv6SegmentRouting](#ipv6segmentrouting)
-   - [TCNetwork](#tcnetwork)
-   - [TCAdvancedNetwork](#tcadvancednetwork)
-   - [ExaBGPPrefixInjector](#exabgpprefixinjector)
-   - [NetworkCapture](#networkcapture)
-
+- [SimpleOSPFNetwork](#simpleospfnetwork)
+- [SimpleBGPNetwork](#simplebgpnetwork)
+- [BGPDecisionProcess](#bgpdecisionprocess)
+- [BGPLocalPref](#bgplocalpref)
+- [BGPMED](#bgpmed)
+- [BGPRR](#bgprr)
+- [BGPFullConfig](#bgpfullconfig)
+- [BGPPolicies](#bgppolicies)
+- [BGPPoliciesAdjust](#bgppoliciesadjust)
+- [IPTables](#iptables)
+- [LinkFailure](#linkfailure)
+- [GRETopo](#gretopo)
+- [SSHd](#sshd)
+- [RouterAdvNetwork](#routeradvnetwork)
+- [SimpleOpenRNetwork](#simpleopenrnetwork)
+- [StaticAddressNetwork](#staticaddressnetwork)
+- [PartialStaticAddressNet](#partialstaticaddressnetwork)
+- [StaticRoutingNet](#staticroutingnet)
+- [StaticRoutingNetBasic](#staticroutingnetbasic)
+- [StaticRoutingNetComplex](#staticroutingnetcomplex)
+- [StaticRoutingNetFailure](#staticroutingnetfailure)
+- [SpanningTreeNet](#spanningtreenet)
+- [SpanningTreeHub](#spanningtreehub)
+- [SpanningTreeBus](#spanningtreebus)
+- [SpanningTreeIntermediate](#spanningtreeintermediate)
+- [SpanningTreeFullMesh](#spanningtreefullmesh)
+- [SpanningTreeAdjust](#spanningtreeadjust)
+- [SpanningTreeCost](#spanningtreecost)
+- [DNSNetwork](#dnsnetwork)
+- [DNSAdvancedNetwork](#dnsadvancednetwork)
+- [IPv6SegmentRouting](#ipv6segmentrouting)
+- [TCNetwork](#tcnetwork)
+- [TCAdvancedNetwork](#tcadvancednetwork)
+- [ExaBGPPrefixInjector](#exabgpprefixinjector)
+- [NetworkCapture](#networkcapture)
 
 ## SimpleOSPFNetwork
 
@@ -54,9 +55,11 @@ _args_ : n/a
 This network spawn a single AS topology, using OSPF, with multiple areas and
 variable link metrics.
 From the mininet CLI, access the routers vtysh using
+
 ```bash
 [noecho rx] telnet localhost [ospfd/zebra]
 ```
+
 Where the noecho rx is required if you don't use a separate xterm window for
 the node (via `xterm rx`), and ospfd/zebra is the name of the daemon you wish to
 connect to.
@@ -68,9 +71,11 @@ _args_ : n/a
 
 This network spawn a single AS topology, using OSPFv3, with variable link metrics.
 From the mininet CLI, access the routers vtysh using
+
 ```bash
 [noecho rx] telnet localhost [ospf6d/zebra]
 ```
+
 Where the noecho rx is required if you don't use a separate xterm window for
 the node (via `xterm rx`), and ospf6d/zebra is the name of the daemon you wish to
 connect to.
@@ -82,10 +87,9 @@ _args_ : n/a
 
 This networks spawn ASes, exchanging reachability information.
 
-   - AS1 has one eBGP peering with AS2
-   - AS2 has 2 routers, using iBGP between them, and has two eBGP peering, one with AS1 and one with AS3
-   - AS3 has one eBGP peering with AS2
-
+- AS1 has one eBGP peering with AS2
+- AS2 has 2 routers, using iBGP between them, and has two eBGP peering, one with AS1 and one with AS3
+- AS3 has one eBGP peering with AS2
 
 ## BGPDecisionProcess
 
@@ -104,7 +108,7 @@ as2r1, as2r3 and as2r2 also participate in an iBGP fullmesh.
 
 Depending on the value of [other_cost] (if it is greater or lower than 10),
 as2r3 will either choose to use as2r1 or as2r2 as nexthop for 1.2.3.0/24, as
-both routes are equal up to step #8 in the decision process, which is the IGP 
+both routes are equal up to step #8 in the decision process, which is the IGP
 cost (in a loosely defined way, as it includes any route towards the BGP
 nexthop). If other_cost is 10, we then arrive at step #10 to choose the best
 routes, and compare the router ids of as2r1 and as2r2 to select the path
@@ -113,8 +117,8 @@ routes, and compare the router ids of as2r1 and as2r2 to select the path
 You can observe this selection by issuing one of the following command sequence
 once BGP has converged:
 
-   - net > as2r3 ip route show 1.2.3.0/24
-   - [noecho as2r3] telnet localhost bgpd > password is zebra > enable > show ip bgp 1.2.3.0/24
+- net > as2r3 ip route show 1.2.3.0/24
+- [noecho as2r3] telnet localhost bgpd > password is zebra > enable > show ip bgp 1.2.3.0/24
 
 ## BGPLocalPref
 
@@ -176,8 +180,9 @@ They use two predefined BGP policies: shared-cost and client/provider peerings.
 ASes always favor routes received from clients, then routes from shared-cost peering,
 and finally, routes received from providers.
 Moreover, ASes filter out routes depending on the peering type:
- - Routes learned from shared-cost are not forwarded to providers and other shared-cost peers.
- - Routes learned from providers are not forwarded to shared-cost peers and other providers.
+
+- Routes learned from shared-cost are not forwarded to providers and other shared-cost peers.
+- Routes learned from providers are not forwarded to shared-cost peers and other providers.
 
 ## BGPPoliciesAdjust
 
@@ -206,8 +211,8 @@ _args_ : n/a
 This network spawns two routers, which have custom ACLs set such that their
 inbound traffic (the INPUT chains in ip(6)tables):
 
-  - Can only be ICMP traffic over IPv4 as well as non-privileged TCP ports
-  - Can only be (properly established) TCP over IPv6
+- Can only be ICMP traffic over IPv4 as well as non-privileged TCP ports
+- Can only be (properly established) TCP over IPv6
 
 You can test this by trying to ping(6) both routers, use nc to (try to)
 exchange data over TCP, or [tracebox](http://www.tracebox.org) to send a crafted TCP
@@ -222,8 +227,8 @@ This network spawns 4 routers: r1, r2 and r3 are in a full mesh and r4 is
 connected to r3. Once the network is ready and launched, the script will:
 
 1. Down links between routers given in the list of the failure plan.
-2. Down two random links of the entire network
-3. Randomly down one link of r1. Either the link r1 - r2 or r1 - r3
+1. Down two random links of the entire network
+1. Randomly down one link of r1. Either the link r1 - r2 or r1 - r3
 
 For each of these 3 scenario, the network will be rebuilt on its initial
 configuration. At the end of the failure simulation, the network should be
@@ -239,8 +244,9 @@ A GRE Tunnel for prefix 10.0.1.0/24 is established with the two hosts (h1
 having 10.0.1.1 assigned and h2 10.0.1.2).
 
 Example tests:
-* Verify connectivity, normally: h1 ping h2, over the tunnel: h1 ping 10.0.1.2
-* h1 traceroute h2, h1 traceroute 10.0.1.2, should show two different routes,
+
+- Verify connectivity, normally: h1 ping h2, over the tunnel: h1 ping 10.0.1.2
+- h1 traceroute h2, h1 traceroute 10.0.1.2, should show two different routes,
   with the second one hiding the intermediate routers.
 
 ## SSHd
@@ -264,6 +270,7 @@ _args_ : n/a
 
 This network uses the RIPng daemon to ensure connectivity between hosts.
 Like all FRRouting daemons, you can access the routers vtysh using, from the mininet CLI:
+
 ```bash
 [noecho rx] telnet localhost 2603
 ```
@@ -277,6 +284,7 @@ This network also uses the RIPng daemon to ensure connectivity between hosts.
 Moreover, the IGP metric on each link can be customized.
 For instance, the following command changes IGP cost of both the link between r1 and r2
 and the link between r1 and r3 to 2:
+
 ```bash
 python -m ipmininet.examples --topo=ripng_network_adjust --args lr1r2_cost=2,lr1r3_cost=2
 ```
@@ -290,7 +298,6 @@ This network spawn a small topology with two hosts and a router.
 One of these hosts uses Router Advertisements to get its IPv6 addresses
 The other one's IP addresses are announced in the Router Advertisements
 as the DNS server's addresses.
-
 
 ## SimpleOpenRNetwork
 
@@ -405,12 +412,13 @@ It enables the spanning tree protocol to prevent packet looping in the LAN.
 _topo name_ : spannnig_tree_adjust
 
 _args_ :
- - l1_start: Endpoint interface of the 1st link on which we want to change the cost
- - l1_end: Endpoint interface of the 1st link on which we want to change the cost
- - l1_cost: Cost to set on the first link
- - l2_start: Endpoint interface of the 2nd link on which we want to change the cost
- - l2_end: Endpoint interface of the 2nd link on which we want to change the cost
- - l2_cost: Cost to set on the second link
+
+- l1_start: Endpoint interface of the 1st link on which we want to change the cost
+- l1_end: Endpoint interface of the 1st link on which we want to change the cost
+- l1_cost: Cost to set on the first link
+- l2_start: Endpoint interface of the 2nd link on which we want to change the cost
+- l2_end: Endpoint interface of the 2nd link on which we want to change the cost
+- l2_cost: Cost to set on the second link
 
 This network contains a single LAN with many loops inside.
 It enables the spanning tree protocol to prevent packets

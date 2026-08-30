@@ -1,28 +1,35 @@
 """This modules defines the IPSwitch class allowing to better support STP
-   and to create hubs"""
-from typing import Optional
+and to create hubs"""
 
 from mininet.nodelib import LinuxBridge
+
 from ipmininet.utils import require_cmd
 
 
 class IPSwitch(LinuxBridge):
     """Linux Bridge (with optional spanning tree) extended to include
-       the hubs"""
+    the hubs"""
 
-    def __init__(self, name: str, stp=True, hub=False,
-                 prio: Optional[int] = None, cwd='/tmp',
-                 stp_forward_delay: Optional[int] = None,
-                 stp_hello_time: Optional[int] = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        stp=True,
+        hub=False,
+        prio: int | None = None,
+        cwd="/tmp",
+        stp_forward_delay: int | None = None,
+        stp_hello_time: int | None = None,
+        **kwargs,
+    ):
         """:param name: the name of the node
-           :param stp: whether to use spanning tree protocol
-           :param hub: whether this switch behaves as a hub (this disable stp)
-           :param prio: optional explicit bridge priority for STP
-           :param cwd: The base directory for temporary files such as configs
-           :param stp_forward_delay: optional STP forward delay in seconds
-                                     (kernel default is 15)
-           :param stp_hello_time: optional STP hello time in seconds
-                                  (kernel default is 2)"""
+        :param stp: whether to use spanning tree protocol
+        :param hub: whether this switch behaves as a hub (this disable stp)
+        :param prio: optional explicit bridge priority for STP
+        :param cwd: The base directory for temporary files such as configs
+        :param stp_forward_delay: optional STP forward delay in seconds
+                                  (kernel default is 15)
+        :param stp_hello_time: optional STP hello time in seconds
+                               (kernel default is 2)"""
         self.hub = hub
         self.cwd = cwd
         self.stp_forward_delay = stp_forward_delay
@@ -32,36 +39,38 @@ class IPSwitch(LinuxBridge):
 
     def start(self, _controllers):
         """Start Linux bridge"""
-        require_cmd("brctl", help_str="You need brctl to use %s objects"
-                                      % self.__class__)
+        require_cmd(
+            "brctl", help_str="You need brctl to use %s objects" % self.__class__
+        )
 
-        self.cmd('ifconfig', self, 'down')
-        self.cmd('brctl delbr', self)
-        self.cmd('brctl addbr', self)
+        self.cmd("ifconfig", self, "down")
+        self.cmd("brctl delbr", self)
+        self.cmd("brctl addbr", self)
         if self.hub:
-            self.cmd('brctl setageing ', self, ' 0')
+            self.cmd("brctl setageing ", self, " 0")
         if self.stp:
-            self.cmd('brctl setbridgeprio', self, self.prio)
-            self.cmd('brctl stp', self, 'on')
+            self.cmd("brctl setbridgeprio", self, self.prio)
+            self.cmd("brctl stp", self, "on")
             # Accelerate convergence when requested (kernel requires the
             # forward delay to be at least twice the hello time)
             if self.stp_forward_delay is not None:
-                self.cmd('brctl setfd', self, self.stp_forward_delay)
+                self.cmd("brctl setfd", self, self.stp_forward_delay)
             if self.stp_hello_time is not None:
-                self.cmd('brctl sethello', self, self.stp_hello_time)
+                self.cmd("brctl sethello", self, self.stp_hello_time)
         for i in self.intfList():
             if self.name in i.name:
-                self.cmd('brctl addif', self, i)
-                self.cmd('brctl setpathcost'
-                         ' %s %s %d' % (self.name, i.name,
-                                        i.params.get('stp_cost', 1)))
+                self.cmd("brctl addif", self, i)
+                self.cmd(
+                    "brctl setpathcost"
+                    " %s %s %d" % (self.name, i.name, i.params.get("stp_cost", 1))
+                )
         # Start the captures on this switch
         for capture in self.params.get("captures", []):
             capture.start(node=self)
         for intf in self.intfList():
             for capture in intf.params.get("captures", []):
                 capture.start(intf=intf)
-        self.cmd('ifconfig', self, 'up')
+        self.cmd("ifconfig", self, "up")
 
     def stop(self, deleteIntfs=True):
         # Stop the captures on this switch

@@ -4,7 +4,6 @@ from ipmininet.iptopo import IPTopo
 
 
 class TCNet(IPTopo):
-
     def build(self, *args, **kw):
         h1 = self.addHost("h1")
         r1, r2 = self.addRouters("r1", "r2")

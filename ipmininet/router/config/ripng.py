@@ -1,9 +1,10 @@
 """Base classes to configure a RIP daemon"""
-from ipaddress import ip_interface, IPv6Interface
-from typing import List
+
+from ipaddress import IPv6Interface, ip_interface
 
 from ipmininet.link import IPIntf
 from ipmininet.utils import L3Router
+
 from .utils import ConfigDict
 from .zebra import QuaggaDaemon, Zebra
 
@@ -16,7 +17,8 @@ class RIPng(QuaggaDaemon):
     """This class provides a simple configuration for an RIP daemon.
     It advertizes one network per interface (the primary one),
     and set interfaces not facing another L3Router to passive"""
-    NAME = 'ripngd'
+
+    NAME = "ripngd"
     DEPENDS = (Zebra,)
     KILL_PATTERNS = (NAME,)
 
@@ -34,23 +36,29 @@ class RIPng(QuaggaDaemon):
         return cfg
 
     @staticmethod
-    def _build_networks(interfaces: List[IPIntf]) -> List['RIPNetwork']:
+    def _build_networks(interfaces: list[IPIntf]) -> list["RIPNetwork"]:
         """Return the list of RIP networks to advertize from the list of
         active RIP interfaces"""
-        return [RIPNetwork(domain=ip_interface('%s/%s' % (i.ip6, i.prefixLen6)))
-                for i in interfaces if i.ip6]
+        return [
+            RIPNetwork(domain=ip_interface("%s/%s" % (i.ip6, i.prefixLen6)))
+            for i in interfaces
+            if i.ip6
+        ]
 
-    def _build_interfaces(self, interfaces: List[IPIntf]) -> List[ConfigDict]:
+    def _build_interfaces(self, interfaces: list[IPIntf]) -> list[ConfigDict]:
         """Return the list of RIP interface properties from the list of
         active interfaces"""
-        return [ConfigDict(description=i.describe,
-                           name=i.name,
-                           # Is the interface between two routers?
-                           active=self.is_active_interface(i),
-                           cost=i.igp_metric - 1,
-                           domain=ip_interface('%s/%s'
-                                               % (i.ip6, i.prefixLen6)))
-                for i in interfaces]
+        return [
+            ConfigDict(
+                description=i.describe,
+                name=i.name,
+                # Is the interface between two routers?
+                active=self.is_active_interface(i),
+                cost=i.igp_metric - 1,
+                domain=ip_interface("%s/%s" % (i.ip6, i.prefixLen6)),
+            )
+            for i in interfaces
+        ]
 
     def set_defaults(self, defaults):
         """:param debug: the set of debug events that should be logged
@@ -82,8 +90,9 @@ class RIPng(QuaggaDaemon):
         """Return whether an interface is active or not for the RIPng daemon"""
         if itf.broadcast_domain is None:
             return False
-        return any(L3Router.is_l3router_intf(i) for i in itf.broadcast_domain
-                   if i != itf)
+        return any(
+            L3Router.is_l3router_intf(i) for i in itf.broadcast_domain if i != itf
+        )
 
 
 class RIPNetwork:

@@ -4,16 +4,22 @@ import shlex
 import signal
 import time
 import traceback
-from typing import Dict, List, Tuple
 
 import pytest
 
 from ipmininet.clean import cleanup
 from ipmininet.examples.srv6 import SRv6Topo
 from ipmininet.ipnet import IPNet
-from ipmininet.srv6 import LocalSIDTable, SRv6EndFunction, SRv6EndXFunction, \
-    SRv6EndTFunction, SRv6EndDX6Function, SRv6Encap, SRv6EndDT6Function, \
-    SRv6EndB6EncapsFunction
+from ipmininet.srv6 import (
+    LocalSIDTable,
+    SRv6Encap,
+    SRv6EndB6EncapsFunction,
+    SRv6EndDT6Function,
+    SRv6EndDX6Function,
+    SRv6EndFunction,
+    SRv6EndTFunction,
+    SRv6EndXFunction,
+)
 from ipmininet.tests import require_root
 from ipmininet.tests.utils import assert_connectivity, assert_path, wait_until
 from ipmininet.utils import require_cmd
@@ -22,8 +28,7 @@ MAIN_TABLE = 254
 
 
 class SRv6TestTopo(SRv6Topo):
-
-    def __init__(self, new_routes: Dict[str, Tuple], *args, **kwargs):
+    def __init__(self, new_routes: dict[str, tuple], *args, **kwargs):
         """
         :param new_routes: A dictionary mapping the host name to the router name
                            to a list of tuples (SRv6Route class, params).
@@ -31,10 +36,10 @@ class SRv6TestTopo(SRv6Topo):
                            parameter except the node and the network.
         """
         self.new_routes = new_routes
-        super(SRv6TestTopo, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def post_build(self, net):
-        super(SRv6TestTopo, self).post_build(net)
+        super().post_build(net)
 
         for r in self.new_routes.keys():
             route_class, route_params = self.new_routes[r]
@@ -42,8 +47,7 @@ class SRv6TestTopo(SRv6Topo):
             if issubclass(route_class, SRv6EndFunction):
                 if r not in self.tables:
                     r_segment_space = next(net[r].intf("lo").ip6s()).network
-                    self.tables[r] = LocalSIDTable(net[r],
-                                                   matching=[r_segment_space])
+                    self.tables[r] = LocalSIDTable(net[r], matching=[r_segment_space])
                 # We use the local SID table
                 route_params["table"] = self.tables[r]
             try:
@@ -68,7 +72,8 @@ def _tshark_capturing(tsharks: list, stderr_buf: dict) -> bool:
             ready, _, _ = select.select([p.stderr], [], [], 0)
             if ready:
                 stderr_buf[p] = stderr_buf.get(p, "") + os.read(
-                    p.stderr.fileno(), 4096).decode(errors="ignore")
+                    p.stderr.fileno(), 4096
+                ).decode(errors="ignore")
         except OSError:
             return False
         if "Capturing on" not in stderr_buf.get(p, ""):
@@ -76,8 +81,9 @@ def _tshark_capturing(tsharks: list, stderr_buf: dict) -> bool:
     return True
 
 
-def _infer_sub_paths(packet_received: dict[str, list[tuple[float, str]]]) \
-        -> dict[str, list[str]]:
+def _infer_sub_paths(
+    packet_received: dict[str, list[tuple[float, str]]],
+) -> dict[str, list[str]]:
     """Return, for each observed destination, the ordered nodes on its path.
 
     The measurement ping is spread over a burst of probes because tshark only
@@ -101,8 +107,9 @@ def _infer_sub_paths(packet_received: dict[str, list[tuple[float, str]]]) \
             else:
                 probes.append([(capture_time, node)])
         node_count = len({node for _, node in ordered})
-        complete = [group for group in probes
-                    if len({node for _, node in group}) == node_count]
+        complete = [
+            group for group in probes if len({node for _, node in group}) == node_count
+        ]
         if complete:
             chosen = max(complete, key=lambda group: group[-1][0])
             nodes = []  # type: List[str]
@@ -116,13 +123,13 @@ def _infer_sub_paths(packet_received: dict[str, list[tuple[float, str]]]) \
             latest = {}  # type: Dict[str, float]
             for capture_time, node in ordered:
                 latest[node] = max(latest.get(node, 0.0), capture_time)
-            sub_paths[dest] = [node for node, _ in
-                               sorted(latest.items(), key=lambda kv: kv[1])]
+            sub_paths[dest] = [
+                node for node, _ in sorted(latest.items(), key=lambda kv: kv[1])
+            ]
     return sub_paths
 
 
-def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
-        -> List[str]:
+def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[str]:
     require_cmd("tshark", help_str="tshark is required to run tests")
     require_cmd("nmap", help_str="nmap is required to run tests")
 
@@ -138,20 +145,22 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
     nodes = net.routers + net.hosts
     try:
         for n in nodes:
-            p = n.popen(shlex.split("tshark -n -i any -f 'ip6'"
-                                    " -w /tmp/{}.pcap".format(n.name)))
+            p = n.popen(shlex.split(f"tshark -n -i any -f 'ip6' -w /tmp/{n.name}.pcap"))
             tsharks.append(p)
         # Wait for tshark to announce it started capturing. A freshly started
         # tshark only becomes functionally live a moment *after* printing this
         # message, so we then wait for each capture to record packets.
-        wait_until(lambda: _tshark_capturing(tsharks, stderr_buf),
-                   timeout=30, interval=0.2,
-                   description="tshark to start capturing on every node")
+        wait_until(
+            lambda: _tshark_capturing(tsharks, stderr_buf),
+            timeout=30,
+            interval=0.2,
+            description="tshark to start capturing on every node",
+        )
 
         probe_cmd = f"ping -6 -c 1 -W {int(timeout)} {dst_ip}"
 
         def _pcap_size(node):
-            path = "/tmp/{}.pcap".format(node.name)
+            path = f"/tmp/{node.name}.pcap"
             return os.path.getsize(path) if os.path.isfile(path) else 0
 
         # Phase 1: a capture is live once its file grew past the header
@@ -159,12 +168,15 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
         # announcement alone is not a reliable signal under load.
         baseline = {n.name: _pcap_size(n) for n in nodes}
         deadline = time.monotonic() + 20
-        while not all(_pcap_size(n) > baseline[n.name] for n in nodes) \
-                and time.monotonic() < deadline:
+        while (
+            not all(_pcap_size(n) > baseline[n.name] for n in nodes)
+            and time.monotonic() < deadline
+        ):
             out = net[src].cmd(shlex.split(probe_cmd))
-            assert "100% packet loss" not in out, \
-                f"Connectivity from {src} to {dst_ip} is not ensured, " \
+            assert "100% packet loss" not in out, (
+                f"Connectivity from {src} to {dst_ip} is not ensured, "
                 "so we cannot infer the path."
+            )
             time.sleep(0.5)
 
         # Phase 2: every capture is live; send the single measurement probe.
@@ -173,13 +185,15 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
         # was captured, and the read-back assert below is the confirmation
         # that the measurement actually landed on the path.
         out = net[src].cmd(shlex.split(probe_cmd))
-        assert "100% packet loss" not in out, \
-            f"Connectivity from {src} to {dst_ip} is not ensured, " \
+        assert "100% packet loss" not in out, (
+            f"Connectivity from {src} to {dst_ip} is not ensured, "
             "so we cannot infer the path."
+        )
 
         for p in tsharks:
-            assert p.poll() is None, "tshark stopped unexpectedly:" \
-                                     "stderr '{}'".format(p.stderr.read())
+            assert p.poll() is None, (
+                f"tshark stopped unexpectedly:stderr '{p.stderr.read()}'"
+            )
     finally:
         # Stop captures; SIGINT makes tshark flush the captured packets to disk
         for p in tsharks:
@@ -189,10 +203,13 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
     # Retrieve packet captures
     captures = {}  # type: Dict[str, List[Tuple[float, str]]]
     for n in net.routers + net.hosts:
-        out = n.cmd(shlex.split("tshark -n -r /tmp/{}.pcap -T fields "
-                                "-E separator=, "
-                                "-e icmpv6.type -e ipv6.dst -e frame.time_epoch"
-                                .format(n.name)))
+        out = n.cmd(
+            shlex.split(
+                f"tshark -n -r /tmp/{n.name}.pcap -T fields "
+                "-E separator=, "
+                "-e icmpv6.type -e ipv6.dst -e frame.time_epoch"
+            )
+        )
         data = out.split("\n")[1:-1]
         for line in data:
             values = line.strip().split(",")
@@ -202,16 +219,15 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
             data_dst = values[1]
             data_time = values[-1]
             if icmp_type == "128":
-                captures.setdefault(n.name, []) \
-                    .append((float(data_time), data_dst))
+                captures.setdefault(n.name, []).append((float(data_time), data_dst))
 
     # Verify the measurement actually landed in the captures: this is the
     # notification that tshark was capturing when the probes were sent.
-    captured_dests = {dest for _, packets in captures.items()
-                      for _, dest in packets}
-    assert dst_ip in captured_dests, \
-        f"No capture recorded the ping to {dst_ip} (captured destinations: " \
+    captured_dests = {dest for _, packets in captures.items() for _, dest in packets}
+    assert dst_ip in captured_dests, (
+        f"No capture recorded the ping to {dst_ip} (captured destinations: "
         f"{sorted(captured_dests)}). tshark was probably not capturing yet."
+    )
 
     # Analyze results
 
@@ -228,9 +244,11 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
         found = False
 
         try:
-            intermediate_ips = [ip.ip.compressed
-                                for itf in net[intermediate].intfList()
-                                for ip in itf.ip6s(exclude_lls=True)]
+            intermediate_ips = [
+                ip.ip.compressed
+                for itf in net[intermediate].intfList()
+                for ip in itf.ip6s(exclude_lls=True)
+            ]
         except KeyError:
             intermediate_ips = [intermediate]
 
@@ -255,7 +273,7 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
     # Clean up the per-node captures so no stale file lingers between the
     # parametrized cases of this module.
     for n in net.routers + net.hosts:
-        pcap_path = "/tmp/{}.pcap".format(n.name)
+        pcap_path = f"/tmp/{n.name}.pcap"
         if os.path.isfile(pcap_path):
             os.unlink(pcap_path)
 
@@ -263,89 +281,148 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) \
 
 
 @require_root
-@pytest.mark.parametrize("routes,paths,through", [
-    ({},
-     [["h6", "r6", "r5", "r4", "h4"],
-      ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-     [[],
-      ["r6", "r5", "2042:3:3::34", "r4"]]),  # Intermediate destinations
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4", "through": ["2042:6:6::600"],
-                               "mode": SRv6Encap.INLINE}),
-            "r6": (SRv6EndFunction, {"to": "2042:6:6::600"})
-        },
-        [["h6", "r6", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:6:6::600"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    ),
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4", "through": ["2042:5:5::500"],
-                               "mode": SRv6Encap.INLINE}),
-            "r5": (SRv6EndXFunction, {"to": "2042:5:5::500",
-                                      "nexthop": "2042:2:2::1"})
-        },
-        [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:5:5::500"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    ),
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4",
-                               "through": ["2042:5:5::501", "2042:2:2::1"],
-                               "mode": SRv6Encap.INLINE}),
-            "r5": (SRv6EndTFunction, {"to": "2042:5:5::501",
-                                      "lookup_table": MAIN_TABLE})
-        },
-        [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:5:5::501", "2042:2:2::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    ),
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4", "through": ["2042:5:5::500"],
-                               "mode": SRv6Encap.ENCAP}),
-            "r5": (SRv6EndDX6Function, {"to": "2042:5:5::500",
-                                        "nexthop": "2042:2:2::1"})
-        },
-        [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:5:5::500"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    ),
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4", "through": ["2042:5:5::501",
-                                                       "2042:4:4::1"],
-                               "mode": SRv6Encap.INLINE}),
-            "r5": (SRv6EndB6EncapsFunction, {"to": "2042:5:5::501",
-                                             "segments": ["2042:2:2::1"]})
-        },
-        [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:5:5::501", "2042:2:2::1", "2042:4:4::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    ),
-    (
-        {
-            "h6": (SRv6Encap, {"to": "h4",
-                               "through": ["2042:5:5::501", "2042:4:4::1"],
-                               "mode": SRv6Encap.INLINE}),
-            "r5": (SRv6EndB6EncapsFunction, {"to": "2042:5:5::501",
-                                             "segments": ["2042:2:2::200"]}),
-            "r2": (SRv6EndDT6Function, {"to": "2042:2:2::200",
-                                        "lookup_table": MAIN_TABLE})
-        },
-        [["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
-         ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"]],
-        [["2042:5:5::501", "2042:2:2::200", "2042:4:4::1"],
-         ["r6", "r5", "2042:3:3::34", "r4"]]
-    )
-])
+@pytest.mark.parametrize(
+    "routes,paths,through",
+    [
+        (
+            {},
+            [
+                ["h6", "r6", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [[], ["r6", "r5", "2042:3:3::34", "r4"]],
+        ),  # Intermediate destinations
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {
+                        "to": "h4",
+                        "through": ["2042:6:6::600"],
+                        "mode": SRv6Encap.INLINE,
+                    },
+                ),
+                "r6": (SRv6EndFunction, {"to": "2042:6:6::600"}),
+            },
+            [
+                ["h6", "r6", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [["2042:6:6::600"], ["r6", "r5", "2042:3:3::34", "r4"]],
+        ),
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {
+                        "to": "h4",
+                        "through": ["2042:5:5::500"],
+                        "mode": SRv6Encap.INLINE,
+                    },
+                ),
+                "r5": (
+                    SRv6EndXFunction,
+                    {"to": "2042:5:5::500", "nexthop": "2042:2:2::1"},
+                ),
+            },
+            [
+                ["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [["2042:5:5::500"], ["r6", "r5", "2042:3:3::34", "r4"]],
+        ),
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {
+                        "to": "h4",
+                        "through": ["2042:5:5::501", "2042:2:2::1"],
+                        "mode": SRv6Encap.INLINE,
+                    },
+                ),
+                "r5": (
+                    SRv6EndTFunction,
+                    {"to": "2042:5:5::501", "lookup_table": MAIN_TABLE},
+                ),
+            },
+            [
+                ["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [["2042:5:5::501", "2042:2:2::1"], ["r6", "r5", "2042:3:3::34", "r4"]],
+        ),
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {"to": "h4", "through": ["2042:5:5::500"], "mode": SRv6Encap.ENCAP},
+                ),
+                "r5": (
+                    SRv6EndDX6Function,
+                    {"to": "2042:5:5::500", "nexthop": "2042:2:2::1"},
+                ),
+            },
+            [
+                ["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [["2042:5:5::500"], ["r6", "r5", "2042:3:3::34", "r4"]],
+        ),
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {
+                        "to": "h4",
+                        "through": ["2042:5:5::501", "2042:4:4::1"],
+                        "mode": SRv6Encap.INLINE,
+                    },
+                ),
+                "r5": (
+                    SRv6EndB6EncapsFunction,
+                    {"to": "2042:5:5::501", "segments": ["2042:2:2::1"]},
+                ),
+            },
+            [
+                ["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [
+                ["2042:5:5::501", "2042:2:2::1", "2042:4:4::1"],
+                ["r6", "r5", "2042:3:3::34", "r4"],
+            ],
+        ),
+        (
+            {
+                "h6": (
+                    SRv6Encap,
+                    {
+                        "to": "h4",
+                        "through": ["2042:5:5::501", "2042:4:4::1"],
+                        "mode": SRv6Encap.INLINE,
+                    },
+                ),
+                "r5": (
+                    SRv6EndB6EncapsFunction,
+                    {"to": "2042:5:5::501", "segments": ["2042:2:2::200"]},
+                ),
+                "r2": (
+                    SRv6EndDT6Function,
+                    {"to": "2042:2:2::200", "lookup_table": MAIN_TABLE},
+                ),
+            },
+            [
+                ["h6", "r6", "r5", "r2", "r5", "r4", "h4"],
+                ["h1", "r1", "r6", "r5", "r2", "r3", "r4", "h4"],
+            ],
+            [
+                ["2042:5:5::501", "2042:2:2::200", "2042:4:4::1"],
+                ["r6", "r5", "2042:3:3::34", "r4"],
+            ],
+        ),
+    ],
+)
 def test_static_examples(routes, paths, through):
     try:
         topo = SRv6TestTopo(new_routes=routes)
@@ -354,8 +431,15 @@ def test_static_examples(routes, paths, through):
 
         assert_connectivity(net, v6=False)
         for i, p in enumerate(paths):
-            assert_path(net, p, v6=True, traceroute_fun=sr_path,
-                        through=through[i], timeout=1, retry=30)
+            assert_path(
+                net,
+                p,
+                v6=True,
+                traceroute_fun=sr_path,
+                through=through[i],
+                timeout=1,
+                retry=30,
+            )
 
         topo.clean()
         net.stop()

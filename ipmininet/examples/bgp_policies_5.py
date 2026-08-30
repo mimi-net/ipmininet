@@ -1,6 +1,5 @@
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, AF_INET6,\
-    CLIENT_PROVIDER, SHARE
+from ipmininet.router.config import AF_INET6, BGP, CLIENT_PROVIDER, SHARE, ebgp_session
 
 
 class BGPPoliciesTopo5(IPTopo):
@@ -15,63 +14,65 @@ class BGPPoliciesTopo5(IPTopo):
     This topology is taken from
     https://www.computer-networking.info/exercises/html/ex-bgp.html
     """
+
     def build(self, *args, **kwargs):
         """
-                    +-----+
-             +----->+as2r +<----------------+
-             |      +-----+                 |
-             | $                          $ |
-             |                              |
-          +--+--+      =      +--+--+       |
-          |as1r +-------------+ as3r|       |
-          +--+--+             +--+--+       |
-             ^                   ^          |
-             | $               $ |          |
-             |                   |          |
-          +--+--+      =      +--+--+       |
-          |as4r +-------------+as8r |       |
-          +--+--+             +--+--+       |
-             ^                   ^          |
-             | $               $ |          |
-             |                   |          |
-          +--+--+      =      +--+--+       |
-          |as6r +-------------+as5r +-------+
-          +--+--+             +--+--+
-             ^                   |
-             | $               $ |
-             |      +------+     |
-             +------+ as7r +<----+
-                    +------+
+                  +-----+
+           +----->+as2r +<----------------+
+           |      +-----+                 |
+           | $                          $ |
+           |                              |
+        +--+--+      =      +--+--+       |
+        |as1r +-------------+ as3r|       |
+        +--+--+             +--+--+       |
+           ^                   ^          |
+           | $               $ |          |
+           |                   |          |
+        +--+--+      =      +--+--+       |
+        |as4r +-------------+as8r |       |
+        +--+--+             +--+--+       |
+           ^                   ^          |
+           | $               $ |          |
+           |                   |          |
+        +--+--+      =      +--+--+       |
+        |as6r +-------------+as5r +-------+
+        +--+--+             +--+--+
+           ^                   |
+           | $               $ |
+           |      +------+     |
+           +------+ as7r +<----+
+                  +------+
         """
         # Add all routers
-        as1r, as2r, as3r, as4r, as5r, as6r, as7r, as8r = \
-            self.addRouters('as1r', 'as2r', 'as3r', 'as4r', 'as5r', 'as6r',
-                            'as7r', 'as8r')
+        as1r, as2r, as3r, as4r, as5r, as6r, as7r, as8r = self.addRouters(
+            "as1r", "as2r", "as3r", "as4r", "as5r", "as6r", "as7r", "as8r"
+        )
 
         routers = self.routers()
-        prefix = {routers[i]: '2001:db:%04x::/48' % i
-                  for i in range(len(routers))}
-        as1r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as1r],)),))
-        as2r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as2r],)),))
-        as3r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as3r],)),))
-        as4r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as4r],)),))
-        as5r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as5r],)),))
-        as6r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as6r],)),))
-        as7r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as7r],)),))
-        as8r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as8r],)),))
+        prefix = {routers[i]: "2001:db:%04x::/48" % i for i in range(len(routers))}
+        as1r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as1r],)),))
+        as2r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as2r],)),))
+        as3r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as3r],)),))
+        as4r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as4r],)),))
+        as5r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as5r],)),))
+        as6r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as6r],)),))
+        as7r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as7r],)),))
+        as8r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as8r],)),))
 
         # Add links
-        self.addLinks((as1r, as2r), (as1r, as3r), (as1r, as4r), (as2r, as5r),
-                      (as3r, as8r), (as4r, as6r), (as4r, as8r), (as5r, as6r),
-                      (as5r, as7r), (as5r, as8r), (as6r, as7r))
+        self.addLinks(
+            (as1r, as2r),
+            (as1r, as3r),
+            (as1r, as4r),
+            (as2r, as5r),
+            (as3r, as8r),
+            (as4r, as6r),
+            (as4r, as8r),
+            (as5r, as6r),
+            (as5r, as7r),
+            (as5r, as8r),
+            (as6r, as7r),
+        )
 
         # Set AS-ownerships
         self.addAS(1, (as1r,))
@@ -98,6 +99,6 @@ class BGPPoliciesTopo5(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            link = self.addLink(r, self.addHost('h%s' % r))
+            link = self.addLink(r, self.addHost("h%s" % r))
             self.addSubnet(links=[link], subnets=[prefix[r]])
         super().build(*args, **kwargs)

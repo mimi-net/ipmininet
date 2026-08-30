@@ -1,6 +1,5 @@
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config import BGP, ebgp_session, AF_INET6,\
-    CLIENT_PROVIDER, SHARE
+from ipmininet.router.config import AF_INET6, BGP, CLIENT_PROVIDER, SHARE, ebgp_session
 
 
 class BGPPoliciesTopo3(IPTopo):
@@ -15,43 +14,40 @@ class BGPPoliciesTopo3(IPTopo):
     This topology is taken from
     https://www.computer-networking.info/exercises/html/ex-routing-policies.html
     """
+
     def build(self, *args, **kwargs):
         """
-                     +-------+
-              +------+ as2r  +-------+
-              |      +-------+       |
-              | =                  = |
-              |                      |
-          +---+---+      $       +---+---+
-          | as1r  +<-------------+  as3r |
-          +---+---+              +---+---+
-              |                      |
-              | $                  $ |
-              |      +-------+       |
-              +----->+ as4r  +<------+
-                     +-------+
+                   +-------+
+            +------+ as2r  +-------+
+            |      +-------+       |
+            | =                  = |
+            |                      |
+        +---+---+      $       +---+---+
+        | as1r  +<-------------+  as3r |
+        +---+---+              +---+---+
+            |                      |
+            | $                  $ |
+            |      +-------+       |
+            +----->+ as4r  +<------+
+                   +-------+
         """
         # Add all routers
-        as1r = self.addRouter('as1r')
-        as2r = self.addRouter('as2r')
-        as3r = self.addRouter('as3r')
-        as4r = self.addRouter('as4r')
+        as1r = self.addRouter("as1r")
+        as2r = self.addRouter("as2r")
+        as3r = self.addRouter("as3r")
+        as4r = self.addRouter("as4r")
 
         routers = self.routers()
-        prefix = {routers[i]: '2001:db:%04x::/48' % i
-                  for i in range(len(routers))}
-        as1r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as1r],)),))
-        as2r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as2r],)),))
-        as3r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as3r],)),))
-        as4r.addDaemon(BGP,
-                       address_families=(AF_INET6(networks=(prefix[as4r],)),))
+        prefix = {routers[i]: "2001:db:%04x::/48" % i for i in range(len(routers))}
+        as1r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as1r],)),))
+        as2r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as2r],)),))
+        as3r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as3r],)),))
+        as4r.addDaemon(BGP, address_families=(AF_INET6(networks=(prefix[as4r],)),))
 
         # Add links
-        self.addLinks((as1r, as2r), (as1r, as3r), (as1r, as4r), (as2r, as3r),
-                      (as3r, as4r))
+        self.addLinks(
+            (as1r, as2r), (as1r, as3r), (as1r, as4r), (as2r, as3r), (as3r, as4r)
+        )
 
         # Set AS-ownerships
         self.addAS(1, (as1r,))
@@ -68,6 +64,6 @@ class BGPPoliciesTopo3(IPTopo):
 
         # Add test hosts
         for r in self.routers():
-            link = self.addLink(r, self.addHost('h%s' % r))
+            link = self.addLink(r, self.addHost("h%s" % r))
             self.addSubnet(links=[link], subnets=[prefix[r]])
         super().build(*args, **kwargs)

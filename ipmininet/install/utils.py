@@ -2,16 +2,15 @@ import os
 import shlex
 import subprocess
 import sys
-from typing import Optional, Type, List
 
 from distutils.spawn import find_executable
 
 
-def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
-    if 'stdout' not in kwargs:
-        kwargs['stdout'] = subprocess.PIPE
-    if 'stderr' not in kwargs:
-        kwargs['stderr'] = subprocess.STDOUT
+def sh(*cmds, **kwargs) -> subprocess.Popen | None:
+    if "stdout" not in kwargs:
+        kwargs["stdout"] = subprocess.PIPE
+    if "stderr" not in kwargs:
+        kwargs["stderr"] = subprocess.STDOUT
     may_fail = kwargs.pop("may_fail", False)
     output_stdout = kwargs.pop("output_stdout", True)
     env = kwargs.pop("env", os.environ)
@@ -21,9 +20,7 @@ def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
     for cmd in cmds:
         print("\n*** " + cmd)
         try:
-            p = subprocess.Popen(shlex.split(cmd),
-                                 env=env,
-                                 **kwargs)
+            p = subprocess.Popen(shlex.split(cmd), env=env, **kwargs)
         except OSError as e:
             if not may_fail:
                 raise
@@ -33,11 +30,11 @@ def sh(*cmds, **kwargs) -> Optional[subprocess.Popen]:
         if output_stdout:
             while p.poll() is None:
                 out = p.stdout.readline()
-                if out != '':
+                if out != "":
                     sys.stdout.write(out.decode("utf-8"))
 
             out = p.stdout.read()
-            if out != '':
+            if out != "":
                 sys.stdout.write(out.decode("utf-8"))
 
             if p.poll() != 0:
@@ -86,8 +83,14 @@ class Distribution:
 
     def pip_install(self, *packages: str, **kwargs):
         if find_executable(self.PIP_CMD) is not None:
-            sh(self.PIP_CMD + " -q install " + self.pip_args + " "
-               + " ".join(packages), **kwargs)
+            sh(
+                self.PIP_CMD
+                + " -q install "
+                + self.pip_args
+                + " "
+                + " ".join(packages),
+                **kwargs,
+            )
 
     def require_pip(self):
         if find_executable(self.PIP_CMD) is None:
@@ -115,11 +118,11 @@ class Fedora(Distribution):
     PIP_CMD = "pip"
 
 
-def supported_distributions() -> List[Type]:
+def supported_distributions() -> list[type]:
     return Distribution.__subclasses__()
 
 
-def identify_distribution() -> Optional[Distribution]:
+def identify_distribution() -> Distribution | None:
     try:
         subprocess.check_call(shlex.split("grep Ubuntu /etc/lsb-release"))
         return Ubuntu()

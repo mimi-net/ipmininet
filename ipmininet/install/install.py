@@ -5,7 +5,7 @@ import sys
 
 # For imports to work during setup and afterwards
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import supported_distributions, identify_distribution, sh
+from utils import identify_distribution, sh, supported_distributions
 
 MininetVersion = "2.3.0"
 FRRoutingVersion = "7.5"
@@ -23,45 +23,62 @@ def _needs_rebuild(*paths: str) -> bool:
     """Return True when a component must be (re)built: one of its artifacts is
     missing or the user requested a forced rebuild (IPMININET_FORCE_INSTALL=1).
     """
-    return os.environ.get("IPMININET_FORCE_INSTALL") == "1" or \
-        not all(os.path.exists(p) for p in paths)
+    return os.environ.get("IPMININET_FORCE_INSTALL") == "1" or not all(
+        os.path.exists(p) for p in paths
+    )
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Install IPMininet with"
-                                                 " its dependencies")
-    parser.add_argument("-o", "--output-dir",
-                        help="Path to the directory that will store the"
-                             " dependencies", default=os.environ["HOME"])
-    parser.add_argument("-i", "--install-ipmininet", help="Install IPMininet",
-                        action="store_true")
-    parser.add_argument("-m", "--install-mininet",
-                        help="Install the last version of mininet"
-                             " and its dependencies",
-                        action="store_true")
-    parser.add_argument("-a", "--all", help="Install all daemons",
-                        action="store_true")
-    parser.add_argument("-q", "--install-frrouting",
-                        help="Install FRRouting (version %s) daemons"
-                        % FRRoutingVersion,
-                        action="store_true")
-    parser.add_argument("-e", "--install-exabgp",
-                        help="Install ExaBGP (version %s) daemon" % ExaBGPVersion,
-                        action="store_true")
-    parser.add_argument("-r", "--install-radvd",
-                        help="Install the RADVD daemon", action="store_true")
-    parser.add_argument("-s", "--install-sshd",
-                        help="Install the OpenSSH server", action="store_true")
-    parser.add_argument("-n", "--install-named",
-                        help="Install the Named daemon", action="store_true")
-    parser.add_argument("-6", "--enable-ipv6", help="Enable IPv6",
-                        action="store_true")
-    parser.add_argument("-f", "--install-openr",
-                        help="Install OpenR. OpenR is not installed with '-a'"
-                             " option since the build takes quite long. We"
-                             " also experienced that the build requires a"
-                             " substantial amount of memory (~4GB).",
-                        action="store_true")
+    parser = argparse.ArgumentParser(
+        description="Install IPMininet with its dependencies"
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        help="Path to the directory that will store the dependencies",
+        default=os.environ["HOME"],
+    )
+    parser.add_argument(
+        "-i", "--install-ipmininet", help="Install IPMininet", action="store_true"
+    )
+    parser.add_argument(
+        "-m",
+        "--install-mininet",
+        help="Install the last version of mininet and its dependencies",
+        action="store_true",
+    )
+    parser.add_argument("-a", "--all", help="Install all daemons", action="store_true")
+    parser.add_argument(
+        "-q",
+        "--install-frrouting",
+        help="Install FRRouting (version %s) daemons" % FRRoutingVersion,
+        action="store_true",
+    )
+    parser.add_argument(
+        "-e",
+        "--install-exabgp",
+        help="Install ExaBGP (version %s) daemon" % ExaBGPVersion,
+        action="store_true",
+    )
+    parser.add_argument(
+        "-r", "--install-radvd", help="Install the RADVD daemon", action="store_true"
+    )
+    parser.add_argument(
+        "-s", "--install-sshd", help="Install the OpenSSH server", action="store_true"
+    )
+    parser.add_argument(
+        "-n", "--install-named", help="Install the Named daemon", action="store_true"
+    )
+    parser.add_argument("-6", "--enable-ipv6", help="Enable IPv6", action="store_true")
+    parser.add_argument(
+        "-f",
+        "--install-openr",
+        help="Install OpenR. OpenR is not installed with '-a'"
+        " option since the build takes quite long. We"
+        " also experienced that the build requires a"
+        " substantial amount of memory (~4GB).",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
@@ -85,28 +102,33 @@ def install_mininet(output_dir: str, pip_install=True):
         # (see pyproject.toml) and OVS comes from the openvswitch-switch
         # apt package installed above.
         if _needs_rebuild("/usr/local/bin/mnexec"):
-            sh("rm -rf mininet",
-               "git clone https://github.com/mininet/mininet.git", cwd=output_dir)
-            sh("git checkout %s" % MininetVersion,
-               cwd=os.path.join(output_dir, "mininet"))
+            sh(
+                "rm -rf mininet",
+                "git clone https://github.com/mininet/mininet.git",
+                cwd=output_dir,
+            )
+            sh(
+                "git checkout %s" % MininetVersion,
+                cwd=os.path.join(output_dir, "mininet"),
+            )
             sh("make mnexec", cwd=os.path.join(output_dir, "mininet"))
-            sh("cp mnexec /usr/local/bin/",
-               cwd=os.path.join(output_dir, "mininet"))
+            sh("cp mnexec /usr/local/bin/", cwd=os.path.join(output_dir, "mininet"))
         return
     if _needs_rebuild(os.path.join(output_dir, "mininet")):
         sh("git clone https://github.com/mininet/mininet.git", cwd=output_dir)
     # Save valid version of mininet install script
-    sh("git checkout %s" % MininetInstallCommit,
-       cwd=os.path.join(output_dir, "mininet/util"))
-    sh("cp install.sh install.tmp.sh",
-       cwd=os.path.join(output_dir, "mininet/util"))
+    sh(
+        "git checkout %s" % MininetInstallCommit,
+        cwd=os.path.join(output_dir, "mininet/util"),
+    )
+    sh("cp install.sh install.tmp.sh", cwd=os.path.join(output_dir, "mininet/util"))
     # Use it in the fixed version of Mininet
-    sh("git checkout %s" % MininetVersion,
-       cwd=os.path.join(output_dir, "mininet/util"))
-    sh("mv install.tmp.sh install.sh",
-       cwd=os.path.join(output_dir, "mininet/util"))
-    sh("./install.sh %s -s ." % mininet_opts,
-       cwd=os.path.join(output_dir, "mininet/util"))
+    sh("git checkout %s" % MininetVersion, cwd=os.path.join(output_dir, "mininet/util"))
+    sh("mv install.tmp.sh install.sh", cwd=os.path.join(output_dir, "mininet/util"))
+    sh(
+        "./install.sh %s -s ." % mininet_opts,
+        cwd=os.path.join(output_dir, "mininet/util"),
+    )
 
     if pip_install:
         dist.pip_install("mininet/", cwd=output_dir)
@@ -122,12 +144,19 @@ def install_libyang(output_dir: str):
     elif dist.NAME == "Fedora":
         dist.install("pcre-devel")
 
-    sh("rm -rf libyang",
-       "git clone https://github.com/CESNET/libyang.git", cwd=output_dir)
+    sh(
+        "rm -rf libyang",
+        "git clone https://github.com/CESNET/libyang.git",
+        cwd=output_dir,
+    )
     cloned_repo = os.path.join(output_dir, "libyang")
     sh("git checkout %s" % LibyangVersion, "mkdir build", cwd=cloned_repo)
-    sh("cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String=\"Release\" ..",
-       "make", "make install", cwd=os.path.join(cloned_repo, "build"))
+    sh(
+        'cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="Release" ..',
+        "make",
+        "make install",
+        cwd=os.path.join(cloned_repo, "build"),
+    )
 
 
 def link_to_standard_dir(base_dir: str, standard_dir: str):
@@ -141,18 +170,48 @@ def link_to_standard_dir(base_dir: str, standard_dir: str):
 
 
 def install_frrouting(output_dir: str):
-    dist.install("autoconf", "automake", "libtool", "make", "gcc", "groff",
-                 "patch", "make", "bison", "flex", "gawk", "texinfo",
-                 "python3-pytest")
+    dist.install(
+        "autoconf",
+        "automake",
+        "libtool",
+        "make",
+        "gcc",
+        "groff",
+        "patch",
+        "make",
+        "bison",
+        "flex",
+        "gawk",
+        "texinfo",
+        "python3-pytest",
+    )
 
     if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
-        dist.install("libreadline-dev", "libc-ares-dev", "libjson-c-dev",
-                     "perl", "python3-dev", "libpam0g-dev", "libsystemd-dev",
-                     "libsnmp-dev", "pkg-config", "libcap-dev")
+        dist.install(
+            "libreadline-dev",
+            "libc-ares-dev",
+            "libjson-c-dev",
+            "perl",
+            "python3-dev",
+            "libpam0g-dev",
+            "libsystemd-dev",
+            "libsnmp-dev",
+            "pkg-config",
+            "libcap-dev",
+        )
     elif dist.NAME == "Fedora":
-        dist.install("readline-devel", "c-ares-devel", "json-c-devel",
-                     "perl-core", "python3-devel", "pam-devel", "systemd-devel",
-                     "net-snmp-devel", "pkgconfig", "libcap-devel")
+        dist.install(
+            "readline-devel",
+            "c-ares-devel",
+            "json-c-devel",
+            "perl-core",
+            "python3-devel",
+            "pam-devel",
+            "systemd-devel",
+            "net-snmp-devel",
+            "pkgconfig",
+            "libcap-devel",
+        )
 
     install_libyang(output_dir)
 
@@ -160,15 +219,19 @@ def install_frrouting(output_dir: str):
     if _needs_rebuild(os.path.join(frrouting_install, "sbin", "zebra")):
         frrouting_src = os.path.join(output_dir, "frr-%s" % FRRoutingVersion)
         frrouting_tar = frrouting_src + ".tar.gz"
-        sh("wget https://github.com/FRRouting/frr/releases/download/frr-{v}/"
-           "frr-{v}.tar.gz".format(v=FRRoutingVersion),
-           "tar -zxvf '%s'" % frrouting_tar,
-           cwd=output_dir)
+        sh(
+            f"wget https://github.com/FRRouting/frr/releases/download/frr-{FRRoutingVersion}/"
+            f"frr-{FRRoutingVersion}.tar.gz",
+            "tar -zxvf '%s'" % frrouting_tar,
+            cwd=output_dir,
+        )
 
-        sh("./configure '--prefix=%s'" % frrouting_install,
-           "make",
-           "make install",
-           cwd=frrouting_src)
+        sh(
+            "./configure '--prefix=%s'" % frrouting_install,
+            "make",
+            "make install",
+            cwd=frrouting_src,
+        )
 
         sh("rm -r '%s' '%s'" % (frrouting_src, frrouting_tar))
 
@@ -177,8 +240,10 @@ def install_frrouting(output_dir: str):
     sh("usermod -a -G frr root", may_fail=True)
     sh("usermod -a -G frrvty root", may_fail=True)
 
-    for curr_dir in ('sbin', 'bin'):
-        link_to_standard_dir(os.path.join(frrouting_install, curr_dir), "/usr/%s" % curr_dir)
+    for curr_dir in ("sbin", "bin"):
+        link_to_standard_dir(
+            os.path.join(frrouting_install, curr_dir), "/usr/%s" % curr_dir
+        )
 
 
 def install_openr(output_dir: str, may_fail=False):
@@ -187,14 +252,17 @@ def install_openr(output_dir: str, may_fail=False):
     # pinned manually. Builds and installs OpenR release rc-20190419-11514.
     # https://github.com/facebook/openr/releases/tag/rc-20190419-11514
     script_name = "build_openr-rc-20190419-11514.sh"
-    openr_buildscript = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                     script_name)
+    openr_buildscript = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), script_name
+    )
     # Execute build script
-    p = sh(openr_buildscript,
-           cwd=output_dir,
-           shell=True,
-           executable="/bin/bash",
-           may_fail=may_fail)
+    p = sh(
+        openr_buildscript,
+        cwd=output_dir,
+        shell=True,
+        executable="/bin/bash",
+        may_fail=may_fail,
+    )
     # We should end here only if may_fail is True
     if p.returncode != 0:
         print("WARNING: Ignoring failed OpenR installation.", file=sys.stderr)
@@ -211,15 +279,21 @@ def install_exabgp(output_dir: str, may_fail=False):
         print("IPMininet: ExaBGP already installed; skipping build")
         return
 
-    sh("rm -rf {src_dir}".format(src_dir=exabgp_src_folder),
-       "git clone {url} {src_dir}".format(url=git_url, src_dir=exabgp_src_folder),
-       cwd=output_dir, may_fail=may_fail)
+    sh(
+        f"rm -rf {exabgp_src_folder}",
+        f"git clone {git_url} {exabgp_src_folder}",
+        cwd=output_dir,
+        may_fail=may_fail,
+    )
 
     sh("git checkout %s" % ExaBGPVersion, cwd=exabgp_path_src_dir, may_fail=may_fail)
 
     # create self-contained executable
-    sh('python3 -m zipapp -o {executable_path} -m exabgp.application:main  -p "/usr/bin/env python3" lib'
-       .format(executable_path=exabgp_self_executable), cwd=exabgp_path_src_dir, may_fail=may_fail)
+    sh(
+        f'python3 -m zipapp -o {exabgp_self_executable} -m exabgp.application:main  -p "/usr/bin/env python3" lib',
+        cwd=exabgp_path_src_dir,
+        may_fail=may_fail,
+    )
 
     if os.path.lexists(final_link):
         os.remove(final_link)
@@ -242,8 +316,11 @@ def enable_ipv6():
 
     grub_cfg = "/etc/default/grub"
     if not os.path.exists(grub_cfg):
-        print("Skipping IPv6 grub configuration: %s not present"
-              " (e.g. inside a container)" % grub_cfg, file=sys.stderr)
+        print(
+            "Skipping IPv6 grub configuration: %s not present"
+            " (e.g. inside a container)" % grub_cfg,
+            file=sys.stderr,
+        )
         return
     with open(grub_cfg, "r+") as f:
         data = f.read()
@@ -257,7 +334,7 @@ def enable_ipv6():
         data = f.read()
         f.seek(0)
         # Comment out lines
-        f.write(re.sub(r'\n(.*disable_ipv6.*)', r'\n#\g<1>', data))
+        f.write(re.sub(r"\n(.*disable_ipv6.*)", r"\n#\g<1>", data))
         f.truncate()
     sh("sysctl -p")
 

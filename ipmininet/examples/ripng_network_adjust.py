@@ -1,16 +1,25 @@
 """This file contains a topology controlled by RIPng daemons.
-   The weight can be customized."""
+The weight can be customized."""
 
 from ipmininet.iptopo import IPTopo
-from ipmininet.router.config.ripng import RIPng
 from ipmininet.router.config import RouterConfig
+from ipmininet.router.config.ripng import RIPng
 
 
 class RIPngNetworkAdjust(IPTopo):
-
-    def __init__(self, lr1r2_cost=1, lr1r3_cost=1, lr1r5_cost=1, lr2r3_cost=1,
-                 lr2r4_cost=1, lr2r5_cost=1, lr4r5_cost=1,
-                 ripng_timers=None, *args, **kwargs):
+    def __init__(
+        self,
+        lr1r2_cost=1,
+        lr1r3_cost=1,
+        lr1r5_cost=1,
+        lr2r3_cost=1,
+        lr2r4_cost=1,
+        lr2r5_cost=1,
+        lr4r5_cost=1,
+        ripng_timers=None,
+        *args,
+        **kwargs,
+    ):
         """
         :param lr1r2_cost: Cost of link between R1 and R2
         :param lr1r3_cost: Cost of link between R1 and R3
@@ -58,19 +67,19 @@ class RIPngNetworkAdjust(IPTopo):
        +-----+                                     +-----+
         """
 
-        r1, r2, r3, r4, r5 = self.addRouters('r1', 'r2', 'r3', 'r4', 'r5',
-                                             use_v4=False, use_v6=True,
-                                             config=RouterConfig)
+        r1, r2, r3, r4, r5 = self.addRouters(
+            "r1", "r2", "r3", "r4", "r5", use_v4=False, use_v6=True, config=RouterConfig
+        )
         r1.addDaemon(RIPng, **self.ripng_timers)
         r2.addDaemon(RIPng, **self.ripng_timers)
         r3.addDaemon(RIPng, **self.ripng_timers)
         r4.addDaemon(RIPng, **self.ripng_timers)
         r5.addDaemon(RIPng, **self.ripng_timers)
 
-        h1 = self.addHost('h1')
-        h3 = self.addHost('h3')
-        h4 = self.addHost('h4')
-        h5 = self.addHost('h5')
+        h1 = self.addHost("h1")
+        h3 = self.addHost("h3")
+        h4 = self.addHost("h4")
+        h5 = self.addHost("h5")
 
         self.addLinks((h1, r1), (h3, r3), (h4, r4), (h5, r5))
 

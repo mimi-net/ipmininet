@@ -2,7 +2,6 @@ from ipmininet.iptopo import IPTopo
 
 
 class SpanningTreeFullMesh(IPTopo):
-
     def build(self, *args, **kwargs):
         r"""
         +-----+     +-----+
@@ -42,11 +41,24 @@ class SpanningTreeFullMesh(IPTopo):
         s12 = self.addSwitch("s12", prio=12)
         s17 = self.addSwitch("s17", prio=17)
 
-        self.addLinks((s10, s1), (s10, s2), (s11, s1), (s11, s2), (s1, s2),
-                      (s1, s3), (s1, s4), (s2, s3), (s2, s4), (s3, s4),
-                      (s3, s12), (s3, s17), (s4, s12), (s4, s17))
+        self.addLinks(
+            (s10, s1),
+            (s10, s2),
+            (s11, s1),
+            (s11, s2),
+            (s1, s2),
+            (s1, s3),
+            (s1, s4),
+            (s2, s3),
+            (s2, s4),
+            (s3, s4),
+            (s3, s12),
+            (s3, s17),
+            (s4, s12),
+            (s4, s17),
+        )
 
         for s in (s10, s11, s1, s2, s3, s4, s12, s17):
-            self.addLink(s, self.addHost('h%s' % s))
+            self.addLink(s, self.addHost("h%s" % s))
 
         super().build(*args, **kwargs)

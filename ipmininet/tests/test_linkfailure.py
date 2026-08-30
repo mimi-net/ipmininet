@@ -1,15 +1,16 @@
-""""This module test the Link Failure API"""
+""" "This module test the Link Failure API"""
+
+from ipaddress import ip_network
 
 import pytest
 
-from ipaddress import ip_network
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
-from . import require_root
-from .utils import assert_connectivity, assert_node_not_connected, \
-    assert_routing_table
+
 from ..examples.link_failure import FailureTopo
+from . import require_root
+from .utils import assert_connectivity, assert_node_not_connected, assert_routing_table
 
 
 def _wait_reconvergence(net: IPNet, timeout=120):
@@ -25,12 +26,10 @@ def _wait_reconvergence(net: IPNet, timeout=120):
             far_ip = itf.ip6 if v6 else itf.ip
             plen = itf.prefixLen6 if v6 else itf.prefixLen
             prefix = str(ip_network("%s/%s" % (far_ip, plen), strict=False))
-            assert_routing_table(net[router], [prefix], present=True,
-                                 timeout=timeout)
+            assert_routing_table(net[router], [prefix], present=True, timeout=timeout)
 
 
 class Topo(IPTopo):
-
     def build(self, *args, **kwargs):
         r1 = self.addRouter("r1")
         r2 = self.addRouter("r2")
@@ -57,11 +56,14 @@ def test_failure_topo():
 
 
 @require_root
-@pytest.mark.parametrize("plan", [
-    [("r1", "r2")],
-    [("h1", "r1")],
-    [("r1", "h1"), ("r2", "r1"), ("r2", "h2")],
-])
+@pytest.mark.parametrize(
+    "plan",
+    [
+        [("r1", "r2")],
+        [("h1", "r1")],
+        [("r1", "h1"), ("r2", "r1"), ("r2", "h2")],
+    ],
+)
 def test_failurePlan(plan):
     try:
         net = IPNet(topo=Topo())
@@ -131,8 +133,7 @@ def test_randomFailureOnTargetedLink():
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
 
-        itfs = net.randomFailure(1,
-                                 weak_links=[net["r1"].intf("r1-eth0").link])
+        itfs = net.randomFailure(1, weak_links=[net["r1"].intf("r1-eth0").link])
 
         # Check a failure between both hosts
         assert_node_not_connected(src=net["h1"], dst=net["h2"], v6=False)

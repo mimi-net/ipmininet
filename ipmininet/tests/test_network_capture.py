@@ -1,10 +1,12 @@
-""""This module test the Link Failure API"""
+""" "This module test the Link Failure API"""
+
 from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.overlay import NetworkCapture
-from . import require_root, require_mimidump
-from .utils import assert_connectivity
+
 from ..examples.network_capture import NetworkCaptureTopo
+from . import require_mimidump, require_root
+from .utils import assert_connectivity
 
 
 @require_mimidump
@@ -13,8 +15,7 @@ def test_network_capture_example():
     try:
         net = IPNet(topo=NetworkCaptureTopo())
         net.start()
-        overlay = next(o for o in net.topo.overlays
-                       if isinstance(o, NetworkCapture))
+        overlay = next(o for o in net.topo.overlays if isinstance(o, NetworkCapture))
 
         # Capture readiness is asynchronous; wait for it instead of asserting
         # file existence immediately after net.start().
@@ -38,8 +39,7 @@ def test_network_capture_wait_until_capturing():
     try:
         net = IPNet(topo=NetworkCaptureTopo())
         net.start()
-        overlay = next(o for o in net.topo.overlays
-                       if isinstance(o, NetworkCapture))
+        overlay = next(o for o in net.topo.overlays if isinstance(o, NetworkCapture))
 
         # Captures on interfaces (mimidump) become live once the READY signal
         # is received

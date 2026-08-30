@@ -1,6 +1,6 @@
 """This modules contains various utilities to streamline config generation"""
-from ipaddress import ip_interface, IPv6Address, IPv4Address
-from typing import Union
+
+from ipaddress import IPv4Address, IPv6Address, ip_interface
 
 
 class ConfigDict(dict):
@@ -29,10 +29,10 @@ class ConfigDict(dict):
         self[key] = value
 
 
-def ip_statement(ip: Union[int, str, IPv6Address, IPv4Address]):
+def ip_statement(ip: int | str | IPv6Address | IPv4Address):
     """Return the zebra ip statement for a given ip prefix
 
     :type ip: ip_interface, ip_network, ip_address, int, str"""
     if not isinstance(ip, int):
         ip = ip_interface(str(ip)).version
-    return 'ipv6' if ip == 6 else 'ip'
+    return "ipv6" if ip == 6 else "ip"

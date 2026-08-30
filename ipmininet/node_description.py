@@ -1,24 +1,32 @@
 import functools
-from typing import Union, Type, Dict, Optional
+from typing import Optional
 
-from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
-from ipmininet.router.config import BasicRouterConfig, OpenrDaemon, Openr, \
-    OpenrRouterConfig
 from ipmininet.host.config import HostConfig
+from ipmininet.router.config import (
+    BasicRouterConfig,
+    Openr,
+    OpenrDaemon,
+    OpenrRouterConfig,
+)
+from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
 
 
 class NodeDescription(str):
     def __new__(cls, value, *args, **kwargs):
         return super().__new__(cls, value)
 
-    def __init__(self, o, topo: Optional['IPTopo'] = None):
+    def __init__(self, o, topo: Optional["IPTopo"] = None):
         self.topo = topo
         self.node = o
         super().__init__()
 
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[NodeConfig] = BasicRouterConfig,
-                  cfg_daemon_list="daemons", **daemon_params):
+    def addDaemon(
+        self,
+        daemon: Daemon | type[Daemon],
+        default_cfg_class: type[NodeConfig] = BasicRouterConfig,
+        cfg_daemon_list="daemons",
+        **daemon_params,
+    ):
         """Add the daemon to the list of daemons to start on the node.
 
         :param daemon: daemon class
@@ -32,62 +40,63 @@ class NodeDescription(str):
             when instantiating the daemon class."""
         if self.topo is None:
             return
-        self.topo.addDaemon(self, daemon, default_cfg_class=default_cfg_class,
-                            cfg_daemon_list=cfg_daemon_list, **daemon_params)
+        self.topo.addDaemon(
+            self,
+            daemon,
+            default_cfg_class=default_cfg_class,
+            cfg_daemon_list=cfg_daemon_list,
+            **daemon_params,
+        )
 
-    def get_config(self, daemon: Union[Daemon, Type[Daemon]], **kwargs):
+    def get_config(self, daemon: Daemon | type[Daemon], **kwargs):
         if self.topo is None:
-            return
+            return None
         return daemon.get_config(topo=self.topo, node=self, **kwargs)
 
 
 class RouterDescription(NodeDescription):
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[RouterConfig] = BasicRouterConfig,
-                  **kwargs):
-        super().addDaemon(daemon,
-                          default_cfg_class=default_cfg_class,
-                          **kwargs)
+    def addDaemon(
+        self,
+        daemon: Daemon | type[Daemon],
+        default_cfg_class: type[RouterConfig] = BasicRouterConfig,
+        **kwargs,
+    ):
+        super().addDaemon(daemon, default_cfg_class=default_cfg_class, **kwargs)
 
 
 class OpenrRouterDescription(RouterDescription):
     def addOpenrDaemon(
-            self,
-            daemon: Union[OpenrDaemon, Type[OpenrDaemon]] = Openr,
-            default_cfg_class: Type[OpenrRouterConfig] = OpenrRouterConfig,
-            **kwargs
+        self,
+        daemon: OpenrDaemon | type[OpenrDaemon] = Openr,
+        default_cfg_class: type[OpenrRouterConfig] = OpenrRouterConfig,
+        **kwargs,
     ):
-        self.addDaemon(daemon,
-                       default_cfg_class=default_cfg_class,
-                       **kwargs)
+        self.addDaemon(daemon, default_cfg_class=default_cfg_class, **kwargs)
 
 
 class HostDescription(NodeDescription):
-    def addDaemon(self, daemon: Union[Daemon, Type[Daemon]],
-                  default_cfg_class: Type[HostConfig] = HostConfig, **kwargs):
-        super().addDaemon(daemon,
-                          default_cfg_class=default_cfg_class,
-                          **kwargs)
+    def addDaemon(
+        self,
+        daemon: Daemon | type[Daemon],
+        default_cfg_class: type[HostConfig] = HostConfig,
+        **kwargs,
+    ):
+        super().addDaemon(daemon, default_cfg_class=default_cfg_class, **kwargs)
 
 
 @functools.total_ordering
 class LinkDescription:
-    def __init__(self,
-                 topo: 'IPTopo',
-                 src: str,
-                 dst: str,
-                 key,
-                 link_attrs: Dict):
+    def __init__(self, topo: "IPTopo", src: str, dst: str, key, link_attrs: dict):
         self.src = src
         self.dst = dst
         self.key = key
         self.link_attrs = link_attrs
-        self.src_intf = IntfDescription(self.src, topo, self,
-                                        self.link_attrs.setdefault("params1",
-                                                                   {}))
-        self.dst_intf = IntfDescription(self.dst, topo, self,
-                                        self.link_attrs.setdefault("params2",
-                                                                   {}))
+        self.src_intf = IntfDescription(
+            self.src, topo, self, self.link_attrs.setdefault("params1", {})
+        )
+        self.dst_intf = IntfDescription(
+            self.dst, topo, self, self.link_attrs.setdefault("params2", {})
+        )
         super().__init__()
 
     def __getitem__(self, item):
@@ -120,8 +129,7 @@ class LinkDescription:
 
 
 class IntfDescription(NodeDescription):
-    def __init__(self, o: str, topo: 'IPTopo', link: LinkDescription,
-                 intf_attrs: Dict):
+    def __init__(self, o: str, topo: "IPTopo", link: LinkDescription, intf_attrs: dict):
         self.link = link
         self.intf_attrs = intf_attrs
         super().__init__(o, topo)

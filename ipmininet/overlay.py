@@ -4,13 +4,13 @@ import signal
 import subprocess
 import threading
 import time
-from collections import defaultdict
 from builtins import str
-from subprocess import Popen
-from typing import List, Sequence, Tuple, Optional, Dict, TYPE_CHECKING, Any, \
-    Mapping
-
+from collections import defaultdict
+from collections.abc import Sequence
 from ipaddress import ip_network
+from subprocess import Popen
+from typing import TYPE_CHECKING, Any, Optional
+
 from mininet.log import lg
 
 if TYPE_CHECKING:
@@ -29,9 +29,13 @@ class Overlay:
     node -> node name
     link -> (node1 name, node2 name)."""
 
-    def __init__(self, nodes: Sequence[str] = (),
-                 links: Sequence[str] = (), nprops: Optional[Dict] = None,
-                 lprops: Optional[Dict] = None):
+    def __init__(
+        self,
+        nodes: Sequence[str] = (),
+        links: Sequence[str] = (),
+        nprops: dict | None = None,
+        lprops: dict | None = None,
+    ):
         """:param nodes: The nodes in this overlay
         :param links: the links in this overlay
         :param nprops: the properties shared by all nodes in this overlay
@@ -43,7 +47,7 @@ class Overlay:
         self.per_link_properties = defaultdict(dict)  # type: Mapping
         self.per_node_properties = defaultdict(dict)  # type: Mapping
 
-    def apply(self, topo: 'IPTopo'):
+    def apply(self, topo: "IPTopo"):
         """Apply the Overlay properties to the given topology"""
         # First set the common properties, then the element-specific ones
         for n in self.nodes:
@@ -51,7 +55,7 @@ class Overlay:
         for l in self.links:
             topo.linkInfo(l[0], l[1]).update(self.link_property(l))
 
-    def check_consistency(self, topo: 'IPTopo') -> bool:
+    def check_consistency(self, topo: "IPTopo") -> bool:
         """Check that this overlay is consistent"""
         return True
 
@@ -63,7 +67,7 @@ class Overlay:
         """Add one or more link to this overlay"""
         self.links.extend(link)
 
-    def node_property(self, n: str) -> Dict:
+    def node_property(self, n: str) -> dict:
         """Return the properties for the given node"""
         p = self.nodes_properties.copy()
         p.update(self.per_node_properties[n])
@@ -73,7 +77,7 @@ class Overlay:
         """Set the property of a given node"""
         self.per_node_properties[n][key] = val
 
-    def link_property(self, link: str) -> Dict:
+    def link_property(self, link: str) -> dict:
         """Return the properties for the given link"""
         p = self.links_properties.copy()
         p.update(self.per_link_properties[link])
@@ -119,8 +123,7 @@ class Subnet(Overlay):
             if not topo.isSwitch(y):
                 self.nodes.append(y)
 
-        if not self._check_subnets() \
-                or not self._find_nodes_in_lan(topo, self.nodes):
+        if not self._check_subnets() or not self._find_nodes_in_lan(topo, self.nodes):
             self.consistent = False
             return
 
@@ -130,7 +133,7 @@ class Subnet(Overlay):
                 for value in self.node_links[node]:
                     attrs = value
 
-                    addr = '%s/%d' % (subnet[i+1], subnet.prefixlen)
+                    addr = "%s/%d" % (subnet[i + 1], subnet.prefixlen)
                     addrs = tuple(attrs.get("ip", tuple()))
                     attrs["ip"] = addrs + (addr,)
 
@@ -142,9 +145,10 @@ class Subnet(Overlay):
         try:
             for subnet in self.subnets:
                 if ip_network(str(subnet)).num_addresses - 1 < len(self.nodes):
-                    lg.error("The subnet %s does not contain enough addresses."
-                             " We need %s addresses\n"
-                             % (subnet, len(self.nodes)))
+                    lg.error(
+                        "The subnet %s does not contain enough addresses."
+                        " We need %s addresses\n" % (subnet, len(self.nodes))
+                    )
                     return False
         except ValueError as e:
             lg.error("One of the subnet is invalid: %s\n" % e)
@@ -152,17 +156,20 @@ class Subnet(Overlay):
         return True
 
     @staticmethod
-    def _build_adjacency_list(topo: 'IPTopo') \
-            -> Dict[str, List[Tuple[str, str, Any, Dict]]]:
+    def _build_adjacency_list(
+        topo: "IPTopo",
+    ) -> dict[str, list[tuple[str, str, Any, dict]]]:
         adjacencies = {}  # type: Dict[str, List[Tuple[str, str, Any, Dict]]]
         for src, dst, k, attrs in topo.iterLinks(withInfo=True, withKeys=True):
-            adjacencies.setdefault(src, [])\
-                .append((src, dst, k, attrs.setdefault("params2", {})))
-            adjacencies.setdefault(dst, [])\
-                .append((dst, src, k, attrs.setdefault("params1", {})))
+            adjacencies.setdefault(src, []).append(
+                (src, dst, k, attrs.setdefault("params2", {}))
+            )
+            adjacencies.setdefault(dst, []).append(
+                (dst, src, k, attrs.setdefault("params1", {}))
+            )
         return adjacencies
 
-    def _find_nodes_in_lan(self, topo: 'IPTopo', nodes: List[str]) -> bool:
+    def _find_nodes_in_lan(self, topo: "IPTopo", nodes: list[str]) -> bool:
         """Checks that all nodes are in one same LAN.
         It also fills a map for each node name, the link on which an address
         should be set
@@ -182,8 +189,9 @@ class Subnet(Overlay):
         count_nodes = 0
         count_links = 0
         for previous, n_start, k_start, n_start_value in adjacencies[nodes[0]]:
-            nodes_0_value = [x for x in adjacencies[n_start]
-                             if x[1] == nodes[0] and x[2] == k_start][0][3]
+            nodes_0_value = [
+                x for x in adjacencies[n_start] if x[1] == nodes[0] and x[2] == k_start
+            ][0][3]
             node_links = {nodes[0]: [nodes_0_value]}
             count_nodes = 1
 
@@ -217,7 +225,7 @@ class Subnet(Overlay):
                     to_visit.extend(adjacencies[curr])
                 elif curr in self.nodes:
                     # Add to node_links
-                    if node_links.get(curr, None) is None:
+                    if node_links.get(curr) is None:
                         count_nodes += 1
                     node_links.setdefault(curr, []).append(curr_value)
 
@@ -232,15 +240,19 @@ class Subnet(Overlay):
         return True
 
     def __str__(self):
-        return "<SubnetOverlay nodes=%s subnets=%s>" % (self.nodes,
-                                                        self.subnets)
+        return "<SubnetOverlay nodes=%s subnets=%s>" % (self.nodes, self.subnets)
 
 
 class NetworkCapture(Overlay):
     """This overlays capture traffic on multiple interfaces before starting the daemons and stores the result"""
 
-    def __init__(self, nodes: List['NodeDescription'] = (), interfaces: List['IntfDescription'] = (),
-                 base_filename: str = "capture", extra_arguments: str = ""):
+    def __init__(
+        self,
+        nodes: list["NodeDescription"] = (),
+        interfaces: list["IntfDescription"] = (),
+        base_filename: str = "capture",
+        extra_arguments: str = "",
+    ):
         """
         :param nodes: The routers and hosts that needs to capture traffic on every of their interfaces
         :param interfaces: The interfaces on which traffic should be captured
@@ -259,45 +271,51 @@ class NetworkCapture(Overlay):
         self._stderr_lock = threading.Lock()
         super().__init__(nodes=list(set(nodes)))
 
-    def apply(self, topo: 'IPTopo'):
+    def apply(self, topo: "IPTopo"):
         for n in self.nodes:
             topo.nodeInfo(n).setdefault("captures", []).append(self)
         for itf in self.interfaces:
             itf.intf_attrs.setdefault("captures", []).append(self)
 
-    def check_consistency(self, topo: 'IPTopo') -> bool:
+    def check_consistency(self, topo: "IPTopo") -> bool:
         return len(self.nodes) != 0 or len(self.interfaces) != 0
 
-    def start(self, node: Optional['IPNode'] = None, intf: Optional['IPIntf'] = None) -> Popen:
+    def start(
+        self, node: Optional["IPNode"] = None, intf: Optional["IPIntf"] = None
+    ) -> Popen:
         if node is not None:
             # We need to specify the interfaces explicitly because switches that are loaded on the root namespace
             # and therefore using '-i any' would listen on all the switches
             interfaces = [itf.name for itf in node.intfList()]
-            file_path = os.path.join(node.cwd, self.base_filename + '_' + node.name + '.pcapng')
+            file_path = os.path.join(
+                node.cwd, self.base_filename + "_" + node.name + ".pcapng"
+            )
             cmd = f"tcpdump -Z root -i {' -i '.join(interfaces)} -w {file_path} {self.extra_arguments}"
             process = node.popen(shlex.split(cmd))
             self._output_files[node.name] = file_path
             self.ongoing_captures[node.name] = process
             return process
-        elif intf is not None:
-
+        if intf is not None:
             if intf.name in self.ongoing_captures:
-                lg.info('We already run tcpdump on this interface')
+                lg.info("We already run tcpdump on this interface")
                 return None
 
-            file_path = os.path.join(intf.node.cwd, self.base_filename + '_' + intf.name + '.pcapng')
-            file_path_out = os.path.join(intf.node.cwd, self.base_filename + '_' + intf.name + '_out.pcapng')
+            file_path = os.path.join(
+                intf.node.cwd, self.base_filename + "_" + intf.name + ".pcapng"
+            )
+            file_path_out = os.path.join(
+                intf.node.cwd, self.base_filename + "_" + intf.name + "_out.pcapng"
+            )
             cmd = f"mimidump {intf.name} {file_path} {file_path_out} {self.extra_arguments}"
-            
+
             process = intf.node.popen(shlex.split(cmd))
             self._output_files[intf.name] = file_path_out
             self._drain_stderr(intf.name, process)
             self.ongoing_captures[intf.name] = process
             return process
-        else:
-            raise ValueError("The Network capture need a router or an interface to run")
+        raise ValueError("The Network capture need a router or an interface to run")
 
-    def stop(self, node: Optional['IPNode'] = None, intf: Optional['IPIntf'] = None):
+    def stop(self, node: Optional["IPNode"] = None, intf: Optional["IPIntf"] = None):
         for anchor in [node, intf]:
             if anchor is not None:
                 process: subprocess.Popen = self.ongoing_captures.get(anchor.name)
@@ -324,8 +342,10 @@ class NetworkCapture(Overlay):
             if process is None or process.poll() is not None:
                 return False
             with self._stderr_lock:
-                if any(line.strip().startswith(b"READY")
-                       for line in self._stderr_lines.get(intf_name, ())):
+                if any(
+                    line.strip().startswith(b"READY")
+                    for line in self._stderr_lines.get(intf_name, ())
+                ):
                     return True
             output_file = self._output_files.get(intf_name)
             if output_file is not None and os.path.exists(output_file):
@@ -349,5 +369,6 @@ class NetworkCapture(Overlay):
                 with self._stderr_lock:
                     self._stderr_lines[intf_name].append(line)
 
-        threading.Thread(target=drain, daemon=True,
-                         name=f"mimidump-stderr-{intf_name}").start()
+        threading.Thread(
+            target=drain, daemon=True, name=f"mimidump-stderr-{intf_name}"
+        ).start()

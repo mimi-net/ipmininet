@@ -5,6 +5,7 @@ can be run locally by any user (see scripts/run-tests-local.sh) and will run
 in a rootless CI job. Tests that require root are marked with `require_root`
 in the other test modules.
 """
+
 import time
 from ipaddress import IPv4Network, IPv6Network, ip_network
 
@@ -37,16 +38,20 @@ class TestWaitUntil:
         assert calls["n"] == _EXPECTED_CALLS
 
     def test_timeout_fails(self):
-        with pytest.raises(pytest.fail.Exception,
-                           match="Timed out after 0s while waiting for the "
-                                 "condition"):
+        with pytest.raises(
+            pytest.fail.Exception,
+            match="Timed out after 0s while waiting for the condition",
+        ):
             wait_until(lambda: False, timeout=0.05, interval=0.01)
 
     def test_timeout_evaluates_callable_description(self):
-        with pytest.raises(pytest.fail.Exception, match="last observed state: "
-                                                        "5"):
-            wait_until(lambda: False, timeout=0.05, interval=0.01,
-                       description=lambda: "last observed state: 5")
+        with pytest.raises(pytest.fail.Exception, match="last observed state: 5"):
+            wait_until(
+                lambda: False,
+                timeout=0.05,
+                interval=0.01,
+                description=lambda: "last observed state: 5",
+            )
 
     def test_success_does_not_wait(self):
         # Check-then-sleep: an immediate success must return without sleeping.
@@ -74,7 +79,8 @@ class TestInferSubPaths:
             for probe_time in probes:
                 if probe_time >= gaps.get(node, 0.0):
                     events[TestInferSubPaths._DEST].append(
-                        (probe_time + 0.005 * pos, node))
+                        (probe_time + 0.005 * pos, node)
+                    )
         return events
 
     def test_single_probe(self):
@@ -98,34 +104,49 @@ class TestInferSubPaths:
     def test_last_probe_missed_on_every_node(self):
         packet_received = self._burst_events({}, self._BURST)
         packet_received[self._DEST] = [
-            (t, n) for t, n in packet_received[self._DEST]
-            if t < self._BURST[-1]
+            (t, n) for t, n in packet_received[self._DEST] if t < self._BURST[-1]
         ]
         assert _infer_sub_paths(packet_received)[self._DEST] == self._NODES
 
     def test_double_capture_on_router(self):
         # A router captures a forwarded packet once per interface, so a probe
         # can appear twice on one node; the path must still be recovered.
-        packet_received = {self._DEST: [
-            (0.300, "h6"), (0.3005, "r6"), (0.3010, "r6"), (0.302, "r5"),
-            (0.303, "r4"), (0.305, "h4"),
-            (0.800, "h6"), (0.8005, "r6"), (0.8010, "r6"), (0.802, "r5"),
-            (0.803, "r4"), (0.805, "h4"),
-        ]}
+        packet_received = {
+            self._DEST: [
+                (0.300, "h6"),
+                (0.3005, "r6"),
+                (0.3010, "r6"),
+                (0.302, "r5"),
+                (0.303, "r4"),
+                (0.305, "h4"),
+                (0.800, "h6"),
+                (0.8005, "r6"),
+                (0.8010, "r6"),
+                (0.802, "r5"),
+                (0.803, "r4"),
+                (0.805, "h4"),
+            ]
+        }
         assert _infer_sub_paths(packet_received)[self._DEST] == self._NODES
 
     def test_probes_not_split_at_half_second_boundary(self):
         # Probes must be grouped by time gap, not by rounding: a probe at
         # .648 and the next one +0.5s later (.156) both round to the same
         # integer and must not be merged into one fake probe.
-        packet_received = {self._DEST: [
-            (176.648, "h6"), (176.6485, "r6"), (176.649, "r5"), (176.650,
-                                                                  "r4"),
-            (176.651, "h4"),
-            (177.156, "h6"), (177.1565, "r6"), (177.157, "r5"), (177.158,
-                                                                  "r4"),
-            (177.159, "h4"),
-        ]}
+        packet_received = {
+            self._DEST: [
+                (176.648, "h6"),
+                (176.6485, "r6"),
+                (176.649, "r5"),
+                (176.650, "r4"),
+                (176.651, "h4"),
+                (177.156, "h6"),
+                (177.1565, "r6"),
+                (177.157, "r5"),
+                (177.158, "r4"),
+                (177.159, "h4"),
+            ]
+        }
         assert _infer_sub_paths(packet_received)[self._DEST] == self._NODES
 
 
@@ -222,11 +243,14 @@ class TestConfigDict:
         assert d["foo"] == "bar"
 
 
-@pytest.mark.parametrize("ip,expected", [
-    ("10.0.0.0/8", "ip"),
-    (4, "ip"),
-    ("2001:db8::/32", "ipv6"),
-    (6, "ipv6"),
-])
+@pytest.mark.parametrize(
+    "ip,expected",
+    [
+        ("10.0.0.0/8", "ip"),
+        (4, "ip"),
+        ("2001:db8::/32", "ipv6"),
+        (6, "ipv6"),
+    ],
+)
 def test_ip_statement(ip, expected):
     assert ip_statement(ip) == expected

@@ -1,10 +1,16 @@
 import os
 
-from .install import parse_args, dist, install_mininet, install_frrouting, \
-    install_exabgp, enable_ipv6, install_openr
+from .install import (
+    dist,
+    enable_ipv6,
+    install_exabgp,
+    install_frrouting,
+    install_mininet,
+    install_openr,
+    parse_args,
+)
 
 if __name__ == "__main__":
-
     args = parse_args()
     args.output_dir = os.path.normpath(os.path.abspath(args.output_dir))
 
@@ -62,5 +68,7 @@ if __name__ == "__main__":
         if dist.NAME == "Ubuntu":
             install_openr(args.output_dir)
         else:
-            print("OpenR build currently only available on Ubuntu."
-                  " Skipping installing OpenR.")
+            print(
+                "OpenR build currently only available on Ubuntu."
+                " Skipping installing OpenR."
+            )

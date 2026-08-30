@@ -54,54 +54,90 @@ def perm(*args):
 
 
 @require_root
-@pytest.mark.parametrize("input_line,expected_lines", [
-    ("route 2001:1a::2",
-     [re.compile(r"\[r1\] 2001:1a::2.*dev +r1-eth0.*"),
-      re.compile(r"\[r2\] 2001:1a::2.*dev +r2-eth0.*")]),
-    ("ip 2001:1a::1/64 2001:1a::1 10.2.0.3 10.2.0.3/24 2001::3/64 invalid",
-     ["2001:1a::1/64 | r1 ", "2001:1a::1 | r1 ",
-      "10.2.0.3/24 | h4 ", "10.2.0.3 | h4 ",
-      "2001::3/64 | unknown IP ", "invalid | unknown IP "]),
-    ("ips h1 h4 invalid",
-     [re.compile(r"h1 \| \[u?'10\.0\.0\.2', u?'2001:1a::2'\] "),
-      re.compile(r"h4 \| \[u?'10\.2\.0\.3', u?'2001:12b::3'\] "),
-      "invalid | unknown node "]),
-    ("pingall", [re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                 re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                 re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                 re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                 re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                 re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                 re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 ")),
-                 re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 "))]),
-    ("pingpair h1 h2", ["h1 --IPv4--> h2 ",
-                        "h1 --IPv6--> h2 ",
-                        "h2 --IPv4--> h1 ",
-                        r"h2 --IPv6--> h1 "]),
-    ("ping4all", [re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                  re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                  re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                  re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 "))]),
-    ("ping4pair h1 h2", ["h1 --IPv4--> h2 ",
-                         "h2 --IPv4--> h1 "]),
-    ("ping6all", [re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
-                  re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
-                  re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
-                  re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 "))]),
-    ("ping6pair", ["h1 --IPv6--> h2 ",
-                   "h2 --IPv6--> h1 "]),
-    ("h1 echo h4", ["10.2.0.3"]),
-    ("s2 echo h4", ["h4"]),
-    ("h1", ["*** Enter a command for node: h1 <cmd>"]),
-    ("invalid_command", ["*** Unknown command: invalid_command"])
-])
+@pytest.mark.parametrize(
+    "input_line,expected_lines",
+    [
+        (
+            "route 2001:1a::2",
+            [
+                re.compile(r"\[r1\] 2001:1a::2.*dev +r1-eth0.*"),
+                re.compile(r"\[r2\] 2001:1a::2.*dev +r2-eth0.*"),
+            ],
+        ),
+        (
+            "ip 2001:1a::1/64 2001:1a::1 10.2.0.3 10.2.0.3/24 2001::3/64 invalid",
+            [
+                "2001:1a::1/64 | r1 ",
+                "2001:1a::1 | r1 ",
+                "10.2.0.3/24 | h4 ",
+                "10.2.0.3 | h4 ",
+                "2001::3/64 | unknown IP ",
+                "invalid | unknown IP ",
+            ],
+        ),
+        (
+            "ips h1 h4 invalid",
+            [
+                re.compile(r"h1 \| \[u?'10\.0\.0\.2', u?'2001:1a::2'\] "),
+                re.compile(r"h4 \| \[u?'10\.2\.0\.3', u?'2001:12b::3'\] "),
+                "invalid | unknown node ",
+            ],
+        ),
+        (
+            "pingall",
+            [
+                re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
+                re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
+                re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
+                re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
+                re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
+                re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
+                re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 ")),
+                re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 ")),
+            ],
+        ),
+        (
+            "pingpair h1 h2",
+            [
+                "h1 --IPv4--> h2 ",
+                "h1 --IPv6--> h2 ",
+                "h2 --IPv4--> h1 ",
+                r"h2 --IPv6--> h1 ",
+            ],
+        ),
+        (
+            "ping4all",
+            [
+                re.compile(r"h1 --IPv4--> %s" % perm("h2 ", "h3 ", "h4 ")),
+                re.compile(r"h2 --IPv4--> %s" % perm("h1 ", "h3 ", "h4 ")),
+                re.compile(r"h3 --IPv4--> %s" % perm("h1 ", "h2 ", "h4 ")),
+                re.compile(r"h4 --IPv4--> %s" % perm("h1 ", "h2 ", "h3 ")),
+            ],
+        ),
+        ("ping4pair h1 h2", ["h1 --IPv4--> h2 ", "h2 --IPv4--> h1 "]),
+        (
+            "ping6all",
+            [
+                re.compile(r"h1 --IPv6--> %s" % perm("h2 ", "h3 ", "h4 ")),
+                re.compile(r"h2 --IPv6--> %s" % perm("h1 ", "h3 ", "h4 ")),
+                re.compile(r"h3 --IPv6--> %s" % perm("h1 ", "h2 ", "h4 ")),
+                re.compile(r"h4 --IPv6--> %s" % perm("h1 ", "h2 ", "h3 ")),
+            ],
+        ),
+        ("ping6pair", ["h1 --IPv6--> h2 ", "h2 --IPv6--> h1 "]),
+        ("h1 echo h4", ["10.2.0.3"]),
+        ("s2 echo h4", ["h4"]),
+        ("h1", ["*** Enter a command for node: h1 <cmd>"]),
+        ("invalid_command", ["*** Unknown command: invalid_command"]),
+    ],
+)
 def test_cli(tmp, net, input_line, expected_lines):
 
     with open(tmp, "w") as fileobj:
         fileobj.write(input_line + "\n")
 
     with CLICapture("info") as capture:
-        f = open(tmp, "r")
+        f = open(tmp)
         try:
             IPCLI(net, stdin=f, script=tmp)
         finally:
@@ -110,11 +146,12 @@ def test_cli(tmp, net, input_line, expected_lines):
     pattern = re.compile("")
     for line in expected_lines:
         if isinstance(line, type(pattern)):
-            assert len([x for x in capture.out
-                        if line.match(x) is not None]) > 0, \
-                "Regex '%s' does not match the output of '%s':\n%s" \
+            assert len([x for x in capture.out if line.match(x) is not None]) > 0, (
+                "Regex '%s' does not match the output of '%s':\n%s"
                 % (line, input_line, "\n".join(capture.out))
+            )
         else:
-            assert line in capture.out, \
-                "Line '%s' cannot be found in the output of '%s':\n%s" \
+            assert line in capture.out, (
+                "Line '%s' cannot be found in the output of '%s':\n%s"
                 % (line, input_line, "\n".join(capture.out))
+            )

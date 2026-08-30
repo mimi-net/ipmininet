@@ -9,7 +9,6 @@ from ipmininet.iptopo import IPTopo
 
 
 class TCAdvancedNet(IPTopo):
-
     def __init__(self, *args, **kwargs):
         self.switch_count = 0
         super().__init__(*args, **kwargs)
@@ -26,8 +25,7 @@ class TCAdvancedNet(IPTopo):
         super().build(*args, **kwargs)
 
     # We need at least 2ms of delay for accurate emulation
-    def addLink(self, node1, node2, delay="2ms", bw=None,
-                max_queue_size=None, **opts):
+    def addLink(self, node1, node2, delay="2ms", bw=None, max_queue_size=None, **opts):
         src_delay = None
         dst_delay = None
         opts1 = dict(opts)
@@ -45,8 +43,8 @@ class TCAdvancedNet(IPTopo):
         except KeyError:
             pass
 
-        src_delay = src_delay if src_delay else delay
-        dst_delay = dst_delay if dst_delay else delay
+        src_delay = src_delay or delay
+        dst_delay = dst_delay or delay
 
         # node1 -> switch
         default_params1 = {"bw": bw}
@@ -59,16 +57,13 @@ class TCAdvancedNet(IPTopo):
         opts2["params2"] = default_params2
 
         # switch -> node1
-        opts1["params2"] = {"delay": dst_delay,
-                            "max_queue_size": max_queue_size}
+        opts1["params2"] = {"delay": dst_delay, "max_queue_size": max_queue_size}
         # switch -> node2
-        opts2["params1"] = {"delay": src_delay,
-                            "max_queue_size": max_queue_size}
+        opts2["params1"] = {"delay": src_delay, "max_queue_size": max_queue_size}
 
         # Netem queues will mess with shaping
         # Therefore, we put them on an intermediary switch
         self.switch_count += 1
         s = "s%d" % self.switch_count
         self.addSwitch(s)
-        return super().addLink(node1, s, **opts1), \
-               super().addLink(s, node2, **opts2)
+        return super().addLink(node1, s, **opts1), super().addLink(s, node2, **opts2)
