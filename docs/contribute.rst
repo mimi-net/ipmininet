@@ -207,7 +207,9 @@ Coverage and code-quality gates
   are uploaded as workflow artifacts and to Codecov.
 - Run coverage locally with ``COVERAGE=1 scripts/run-tests-parallel.sh`` (as
   root), or on the rootless tests directly with
-  ``uv run pytest --cov=ipmininet ipmininet/tests/test_pure.py``.
+  ``uv run pytest --cov=ipmininet --cov-fail-under=0 ipmininet/tests/test_pure.py``
+  (the ``fail_under`` gate applies to the full-suite master run, not to the
+  rootless signal).
 - Code duplication is capped by ``scripts/check-duplicates.sh`` (pylint
   ``duplicate-code``) against the ``duplication_max`` baseline in
   ``pyproject.toml``; CI runs it in the ``rootless`` job.

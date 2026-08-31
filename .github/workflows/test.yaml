@@ -41,6 +41,7 @@ jobs:
           uv run python -m pytest \
             -v \
             --cov=ipmininet \
+            --cov-fail-under=0 \
             --cov-report=html:htmlcov \
             --cov-report=xml:coverage.xml \
             ipmininet/tests/test_pure.py \
