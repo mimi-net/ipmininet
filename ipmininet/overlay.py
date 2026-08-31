@@ -242,9 +242,30 @@ class Subnet(Overlay):
         return f"<SubnetOverlay nodes={self.nodes} subnets={self.subnets}>"
 
 
-_CAPTURE_HEADER_SIZE = 24
-"""Size of a classic pcap global header, the format mimidump writes via
-``pcap_dump_open`` before its captors enter the capture loop."""
+_PCAP_GLOBAL_HEADER_SIZE = 24
+_PCAPNG_SECTION_HEADER_SIZE = 28
+_MIN_PACKET_RECORD = 16
+_PCAP_MAGIC_LE = b"\xd4\xc3\xb2\xa1"
+_PCAP_MAGIC_BE = b"\xa1\xb2\xc3\xd4"
+_PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"
+
+
+def _capture_header_size(output_file: str) -> int:
+    """Return the capture format's header size from the file's magic bytes.
+
+    Classic pcap has a 24-byte global header, pcapng a 28-byte section header
+    block; unknown or unreadable files default to classic pcap.
+    """
+    try:
+        with open(output_file, "rb") as f:
+            magic = f.read(4)
+    except OSError:
+        return _PCAP_GLOBAL_HEADER_SIZE
+    if magic in (_PCAP_MAGIC_LE, _PCAP_MAGIC_BE):
+        return _PCAP_GLOBAL_HEADER_SIZE
+    if magic == _PCAPNG_MAGIC:
+        return _PCAPNG_SECTION_HEADER_SIZE
+    return _PCAP_GLOBAL_HEADER_SIZE
 
 
 class NetworkCapture(Overlay):
@@ -344,20 +365,23 @@ class NetworkCapture(Overlay):
         """Wait until the capture on the given node/interface is actually running.
 
         A capture is considered live once the corresponding process is still alive
-        AND either the mimidump ``READY`` signal has been seen on stderr (that
-        signal is emitted once, when all captors enter the capture loop) OR the
-        capture output file is live. Without ``strict``, a file is live as soon
-        as it exists (the fallback used by captures that do not signal
-        readiness, e.g. tcpdump or older mimidump binaries). In ``strict`` mode
-        a file is only live once it has grown past the capture header between
-        two polls; mimidump creates its file before the captors enter the loop,
-        so bare existence is a proxy, not liveness.
+        AND either the mimidump ``READY`` signal has been seen on stderr (the
+        primary, authoritative notification: it is emitted once, when all
+        captors enter the capture loop) OR the capture output file is live.
+        Without ``strict``, a file is live as soon as it exists (the fallback
+        used by captures that do not signal readiness, e.g. tcpdump or older
+        mimidump binaries). In ``strict`` mode a file is only live once it holds
+        data past its capture header (the header size is derived from the file's
+        magic bytes, see :func:`_capture_header_size`): the file is either
+        growing between two polls or already stable past the header. mimidump
+        creates its file before the captors enter the loop, so a bare
+        header-only file is a proxy, not liveness.
 
         :param intf_name: name of the node or of the interface the capture is
                           attached to (the key used in ``ongoing_captures``)
         :param timeout:   maximum time to wait, in seconds
         :param strict:    if True, never accept a bare capture file as live;
-                          require the ``READY`` signal or file growth instead
+                          require the ``READY`` signal or data past the header
         :return:          True as soon as the capture is live, False if the capture
                           was not started, died or did not become live in time"""
         deadline = time.monotonic() + timeout
@@ -380,14 +404,19 @@ class NetworkCapture(Overlay):
                     size = os.path.getsize(output_file)
                 except OSError:
                     size = None
-                if (
-                    size is not None
-                    and last_size is not None
-                    and size > _CAPTURE_HEADER_SIZE
-                    and size > last_size
-                ):
-                    return True
-                last_size = size
+                if size is None:
+                    last_size = None
+                else:
+                    header_size = _capture_header_size(output_file)
+                    if (
+                        last_size is not None
+                        and size > header_size
+                        and (
+                            size > last_size or size - header_size >= _MIN_PACKET_RECORD
+                        )
+                    ):
+                        return True
+                    last_size = size
             time.sleep(0.05)
         return False
 
