@@ -17,3 +17,6 @@ docs/api/*.rst
 .venv/
 /.tmp/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/

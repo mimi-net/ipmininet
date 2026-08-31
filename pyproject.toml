@@ -26,14 +26,41 @@ text = "GPLv2"
 Homepage = "https://github.com/cnp3/ipmininet"
 
 [project.optional-dependencies]
-testing = [ "pytest", "pytest-timeout", "pytest-xdist",]
+testing = [ "coverage", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist",]
 
 [dependency-groups]
 docs = [ "sphinx", "sphinx_rtd_theme", "sphinxcontrib-apidoc", "sphinx-mdinclude",]
-dev = [ "mdformat", "pre-commit", "ruff",]
+dev = [ "mdformat", "pylint", "pre-commit", "ruff",]
 
 [tool.aliases]
 test = "pytest"
+
+[tool.coverage.run]
+branch = true
+parallel = true
+data_file = ".coverage"
+omit = [
+  "ipmininet/examples/*",
+  "ipmininet/install/*",
+  "ipmininet/tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 0
+
+[tool.ipmininet]
+duplication_max = 51
+
+[tool.pylint]
+
+[tool.pylint.messages_control]
+disable = "all"
+enable = "duplicate-code"
+
+[tool.pylint.similarities]
+min-similarity-lines = 4
 
 [tool.pytest.ini_options]
 timeout = 600

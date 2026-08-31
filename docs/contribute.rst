@@ -197,6 +197,21 @@ as a non-root user, or a missing routing daemon). See the "Test-skip policy"
 comment at the top of ``ipmininet/tests/__init__.py`` for the full matrix and
 reasons; skipped tests and their reasons are shown with ``pytest -rs``.
 
+Coverage and code-quality gates
+-------------------------------
+
+- CI measures **branch coverage** (``[tool.coverage]`` in ``pyproject.toml``
+  is the single source of truth). PRs run a cheap rootless coverage pass;
+  ``master`` enforces the full-suite gate with
+  ``coverage report --fail-under``. Reports (``coverage.xml`` + ``htmlcov/``)
+  are uploaded as workflow artifacts and to Codecov.
+- Run coverage locally with ``COVERAGE=1 scripts/run-tests-parallel.sh`` (as
+  root), or on the rootless tests directly with
+  ``uv run pytest --cov=ipmininet ipmininet/tests/test_pure.py``.
+- Code duplication is capped by ``scripts/check-duplicates.sh`` (pylint
+  ``duplicate-code``) against the ``duplication_max`` baseline in
+  ``pyproject.toml``; CI runs it in the ``rootless`` job.
+
 Writing reliable tests
 ----------------------
 

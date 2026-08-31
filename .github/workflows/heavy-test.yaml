@@ -49,7 +49,28 @@ jobs:
         run: scripts/ci-save-deps.sh
       - name: Install mimidump
         run: scripts/ci-install-mimidump.sh
-      - name: Run full test suite
+      - name: Run full test suite (coverage)
         timeout-minutes: 170
         run: |
-          sudo env "PATH=$PATH" scripts/run-tests-parallel.sh
+          sudo env "PATH=$PATH" COVERAGE=1 scripts/run-tests-parallel.sh
+      - name: Combine and enforce the coverage gate
+        run: |
+          uv run coverage combine
+          uv run coverage report -m
+          uv run coverage xml -o coverage.xml
+          uv run coverage html -d htmlcov
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-full
+          path: |
+            coverage.xml
+            htmlcov/
+      - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: full

@@ -59,9 +59,19 @@ if [ ! -x "$WRAPPER" ]; then
 fi
 
 echo "==> pytest-xdist workers: $N (isolated namespaces)"
+COVERAGE_FLAGS=()
+if [ "${COVERAGE:-0}" = "1" ]; then
+    echo "==> coverage enabled (branch mode)"
+    COVERAGE_FLAGS=(
+        --cov=ipmininet
+        --cov-report=html:htmlcov
+        --cov-report=xml:coverage.xml
+    )
+fi
 exec uv run python -m pytest \
     -p no:cacheprovider \
     -v \
     --dist=loadscope \
     --tx "${N}*popen//python=${WRAPPER}" \
+    "${COVERAGE_FLAGS[@]}" \
     "${ARGS[@]}"

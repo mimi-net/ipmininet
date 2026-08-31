@@ -34,13 +34,34 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
           uv run mdformat --check README.md LICENSE.md ipmininet/examples/README.md
-      - name: Run rootless tests
+      - name: Check for duplicated code
+        run: scripts/check-duplicates.sh
+      - name: Run rootless tests (coverage)
         run: |
           uv run python -m pytest \
             -v \
+            --cov=ipmininet \
+            --cov-report=html:htmlcov \
+            --cov-report=xml:coverage.xml \
             ipmininet/tests/test_pure.py \
             ipmininet/tests/test_misc.py \
-            ipmininet/tests/test_link.py
+            ipmininet/tests/test_link.py \
+            ipmininet/tests/test_network_capture.py
+      - name: Upload coverage report (rootless)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-rootless
+          path: |
+            coverage.xml
+            htmlcov/
+      - name: Upload coverage to Codecov
+        if: env.CODECOV_TOKEN != ''
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          flags: rootless
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 200

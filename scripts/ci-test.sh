@@ -4,8 +4,6 @@ mkdir -p /workspace/.tmp
 LOGFILE="${LOGFILE:-/workspace/.tmp/pytest.log}"
 exec > >(tee "$LOGFILE") 2>&1
 
-mkdir -p /workspace/htmlcov
-
 # sshd -t requires the privilege separation directory; it is created at
 # install time but lost between the image build and the container start.
 mkdir -p /run/sshd
