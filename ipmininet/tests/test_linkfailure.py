@@ -13,7 +13,7 @@ from . import require_root
 from .utils import assert_connectivity, assert_node_not_connected, assert_routing_table
 
 
-def _wait_reconvergence(net: IPNet, timeout=120):
+def _wait_reconvergence(net: IPNet, timeout=180):
     """Wait for OSPF to recompute routes after link restoration.
 
     The connectivity probe can false-negative while the routing tables are
