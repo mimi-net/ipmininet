@@ -242,6 +242,11 @@ class Subnet(Overlay):
         return f"<SubnetOverlay nodes={self.nodes} subnets={self.subnets}>"
 
 
+_CAPTURE_HEADER_SIZE = 24
+"""Size of a classic pcap global header, the format mimidump writes via
+``pcap_dump_open`` before its captors enter the capture loop."""
+
+
 class NetworkCapture(Overlay):
     """Overlay capturing traffic on multiple interfaces before starting the
     daemons, and stores the result"""
@@ -333,21 +338,30 @@ class NetworkCapture(Overlay):
                 process.send_signal(signal.SIGINT)
                 process.wait()
 
-    def wait_until_capturing(self, intf_name: str, timeout: float = 10.0) -> bool:
+    def wait_until_capturing(
+        self, intf_name: str, timeout: float = 10.0, strict: bool = False
+    ) -> bool:
         """Wait until the capture on the given node/interface is actually running.
 
         A capture is considered live once the corresponding process is still alive
         AND either the mimidump ``READY`` signal has been seen on stderr (that
         signal is emitted once, when all captors enter the capture loop) OR the
-        capture output file already exists (the fallback used by captures that do
-        not signal readiness, e.g. tcpdump or older mimidump binaries).
+        capture output file is live. Without ``strict``, a file is live as soon
+        as it exists (the fallback used by captures that do not signal
+        readiness, e.g. tcpdump or older mimidump binaries). In ``strict`` mode
+        a file is only live once it has grown past the capture header between
+        two polls; mimidump creates its file before the captors enter the loop,
+        so bare existence is a proxy, not liveness.
 
         :param intf_name: name of the node or of the interface the capture is
                           attached to (the key used in ``ongoing_captures``)
         :param timeout:   maximum time to wait, in seconds
+        :param strict:    if True, never accept a bare capture file as live;
+                          require the ``READY`` signal or file growth instead
         :return:          True as soon as the capture is live, False if the capture
                           was not started, died or did not become live in time"""
         deadline = time.monotonic() + timeout
+        last_size = None
         while time.monotonic() < deadline:
             process = self.ongoing_captures.get(intf_name)
             if process is None or process.poll() is not None:
@@ -360,7 +374,20 @@ class NetworkCapture(Overlay):
                     return True
             output_file = self._output_files.get(intf_name)
             if output_file is not None and os.path.exists(output_file):
-                return True
+                if not strict:
+                    return True
+                try:
+                    size = os.path.getsize(output_file)
+                except OSError:
+                    size = None
+                if (
+                    size is not None
+                    and last_size is not None
+                    and size > _CAPTURE_HEADER_SIZE
+                    and size > last_size
+                ):
+                    return True
+                last_size = size
             time.sleep(0.05)
         return False
 
