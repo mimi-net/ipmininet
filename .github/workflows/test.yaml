@@ -63,6 +63,7 @@ jobs:
         with:
           files: coverage.xml
           flags: rootless
+          slug: ${{ github.repository }}
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 200

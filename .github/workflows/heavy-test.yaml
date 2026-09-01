@@ -76,3 +76,4 @@ jobs:
         with:
           files: coverage.xml
           flags: full
+          slug: ${{ github.repository }}
