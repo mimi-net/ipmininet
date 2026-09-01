@@ -168,7 +168,8 @@ def host_connected(net: IPNet, v6=False, timeout=0.2, translate_address=True) ->
                 else:
                     dst_ip = dst
                 cmd = (
-                    f"nmap{' -6' if v6 else ''} -sn -n --max-retries 0 "
+                    f"nmap{' -6' if v6 else ''} -sn -n --system-dns "
+                    f"--max-retries 0 "
                     f"--max-rtt-timeout {int(timeout * 1000)}ms {dst_ip}"
                 )
                 out = src.cmd(cmd.split(" "))

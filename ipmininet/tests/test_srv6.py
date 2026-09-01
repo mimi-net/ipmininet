@@ -206,17 +206,22 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
         out = n.cmd(
             shlex.split(
                 f"tshark -n -r /tmp/{n.name}.pcap -T fields "
-                "-E separator=, "
+                "-E separator=/t "
                 "-e icmpv6.type -e ipv6.dst -e frame.time_epoch"
             )
         )
         data = out.split("\n")[1:-1]
         for line in data:
-            values = line.strip().split(",")
+            values = line.strip().split("\t")
             if len(values) < 3:
                 continue
             icmp_type = values[0]
-            data_dst = values[1]
+            # On newer tshark, ipv6.dst lists every IPv6 header of an
+            # encapsulated packet (e.g. the SRv6 SID and the inner
+            # destination).  Keep the outermost one, which is the
+            # destination each router actually forwards on, and matches
+            # the addresses used by the `through` segments of the test.
+            data_dst = values[1].split(",")[0]
             data_time = values[-1]
             if icmp_type == "128":
                 captures.setdefault(n.name, []).append((float(data_time), data_dst))
