@@ -99,7 +99,9 @@ class LocalSIDTable:
 
         # Find Free table number
         tables = []
-        out = self.node.cmd("ip rule list")
+        # -color=never: mininet runs commands on a pty, and iproute2 (>= 6.19)
+        # colorizes `ip rule list` there, which would corrupt the lookup parse.
+        out = self.node.cmd("ip -color=never rule list")
         lines = out.split("\n")
         for line in lines:
             if "lookup " in line:

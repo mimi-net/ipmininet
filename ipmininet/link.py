@@ -277,7 +277,9 @@ class IPIntf(_m.TCIntf):
 
 def _addresses_of(devname: str, node: Node | None = None):
     """Return the addresses of a named interface"""
-    cmdline = ["ip", "address", "show", "dev", devname]
+    # -color=never: mininet runs commands on a pty, and iproute2 (>= 6.19)
+    # colorizes `ip address show` there, which would corrupt the parsed output.
+    cmdline = ["ip", "-color=never", "address", "show", "dev", devname]
     try:
         if node is not None:
             addrstr = node.cmd(*cmdline)
