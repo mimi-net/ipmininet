@@ -112,7 +112,7 @@ select = [
 # E501: lines that cannot be reflowed (ASCII-art diagram, shell command
 # strings, a literal `ip addr` output fixture).
 "ipmininet/examples/simple_ospf_network.py" = ["E501"]
-"ipmininet/install/install.py" = ["E501"]
+"ipmininet/install/install.py" = ["E501", "TRY003"]
 "ipmininet/tests/test_pure.py" = ["E501"]
 # Architectural rules deferred for existing files (see NOTES.md):
 # - PLC0415: intentional circular-import avoidance

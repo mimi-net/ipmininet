@@ -1,16 +1,25 @@
 import argparse
+import hashlib
 import os
 import re
 import sys
+import urllib.request
 
 # For imports to work during setup and afterwards
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import identify_distribution, sh, supported_distributions
+from utils import find_executable, identify_distribution, sh, supported_distributions
 
 MininetVersion = "2.3.0"
 FRRoutingVersion = "7.5"
 LibyangVersion = "v1.0.215"
 ExaBGPVersion = "4.2.25"
+
+# PCRE1 (libpcre3) is required to build libyang v1, which FRRouting pins to.
+# Ubuntu 26.04 and newer dropped the obsolete PCRE1 packages, so the installer
+# builds this release from source there.
+PcreVersion = "8.45"
+PcreSha256 = "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09"
+PcreUrl = "https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz"
 
 # XXX: We need the explicit script until the following issue is fixed:
 #      https://github.com/mininet/mininet/issues/1120
@@ -134,15 +143,50 @@ def install_mininet(output_dir: str, pip_install=True):
         dist.pip_install("mininet/", cwd=output_dir)
 
 
+def ensure_pcre1(dist, output_dir: str) -> None:
+    """Provide the PCRE1 library needed to build libyang.
+
+    libyang v1, which FRRouting requires, is built against PCRE1 (libpcre3 on
+    Debian/Ubuntu). Ubuntu 26.04 and newer dropped the obsolete PCRE1 packages,
+    so fall back to building PCRE from source when the distro does not ship it.
+    """
+    if dist.NAME == "Fedora":
+        dist.install("pcre-devel")
+        return
+    if dist.NAME not in ("Ubuntu", "Debian") or find_executable("pcre-config"):
+        return
+    p = sh("apt-get -y -q install libpcre3-dev", may_fail=True)
+    if p is not None and p.wait() == 0:
+        return
+    if find_executable("pcre-config"):
+        return
+    print("IPMininet: libpcre3-dev is unavailable, building PCRE from source")
+    pcre_archive = os.path.join(output_dir, f"pcre-{PcreVersion}.tar.gz")
+    pcre_src = os.path.join(output_dir, f"pcre-{PcreVersion}")
+    if not os.path.exists(pcre_archive):
+        urllib.request.urlretrieve(PcreUrl, pcre_archive)
+        with open(pcre_archive, "rb") as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+        if digest != PcreSha256:
+            raise RuntimeError(
+                f"PCRE {PcreVersion} download has an unexpected SHA-256 digest: {digest}"
+            )
+    sh(f"rm -rf {pcre_src}", f"tar -xzf {pcre_archive}", cwd=output_dir)
+    sh(
+        "./configure --prefix=/usr --enable-utf8",
+        f"make -j{os.cpu_count() or 1}",
+        "make install",
+        cwd=pcre_src,
+    )
+    sh("ldconfig")
+
+
 def install_libyang(output_dir: str):
     if not _needs_rebuild("/usr/bin/yanglint"):
         print("IPMininet: libyang already installed; skipping build")
         return
     dist.install("git", "cmake")
-    if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
-        dist.install("libpcre3-dev")
-    elif dist.NAME == "Fedora":
-        dist.install("pcre-devel")
+    ensure_pcre1(dist, output_dir)
 
     sh(
         "rm -rf libyang",
