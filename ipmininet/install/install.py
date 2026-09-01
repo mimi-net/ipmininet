@@ -3,6 +3,7 @@ import hashlib
 import os
 import re
 import sys
+import sysconfig
 import urllib.request
 
 # For imports to work during setup and afterwards
@@ -218,6 +219,21 @@ def link_to_standard_dir(base_dir: str, standard_dir: str):
         break
 
 
+def _python_lib_dir() -> str | None:
+    """Directory holding the shared libpython of the running interpreter.
+
+    FRR's build-time `clippy` tool embeds the Python that configured it. When
+    that interpreter is a uv-managed CPython (as in the test container), its
+    libpython lives outside the loader's default search path, so expose it via
+    LD_LIBRARY_PATH during the build.
+    """
+    libdir = sysconfig.get_config_var("LIBDIR")
+    if libdir and os.path.isdir(libdir):
+        return libdir
+    libdir = os.path.join(sys.base_prefix, "lib")
+    return libdir if os.path.isdir(libdir) else None
+
+
 def install_frrouting(output_dir: str):
     dist.install(
         "autoconf",
@@ -275,11 +291,18 @@ def install_frrouting(output_dir: str):
             cwd=output_dir,
         )
 
+        env = dict(os.environ)
+        python_libdir = _python_lib_dir()
+        if python_libdir:
+            env["LD_LIBRARY_PATH"] = os.pathsep.join(
+                filter(None, [python_libdir, env.get("LD_LIBRARY_PATH")])
+            )
         sh(
             f"./configure '--prefix={frrouting_install}'",
             "make",
             "make install",
             cwd=frrouting_src,
+            env=env,
         )
 
         sh(f"rm -r '{frrouting_src}' '{frrouting_tar}'")
