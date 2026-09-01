@@ -17,7 +17,6 @@ from ipmininet.overlay import NetworkCapture, Overlay, Subnet
 from ipmininet.router.config import (
     AS,
     BasicRouterConfig,
-    OpenrDomain,
     OSPFArea,
     iBGPFullMesh,
 )
@@ -33,7 +32,6 @@ class IPTopo(Topo):
         for cls in (
             AS,
             iBGPFullMesh,
-            OpenrDomain,
             OSPFArea,
             Subnet,
             DNSZone,

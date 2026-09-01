@@ -5,7 +5,6 @@ from .base import (
     BasicRouterConfig,
     BorderRouterConfig,
     NodeConfig,
-    OpenrRouterConfig,
     RouterConfig,
 )
 from .bgp import (
@@ -49,8 +48,6 @@ from .iptables import (
     Rule,
     TransitFilter,
 )
-from .openr import Openr, OpenrDomain
-from .openrd import OpenrDaemon
 from .ospf import OSPF, OSPFArea
 from .ospf6 import OSPF6
 from .pimd import PIMD
@@ -98,10 +95,6 @@ __all__ = [
     "InterfaceClause",
     "NodeConfig",
     "OSPFArea",
-    "Openr",
-    "OpenrDaemon",
-    "OpenrDomain",
-    "OpenrRouterConfig",
     "OutputFilter",
     "PortClause",
     "RIPng",

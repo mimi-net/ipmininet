@@ -26,7 +26,7 @@ from .utils import ConfigDict, ip_statement
 if TYPE_CHECKING:
     from ipmininet.iptopo import IPTopo
     from ipmininet.node_description import NodeDescription
-    from ipmininet.router import IPNode, OpenrRouter, ProcessHelper, Router
+    from ipmininet.router import IPNode, ProcessHelper, Router
 DaemonOption = Union[
     "Daemon", type["Daemon"], tuple[Union["Daemon", type["Daemon"]], dict]
 ]
@@ -498,26 +498,3 @@ class BorderRouterConfig(BasicRouterConfig):
             d = list(daemons)
             d.append((BGP, {"address_families": af}))
         super().__init__(node, *args, daemons=d, **kwargs)
-
-
-class OpenrRouterConfig(RouterConfig):
-    """A basic router that will run an OpenR daemon"""
-
-    def __init__(
-        self,
-        node: "OpenrRouter",
-        daemons: Iterable[DaemonOption] = (),
-        additional_daemons: Iterable[DaemonOption] = (),
-        *args,
-        **kwargs,
-    ):
-        """A simple router made of at least an OpenR daemon
-
-        :param additional_daemons: Other daemons that should be used"""
-        # Importing here to avoid circular import
-        from .openr import Openr
-
-        daemon_list = list(daemons)
-        daemon_list.append(Openr)
-        daemon_list.extend(additional_daemons)
-        super().__init__(node, *args, daemons=daemon_list, **kwargs)

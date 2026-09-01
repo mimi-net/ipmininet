@@ -68,7 +68,6 @@ timeout_method = "signal"
 markers = [
     "require_root: test requires root privileges",
     "require_exabgp: test requires a working ExaBGP daemon",
-    "require_openr: test requires the OpenR daemon",
     "require_mimidump: test requires the mimidump capture tool",
 ]
 

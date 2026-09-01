@@ -6,10 +6,10 @@ is available (the bare-metal `test`/`heavy` jobs run with sudo, the container
 job runs as root).
 
 Tests that depend on a daemon binary that may be absent use the conditional
-markers below (require_openr, require_exabgp, require_mimidump). They run
-wherever the daemon is available and are skipped with a reason otherwise. The
-reasons are surfaced in CI via `pytest -rs`; these files are intentionally not
---ignore'd at the workflow level so the skip reason stays next to the test.
+markers below (require_exabgp, require_mimidump). They run wherever the daemon
+is available and are skipped with a reason otherwise. The reasons are surfaced
+in CI via `pytest -rs`; these files are intentionally not --ignore'd at the
+workflow level so the skip reason stays next to the test.
 """
 
 import os
@@ -47,11 +47,6 @@ def _exabgp_usable() -> bool:
     except (OSError, subprocess.SubprocessError):
         return False
 
-
-require_openr = pytest.mark.skipif(
-    not has_cmd("openr"),
-    reason="OpenR daemon not available (needs build, not run in CI)",
-)
 
 require_exabgp = pytest.mark.skipif(
     not _exabgp_usable(),

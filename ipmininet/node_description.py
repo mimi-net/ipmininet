@@ -2,12 +2,7 @@ import functools
 from typing import TYPE_CHECKING, Optional
 
 from ipmininet.host.config import HostConfig
-from ipmininet.router.config import (
-    BasicRouterConfig,
-    Openr,
-    OpenrDaemon,
-    OpenrRouterConfig,
-)
+from ipmininet.router.config import BasicRouterConfig
 from ipmininet.router.config.base import Daemon, NodeConfig, RouterConfig
 
 if TYPE_CHECKING:
@@ -65,16 +60,6 @@ class RouterDescription(NodeDescription):
         **kwargs,
     ):
         super().addDaemon(daemon, default_cfg_class=default_cfg_class, **kwargs)
-
-
-class OpenrRouterDescription(RouterDescription):
-    def addOpenrDaemon(
-        self,
-        daemon: OpenrDaemon | type[OpenrDaemon] = Openr,
-        default_cfg_class: type[OpenrRouterConfig] = OpenrRouterConfig,
-        **kwargs,
-    ):
-        self.addDaemon(daemon, default_cfg_class=default_cfg_class, **kwargs)
 
 
 class HostDescription(NodeDescription):

@@ -2,6 +2,6 @@
 multiple daemons
 """
 
-from .__router import IPNode, OpenrRouter, ProcessHelper, Router
+from .__router import IPNode, ProcessHelper, Router
 
-__all__ = ["IPNode", "OpenrRouter", "ProcessHelper", "Router"]
+__all__ = ["IPNode", "ProcessHelper", "Router"]

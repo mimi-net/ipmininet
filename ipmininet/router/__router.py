@@ -16,7 +16,7 @@ from ipmininet import DEBUG_FLAG
 from ipmininet.link import IPIntf
 from ipmininet.utils import L3Router, otherIntf, realIntfList
 
-from .config import BasicRouterConfig, NodeConfig, OpenrRouterConfig, RouterConfig
+from .config import BasicRouterConfig, NodeConfig, RouterConfig
 from .config.base import Daemon
 from .config.utils import ConfigDict
 
@@ -305,31 +305,3 @@ class Router(IPNode, L3Router):
     @property
     def asn(self) -> int:
         return self.get("asn")
-
-
-class OpenrRouter(Router):
-    """OpenR router with private '/tmp' dir to handle unix sockets created by
-    the OpenR daemon"""
-
-    def __init__(
-        self,
-        name,
-        *args,
-        config: type[OpenrRouterConfig],
-        lo_addresses: Sequence[str | IPv4Interface | IPv6Interface] | None = None,
-        privateDirs=None,
-        **kwargs,
-    ):
-        if privateDirs is None:
-            privateDirs = ["/tmp"]
-        if not lo_addresses:
-            lo_addresses = ()
-        super().__init__(
-            name,
-            *args,
-            config=config,
-            lo_addresses=lo_addresses,
-            password=None,
-            privateDirs=privateDirs,
-            **kwargs,
-        )

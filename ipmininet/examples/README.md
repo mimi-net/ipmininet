@@ -25,7 +25,6 @@ The following sections will detail the topologies.
 - [GRETopo](#gretopo)
 - [SSHd](#sshd)
 - [RouterAdvNetwork](#routeradvnetwork)
-- [SimpleOpenRNetwork](#simpleopenrnetwork)
 - [StaticAddressNetwork](#staticaddressnetwork)
 - [PartialStaticAddressNet](#partialstaticaddressnetwork)
 - [StaticRoutingNet](#staticroutingnet)
@@ -298,20 +297,6 @@ This network spawn a small topology with two hosts and a router.
 One of these hosts uses Router Advertisements to get its IPv6 addresses
 The other one's IP addresses are announced in the Router Advertisements
 as the DNS server's addresses.
-
-## SimpleOpenRNetwork
-
-_topo name_ : simple_openr_network
-_args_ : n/a
-
-This network represents a small OpenR network connecting three routers in a Bus
-topology. Each router has hosts attached. OpenR routers use private `/tmp`
-folders to isolate the ZMQ sockets used by the daemon. The OpenR logs are by
-default available in the host machine at `/var/tmp/log/<NODE_NAME>`.
-
-Use
-[breeze](https://github.com/facebook/openr/blob/master/openr/docs/Breeze.md) to
-investigate the routing state of OpenR.
 
 ## StaticAddressNetwork
 

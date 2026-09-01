@@ -31,7 +31,6 @@ from .ripng_network import RIPngNetwork
 from .ripng_network_adjust import RIPngNetworkAdjust
 from .router_adv_network import RouterAdvNet
 from .simple_bgp_network import SimpleBGPTopo
-from .simple_openr_network import SimpleOpenrNet
 from .simple_ospf_network import SimpleOSPFNet
 from .simple_ospfv3_network import SimpleOSPFv3Net
 from .spanning_tree import SpanningTreeNet
@@ -62,7 +61,6 @@ TOPOS = {
     "router_adv_network": RouterAdvNet,
     "ripng_network": RIPngNetwork,
     "ripng_network_adjust": RIPngNetworkAdjust,
-    "simple_openr_network": SimpleOpenrNet,
     "static_address_network": StaticAddressNet,
     "static_routing_network_complex": StaticRoutingNetComplex,
     "partial_static_address_network": PartialStaticAddressNet,
