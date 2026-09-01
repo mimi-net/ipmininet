@@ -173,8 +173,10 @@ def ensure_pcre1(dist, output_dir: str) -> None:
                 f"PCRE {PcreVersion} download has an unexpected SHA-256 digest: {digest}"
             )
     sh(f"rm -rf {pcre_src}", f"tar -xzf {pcre_archive}", cwd=output_dir)
+    # --enable-unicode-properties: FRR 7.5's bundled YANG (ietf-inet-types)
+    # regexes use \\p{...}, which is only compiled in with UCP support.
     sh(
-        "./configure --prefix=/usr --enable-utf8",
+        "./configure --prefix=/usr --enable-utf8 --enable-unicode-properties",
         f"make -j{os.cpu_count() or 1}",
         "make install",
         cwd=pcre_src,
