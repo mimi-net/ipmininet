@@ -195,8 +195,13 @@ def install_libyang(output_dir: str):
     )
     cloned_repo = os.path.join(output_dir, "libyang")
     sh(f"git checkout {LibyangVersion}", "mkdir build", cwd=cloned_repo)
+    # CMake 4.x removed compatibility with versions < 3.5, but libyang v1.0.x
+    # still declares cmake_minimum_required(2.8.12); the policy-version escape
+    # hatch lets it configure (and is ignored by older CMake).
     sh(
-        'cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="Release" ..',
+        "cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr"
+        " -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+        ' -D CMAKE_BUILD_TYPE:String="Release" ..',
         "make",
         "make install",
         cwd=os.path.join(cloned_repo, "build"),
