@@ -61,6 +61,49 @@ class QuaggaDaemon(RouterDaemon):
         return f"{self.NAME} -Cf {self.cfg_filename} -u root"
 
 
+class Mgmtd(RouterDaemon):
+    """The FRR centralized management daemon.
+
+    FRR 9.0+ routes configuration for backend daemons (currently staticd)
+    through mgmtd; those daemons reject per-daemon config files (-f) and the
+    config-check flag (-C) entirely, so this daemon is started ahead of them
+    and the per-node config is pushed afterwards via vtysh.
+    """
+
+    NAME = "mgmtd"
+    PRIO = -10
+    DEPENDS = ()
+    KILL_PATTERNS = (NAME,)
+
+    @property
+    def cfg_filenames(self) -> list[str]:
+        # mgmtd takes its configuration through vtysh, not a per-daemon file.
+        return []
+
+    @property
+    def startup_line(self):
+        return "mgmtd -i {pid} -u root".format(pid=self._file("pid"))
+
+    @property
+    def dry_run(self):
+        # mgmtd rejects -C; the config is validated when vtysh applies it.
+        return "true"
+
+    def build(self):
+        return super().build()
+
+    def set_defaults(self, defaults):
+        super().set_defaults(defaults)
+
+    def has_started(self, node_exec=None) -> bool:
+        """Return whether mgmtd is accepting connections, by probing its
+        frontend unix socket from inside the node (where /var/run/frr is a
+        private mount)."""
+        if node_exec is None:
+            return False
+        return "mgmtd_fe.sock" in node_exec.call("ls /var/run/frr/")
+
+
 class Zebra(QuaggaDaemon):
     NAME = "zebra"
     PRIO = 0

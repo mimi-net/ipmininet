@@ -55,7 +55,7 @@ from .radvd import RADVD, AdvConnectedPrefix, AdvPrefix, AdvRDNSS
 from .ripng import RIPng
 from .sshd import SSHd
 from .staticd import STATIC, StaticRoute
-from .zebra import Zebra
+from .zebra import Mgmtd, Zebra
 
 __all__ = [
     "AF_INET",
@@ -93,6 +93,7 @@ __all__ = [
     "IPTables",
     "InputFilter",
     "InterfaceClause",
+    "Mgmtd",
     "NodeConfig",
     "OSPFArea",
     "OutputFilter",
