@@ -49,7 +49,7 @@ jobs:
             ipmininet/tests/test_link.py \
             ipmininet/tests/test_network_capture.py
       - name: Upload coverage report (rootless)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-rootless
           path: |
@@ -59,7 +59,7 @@ jobs:
         if: env.CODECOV_TOKEN != ''
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
           flags: rootless
