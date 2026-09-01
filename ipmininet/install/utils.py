@@ -51,6 +51,11 @@ class Distribution:
     PIP_CMD = "pip"
     SpinPipVersion = "18.1"
 
+    @property
+    def package_family(self) -> str:
+        """Package-manager family: 'apt' (Debian/Ubuntu) or 'rpm' (Fedora)."""
+        return "apt" if self.NAME in ("Ubuntu", "Debian") else "rpm"
+
     def __init__(self):
         self.pip_args = self.check_pip_version(self.PIP_CMD)
 
@@ -83,12 +88,17 @@ class Distribution:
 
     def pip_install(self, *packages: str, **kwargs):
         if find_executable(self.PIP_CMD) is not None:
+            # PEP 668 (externally-managed-environment) blocks system-wide pip
+            # installs on Debian/Ubuntu 23.04+; the installer targets system
+            # locations, so relax it explicitly.
+            env = dict(os.environ, PIP_BREAK_SYSTEM_PACKAGES="1")
             sh(
                 self.PIP_CMD
                 + " -q install "
                 + self.pip_args
                 + " "
                 + " ".join(packages),
+                env=env,
                 **kwargs,
             )
 

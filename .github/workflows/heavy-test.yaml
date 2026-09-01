@@ -1,8 +1,8 @@
 # Full test suite, run on master and on demand.
 #
 # Performs the full `ipmininet.install -a` and runs every test except the
-# known-broken daemons (exabgp, openr), which are skipped in their own test
-# modules. Lint/format checks are run in the `rootless` job of test.yaml.
+# known-broken exabgp daemon, which is skipped in its own test module.
+# Lint/format checks are run in the `rootless` job of test.yaml.
 name: Heavy test
 on:
   workflow_dispatch:
@@ -41,9 +41,7 @@ jobs:
       - name: Install dependencies (FRRouting, libyang, mininet)
         timeout-minutes: 10
         run: |
-          # PEP 668 on Ubuntu 24.04 and newer blocks pip3 system installs; relax it.
-          export PIP_BREAK_SYSTEM_PACKAGES=1
-          sudo env "PATH=$PATH" PIP_BREAK_SYSTEM_PACKAGES=1 uv run python -m ipmininet.install -a
+          sudo env "PATH=$PATH" uv run python -m ipmininet.install -a
       - name: Save compiled deps
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: scripts/ci-save-deps.sh

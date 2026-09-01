@@ -80,24 +80,15 @@ def parse_args():
         "-n", "--install-named", help="Install the Named daemon", action="store_true"
     )
     parser.add_argument("-6", "--enable-ipv6", help="Enable IPv6", action="store_true")
-    parser.add_argument(
-        "-f",
-        "--install-openr",
-        help="Install OpenR. OpenR is not installed with '-a'"
-        " option since the build takes quite long. We"
-        " also experienced that the build requires a"
-        " substantial amount of memory (~4GB).",
-        action="store_true",
-    )
     return parser.parse_args()
 
 
 def install_mininet(output_dir: str, pip_install=True):
     dist.install("git")
-    if dist.NAME in {"Ubuntu", "Debian"}:
+    if dist.package_family == "apt":
         dist.install("openvswitch-switch")
 
-    if dist.NAME == "Fedora":
+    if dist.package_family == "rpm":
         mininet_opts = "-fnp"
         dist.install("openvswitch", "openvswitch-devel", "openvswitch-test")
         sh("systemctl enable openvswitch")
@@ -151,10 +142,10 @@ def ensure_pcre1(dist, output_dir: str) -> None:
     Debian/Ubuntu). Ubuntu 26.04 and newer dropped the obsolete PCRE1 packages,
     so fall back to building PCRE from source when the distro does not ship it.
     """
-    if dist.NAME == "Fedora":
+    if dist.package_family == "rpm":
         dist.install("pcre-devel")
         return
-    if dist.NAME not in ("Ubuntu", "Debian") or find_executable("pcre-config"):
+    if dist.package_family != "apt" or find_executable("pcre-config"):
         return
     p = sh("apt-get -y -q install libpcre3-dev", may_fail=True)
     if p is not None and p.wait() == 0:
@@ -245,7 +236,6 @@ def install_frrouting(output_dir: str):
         "gcc",
         "groff",
         "patch",
-        "make",
         "bison",
         "flex",
         "gawk",
@@ -253,7 +243,7 @@ def install_frrouting(output_dir: str):
         "python3-pytest",
     )
 
-    if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+    if dist.package_family == "apt":
         dist.install(
             "libreadline-dev",
             "libc-ares-dev",
@@ -266,7 +256,7 @@ def install_frrouting(output_dir: str):
             "pkg-config",
             "libcap-dev",
         )
-    elif dist.NAME == "Fedora":
+    elif dist.package_family == "rpm":
         dist.install(
             "readline-devel",
             "c-ares-devel",
@@ -320,28 +310,6 @@ def install_frrouting(output_dir: str):
         )
 
 
-def install_openr(output_dir: str, may_fail=False):
-    # It's not possible to get a build script with pinned dependencies from the
-    # OpenR github repository. The checked-in build script has the dependencies
-    # pinned manually. Builds and installs OpenR release rc-20190419-11514.
-    # https://github.com/facebook/openr/releases/tag/rc-20190419-11514
-    script_name = "build_openr-rc-20190419-11514.sh"
-    openr_buildscript = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), script_name
-    )
-    # Execute build script
-    p = sh(
-        openr_buildscript,
-        cwd=output_dir,
-        shell=True,
-        executable="/bin/bash",
-        may_fail=may_fail,
-    )
-    # We should end here only if may_fail is True
-    if p.returncode != 0:
-        print("WARNING: Ignoring failed OpenR installation.", file=sys.stderr)
-
-
 def install_exabgp(output_dir: str, may_fail=False):
     git_url = "https://github.com/Exa-Networks/exabgp.git"
     exabgp_src_folder = f"exabgp-{ExaBGPVersion}-src"
@@ -375,9 +343,9 @@ def install_exabgp(output_dir: str, may_fail=False):
 
 
 def update_grub():
-    if dist.NAME == "Fedora":
+    if dist.package_family == "rpm":
         cmd = "grub2-mkconfig --output=/boot/grub2/grub.cfg"
-    elif dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+    elif dist.package_family == "apt":
         cmd = "update-grub"
     else:
         return

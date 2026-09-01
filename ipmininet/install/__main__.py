@@ -6,7 +6,6 @@ from .install import (
     install_exabgp,
     install_frrouting,
     install_mininet,
-    install_openr,
     parse_args,
 )
 
@@ -26,7 +25,7 @@ if __name__ == "__main__":
         install_exabgp(args.output_dir)
 
     if args.all or args.install_radvd:
-        if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+        if dist.package_family == "apt":
             dist.install("resolvconf")
         dist.install("radvd")
 
@@ -35,9 +34,9 @@ if __name__ == "__main__":
         os.makedirs("/run/sshd", exist_ok=True)
 
     if args.all or args.install_named:
-        if dist.NAME == "Ubuntu" or dist.NAME == "Debian":
+        if dist.package_family == "apt":
             dist.install("bind9")
-        elif dist.NAME == "Fedora":
+        elif dist.package_family == "rpm":
             dist.install("bind")
 
     # Install IPMininet
@@ -55,20 +54,9 @@ if __name__ == "__main__":
     # Install test dependencies
 
     dist.install("bridge-utils", "traceroute", "nmap", "iperf3")
-    if dist.NAME == "Fedora":
+    if dist.package_family == "rpm":
         dist.install("nc", "bind-utils", "wireshark", "tc", "kernel-modules-extra")
     else:
         dist.install("netcat-openbsd", "dnsutils", "tshark")
 
     dist.pip_install("pytest")
-
-    # Install OpenR
-
-    if args.install_openr:
-        if dist.NAME == "Ubuntu":
-            install_openr(args.output_dir)
-        else:
-            print(
-                "OpenR build currently only available on Ubuntu."
-                " Skipping installing OpenR."
-            )

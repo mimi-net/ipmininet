@@ -4,13 +4,9 @@
 # (UV_PROJECT_ENVIRONMENT=/opt/venv, which survives the bind-mount in
 # container-test.yaml) and then runs the full `ipmininet.install -a` so that
 # FRRouting, libyang, mininet, radvd, sshd and named are available.
-#
-# PEP 668 blocks pip3 system-wide installs on Ubuntu; the deferred install.py
-# refactor will make this explicit in-code, for now we relax it.
 FROM ubuntu:26.04 AS final
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PIP_BREAK_SYSTEM_PACKAGES=1
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
