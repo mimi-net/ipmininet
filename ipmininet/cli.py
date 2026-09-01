@@ -12,7 +12,9 @@ class IPCLI(CLI):
         for every router in the network"""
         for r in self.mn.routers:
             lg.output(f"[{r.name}] ")
-            self.default(f"{r.name} ip route get {line}")
+            # -color=never: commands run on a pty and iproute2 >= 6.19
+            # colorizes `ip route get` there, corrupting the output.
+            self.default(f"{r.name} ip -color=never route get {line}")
 
     def do_ip(self, line: str):
         """ip IP1 IP2 ...: return the node associated to the given IP"""

@@ -14,6 +14,8 @@ zone "${zone.name}" {
     type hint;
     % elif zone.master:
     type master;
+    # BIND >= 9.20 denies zone transfers unless allow-transfer is explicit.
+    allow-transfer { any; };
     % else:
     type slave;
     masters {
@@ -27,5 +29,8 @@ zone "${zone.name}" {
 % endfor
 
 options {
+    # BIND >= 9.20 requires its working directory to be writable (it writes
+    # runtime files there); the daemon otherwise fails to load the zones.
+    directory "/tmp";
     dnssec-validation no;
 };
