@@ -1,26 +1,17 @@
 import argparse
-import hashlib
 import os
 import re
 import sys
 import sysconfig
-import urllib.request
 
 # For imports to work during setup and afterwards
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import find_executable, identify_distribution, sh, supported_distributions
+from utils import identify_distribution, sh, supported_distributions
 
 MininetVersion = "2.3.0"
-FRRoutingVersion = "7.5"
-LibyangVersion = "v1.0.215"
+FRRoutingVersion = "10.7.1"
+LibyangVersion = "v3.13.6"
 ExaBGPVersion = "4.2.25"
-
-# PCRE1 (libpcre3) is required to build libyang v1, which FRRouting pins to.
-# Ubuntu 26.04 and newer dropped the obsolete PCRE1 packages, so the installer
-# builds this release from source there.
-PcreVersion = "8.45"
-PcreSha256 = "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09"
-PcreUrl = "https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz"
 
 # XXX: We need the explicit script until the following issue is fixed:
 #      https://github.com/mininet/mininet/issues/1120
@@ -135,52 +126,16 @@ def install_mininet(output_dir: str, pip_install=True):
         dist.pip_install("mininet/", cwd=output_dir)
 
 
-def ensure_pcre1(dist, output_dir: str) -> None:
-    """Provide the PCRE1 library needed to build libyang.
-
-    libyang v1, which FRRouting requires, is built against PCRE1 (libpcre3 on
-    Debian/Ubuntu). Ubuntu 26.04 and newer dropped the obsolete PCRE1 packages,
-    so fall back to building PCRE from source when the distro does not ship it.
-    """
-    if dist.package_family == "rpm":
-        dist.install("pcre-devel")
-        return
-    if dist.package_family != "apt" or find_executable("pcre-config"):
-        return
-    p = sh("apt-get -y -q install libpcre3-dev", may_fail=True)
-    if p is not None and p.wait() == 0:
-        return
-    if find_executable("pcre-config"):
-        return
-    print("IPMininet: libpcre3-dev is unavailable, building PCRE from source")
-    pcre_archive = os.path.join(output_dir, f"pcre-{PcreVersion}.tar.gz")
-    pcre_src = os.path.join(output_dir, f"pcre-{PcreVersion}")
-    if not os.path.exists(pcre_archive):
-        urllib.request.urlretrieve(PcreUrl, pcre_archive)
-        with open(pcre_archive, "rb") as f:
-            digest = hashlib.sha256(f.read()).hexdigest()
-        if digest != PcreSha256:
-            raise RuntimeError(
-                f"PCRE {PcreVersion} download has an unexpected SHA-256 digest: {digest}"
-            )
-    sh(f"rm -rf {pcre_src}", f"tar -xzf {pcre_archive}", cwd=output_dir)
-    # --enable-unicode-properties: FRR 7.5's bundled YANG (ietf-inet-types)
-    # regexes use \\p{...}, which is only compiled in with UCP support.
-    sh(
-        "./configure --prefix=/usr --enable-utf8 --enable-unicode-properties",
-        f"make -j{os.cpu_count() or 1}",
-        "make install",
-        cwd=pcre_src,
-    )
-    sh("ldconfig")
-
-
 def install_libyang(output_dir: str):
     if not _needs_rebuild("/usr/bin/yanglint"):
         print("IPMininet: libyang already installed; skipping build")
         return
     dist.install("git", "cmake")
-    ensure_pcre1(dist, output_dir)
+    # libyang v3, which FRRouting 8+ builds against, needs PCRE2.
+    if dist.package_family == "rpm":
+        dist.install("pcre2-devel")
+    else:
+        dist.install("libpcre2-dev")
 
     sh(
         "rm -rf libyang",
@@ -189,12 +144,8 @@ def install_libyang(output_dir: str):
     )
     cloned_repo = os.path.join(output_dir, "libyang")
     sh(f"git checkout {LibyangVersion}", "mkdir build", cwd=cloned_repo)
-    # CMake 4.x removed compatibility with versions < 3.5, but libyang v1.0.x
-    # still declares cmake_minimum_required(2.8.12); the policy-version escape
-    # hatch lets it configure (and is ignored by older CMake).
     sh(
         "cmake -DENABLE_LYD_PRIV=ON -DCMAKE_INSTALL_PREFIX:PATH=/usr"
-        " -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
         ' -D CMAKE_BUILD_TYPE:String="Release" ..',
         "make",
         "make install",
@@ -255,6 +206,9 @@ def install_frrouting(output_dir: str):
             "libsnmp-dev",
             "pkg-config",
             "libcap-dev",
+            "libelf-dev",
+            "libunwind-dev",
+            "python3-sphinx",
         )
     elif dist.package_family == "rpm":
         dist.install(
@@ -268,6 +222,8 @@ def install_frrouting(output_dir: str):
             "net-snmp-devel",
             "pkgconfig",
             "libcap-devel",
+            "elfutils-libelf-devel",
+            "libunwind-devel",
         )
 
     install_libyang(output_dir)
@@ -276,10 +232,14 @@ def install_frrouting(output_dir: str):
     if _needs_rebuild(os.path.join(frrouting_install, "sbin", "zebra")):
         frrouting_src = os.path.join(output_dir, f"frr-{FRRoutingVersion}")
         frrouting_tar = frrouting_src + ".tar.gz"
+        # FRRouting no longer ships release assets; use the tag archive. It
+        # contains no generated configure, so bootstrap it with autotools.
         sh(
-            f"wget https://github.com/FRRouting/frr/releases/download/frr-{FRRoutingVersion}/"
-            f"frr-{FRRoutingVersion}.tar.gz",
+            f"wget https://github.com/FRRouting/frr/archive/refs/tags/frr-{FRRoutingVersion}.tar.gz"
+            f" -O '{frrouting_tar}'",
             f"tar -zxvf '{frrouting_tar}'",
+            # The tag archive extracts as frr-frr-<version>; normalize it.
+            f"mv 'frr-frr-{FRRoutingVersion}' 'frr-{FRRoutingVersion}'",
             cwd=output_dir,
         )
 
@@ -290,7 +250,13 @@ def install_frrouting(output_dir: str):
                 filter(None, [python_libdir, env.get("LD_LIBRARY_PATH")])
             )
         sh(
-            f"./configure '--prefix={frrouting_install}'",
+            "./bootstrap.sh",
+            # protobuf is a build-time experiment requiring protobuf-c headers;
+            # we do not use the gRPC/protobuf northbound plugin.
+            # Standard system paths: FRR 9.2+ appends /frr and /run/frr itself.
+            f"./configure '--prefix={frrouting_install}'"
+            " --sysconfdir=/etc --localstatedir=/var --runstatedir=/var/run"
+            " --enable-protobuf=no",
             "make",
             "make install",
             cwd=frrouting_src,
