@@ -57,7 +57,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 # daemons themselves and libyang come over from the builder.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git sudo ca-certificates wget \
-    socat psmisc xterm openssh-client iperf3 ethtool net-tools \
+    socat psmisc xterm openssh-client openssh-server iperf3 ethtool net-tools \
     python3-pexpect python3-tk iproute2 tcpdump python3-scapy \
     openvswitch-switch radvd bind9 dnsutils bridge-utils traceroute \
     nmap netcat-openbsd tshark iptables iputils-ping python3-pip grub-common \
