@@ -1,10 +1,11 @@
 # Containerized CI.
 #
-# Builds a self-contained image with the full install (-a: FRRouting, libyang,
-# mininet, radvd, sshd, named) plus the uv venv and mimidump, then runs the
-# full test suite inside it with root privileges. Every worker runs in its own
-# isolated namespace (scripts/run-tests-parallel.sh), mirroring the bare-metal
-# job but in a reproducible environment.
+# Builds a two-stage image: the builder runs the full install (-a: FRRouting,
+# libyang, mininet, radvd, sshd, named) plus the uv venv and mimidump, and the
+# slim runtime stage keeps only the test-facing packages and the compiled
+# artifacts. Runs the full test suite inside it with root privileges. Every
+# worker runs in its own isolated namespace (scripts/run-tests-parallel.sh),
+# mirroring the bare-metal job but in a reproducible environment.
 name: Container test
 on:
   pull_request:
