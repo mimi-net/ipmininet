@@ -22,6 +22,7 @@ interface ${intf.name}
   ipv6 ospf6 passive
   % endif
   ipv6 ospf6 instance-id ${intf.instance_id}
+  ipv6 ospf6 area ${intf.area}
   <%block name="interface"/>
 !
 % endfor
@@ -30,9 +31,6 @@ router ospf6
   ospf6 router-id ${node.ospf6d.routerid}
   % for r in node.ospf6d.redistribute:
   redistribute ${r.subtype}
-  % endfor
-  % for itf in node.ospf6d.interfaces:
-  interface ${itf.name} area ${itf.area}
   % endfor
 
   <%block name="router"/>

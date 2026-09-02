@@ -87,7 +87,7 @@ high_igp_cost_paths = [
 @pytest.mark.parametrize(
     "node_params,ospf6_params,link_params,exp_cfg,exp_paths",
     [
-        ({}, {}, {}, ["  interface r1-eth0 area 0.0.0.0"], unit_igp_cost_paths),
+        ({}, {}, {}, ["  ipv6 ospf6 area 0.0.0.0"], unit_igp_cost_paths),
         (
             {},
             {"debug": ["flooding"]},
@@ -100,14 +100,20 @@ high_igp_cost_paths = [
             {},
             {},
             {"igp_area": "1.1.1.1"},
-            ["  interface r1-eth0 area 1.1.1.1", "  interface lo area 0.0.0.0"],
+            [
+                "  ipv6 ospf6 area 1.1.1.1",
+                "  ipv6 ospf6 area 0.0.0.0",
+            ],
             high_igp_cost_paths,
         ),
         (
             {"igp_area": "1.1.1.1"},
             {},
             {},
-            ["  interface lo area 1.1.1.1", "  interface r1-eth0 area 0.0.0.0"],
+            [
+                "  ipv6 ospf6 area 1.1.1.1",
+                "  ipv6 ospf6 area 0.0.0.0",
+            ],
             unit_igp_cost_paths,
         ),
         (
