@@ -6,12 +6,12 @@ import sysconfig
 
 # For imports to work during setup and afterwards
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from utils import identify_distribution, sh, supported_distributions
+from utils import find_executable, identify_distribution, sh, supported_distributions
 
 MininetVersion = "2.3.0"
 FRRoutingVersion = "10.7.1"
 LibyangVersion = "v3.13.6"
-ExaBGPVersion = "4.2.25"
+ExaBGPVersion = "5.0.13"
 
 # XXX: We need the explicit script until the following issue is fixed:
 #      https://github.com/mininet/mininet/issues/1120
@@ -277,9 +277,9 @@ def install_frrouting(output_dir: str):
 
 
 def install_exabgp(output_dir: str, may_fail=False):
-    git_url = "https://github.com/Exa-Networks/exabgp.git"
-    exabgp_src_folder = f"exabgp-{ExaBGPVersion}-src"
-    exabgp_path_src_dir = os.path.join(output_dir, exabgp_src_folder)
+    # ExaBGP 5.x is a src/ layout Python package installed with pip; its
+    # console script lands in the interpreter's bin dir. Install it into the
+    # system and symlink the entry point to /usr/sbin so ipmininet finds it.
     exabgp_self_executable = os.path.join(output_dir, "exabgp")
     final_link = "/usr/sbin/exabgp"
 
@@ -287,25 +287,20 @@ def install_exabgp(output_dir: str, may_fail=False):
         print("IPMininet: ExaBGP already installed; skipping build")
         return
 
-    sh(
-        f"rm -rf {exabgp_src_folder}",
-        f"git clone {git_url} {exabgp_src_folder}",
-        cwd=output_dir,
-        may_fail=may_fail,
-    )
+    dist.pip_install(f"exabgp=={ExaBGPVersion}", may_fail=may_fail)
 
-    sh(f"git checkout {ExaBGPVersion}", cwd=exabgp_path_src_dir, may_fail=may_fail)
+    entry = find_executable("exabgp")
+    if not entry:
+        print("WARNING: pip did not install the exabgp entry point.", file=sys.stderr)
+        return
 
-    # create self-contained executable
-    sh(
-        f'python3 -m zipapp -o {exabgp_self_executable} -m exabgp.application:main  -p "/usr/bin/env python3" lib',
-        cwd=exabgp_path_src_dir,
-        may_fail=may_fail,
-    )
-
+    # Keep a marker that the build is done, and mirror the entry point in
+    # /usr/sbin (install_frrouting links its own binaries the same way).
+    with open(exabgp_self_executable, "w"):
+        pass
     if os.path.lexists(final_link):
         os.remove(final_link)
-    os.symlink(exabgp_self_executable, final_link)
+    os.symlink(entry, final_link)
 
 
 def update_grub():
