@@ -150,6 +150,58 @@ class Zebra(QuaggaDaemon):
             return True
 
 
+class MgmtdBackendDaemon(QuaggaDaemon):
+    """Base class for FRR daemons that are mgmtd backends.
+
+    Since FRR 9.0 the configuration of these daemons (currently staticd,
+    ripd and ripngd) is delivered through mgmtd: they reject per-daemon
+    config files (-f) and the config-check flag (-C) entirely. We start
+    mgmtd ahead of them (see DEPENDS) and push the rendered config with
+    vtysh once the daemon is up.
+    """
+
+    DEPENDS = (Mgmtd, Zebra)
+    _config_pushed = False
+
+    @property
+    def startup_line(self):
+        return "{name} -i {pid} -z {api} -u root".format(
+            name=self.NAME,
+            pid=self._file("pid"),
+            api=self.zebra_socket,
+        )
+
+    @property
+    def dry_run(self):
+        # mgmtd backends reject -C; the config is validated when vtysh
+        # applies it.
+        return "true"
+
+    def has_started(self, node_exec=None) -> bool:
+        """Wait until the daemon is up (its vty socket exists), then push its
+        configuration through mgmtd exactly once via vtysh."""
+        if node_exec is None or not self._daemon_up(node_exec):
+            return False
+        if self._config_pushed:
+            return True
+        self._push_config(node_exec)
+        self._config_pushed = True
+        return True
+
+    def _daemon_up(self, node_exec) -> bool:
+        """Return whether the daemon has created its vty socket (i.e. it is
+        running and has registered with mgmtd)."""
+        return f"{self.NAME}.vty" in node_exec.call("ls /var/run/frr/")
+
+    def _push_config(self, node_exec) -> None:
+        """Load the rendered config into mgmtd with vtysh.
+
+        vtysh reads the config file and distributes this daemon's section
+        through the mgmtd backend, which then programs the routes.
+        """
+        node_exec.call("vtysh", "-f", self.cfg_filename)
+
+
 class CommunityList:
     """A zebra community-list entry"""
 

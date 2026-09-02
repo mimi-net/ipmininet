@@ -615,6 +615,15 @@ class BGP(QuaggaDaemon, AbstractBGP):
         """We add the port to the standard startup line"""
         return f"-p {self.port}"
 
+    @property
+    def dry_run(self):
+        # FRR 10.7.1's bgpd crashes in the config-check path (-C) when a
+        # "neighbor ... activate" line is parsed: peer_activate_af() calls
+        # bgp_keepalives_off() while the keepalive pthread is not running yet
+        # (bgp_keepalives.c assertion fpt->running). The daemon applies the
+        # same validation at real startup, so skip the pre-flight check.
+        return "true"
+
     def __init__(self, node, port=BGP_DEFAULT_PORT, *args, **kwargs):
         super().__init__(*args, node=node, **kwargs)
         self.port = port

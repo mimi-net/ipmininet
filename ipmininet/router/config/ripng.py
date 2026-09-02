@@ -6,20 +6,19 @@ from ipmininet.link import IPIntf
 from ipmininet.utils import L3Router
 
 from .utils import ConfigDict
-from .zebra import QuaggaDaemon, Zebra
+from .zebra import MgmtdBackendDaemon
 
 UPDATE_TIMER = 30
 TIMEOUT_TIMER = 180
 GARBAGE_TIMER = 120
 
 
-class RIPng(QuaggaDaemon):
+class RIPng(MgmtdBackendDaemon):
     """This class provides a simple configuration for an RIP daemon.
     It advertizes one network per interface (the primary one),
     and set interfaces not facing another L3Router to passive"""
 
     NAME = "ripngd"
-    DEPENDS = (Zebra,)
     KILL_PATTERNS = (NAME,)
 
     def build(self):
