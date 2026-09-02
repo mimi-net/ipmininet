@@ -71,10 +71,8 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libyang* /usr/lib/x86_64-linux-gnu
 COPY --from=builder /usr/include/libyang /usr/include/
 COPY --from=builder /usr/share/yang/modules/libyang /usr/share/yang/modules/
 COPY --from=builder /usr/bin/yanglint /usr/bin/yanglint
-# mininet mnexec and exabgp.
+# mininet mnexec (exabgp rides in the /opt/venv copied below).
 COPY --from=builder /usr/local/bin/mnexec /usr/local/bin/mnexec
-COPY --from=builder /root/exabgp /root/exabgp
-COPY --from=builder /usr/sbin/exabgp /usr/sbin/exabgp
 # mimidump.
 COPY --from=builder /usr/local/bin/mimidump /usr/local/bin/mimidump
 # The uv-managed virtualenv and its CPython toolchain (the venv's

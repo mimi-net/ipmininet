@@ -20,12 +20,12 @@ MininetInstallCommit = "c3ba039a9781c6c5f475b7c88ff577185747a1da"
 os.environ["PATH"] = "{}:/sbin:/usr/sbin/:/usr/local/sbin".format(os.environ["PATH"])
 
 
-def _needs_rebuild(*paths: str) -> bool:
+def _needs_rebuild(*paths: str | None) -> bool:
     """Return True when a component must be (re)built: one of its artifacts is
     missing or the user requested a forced rebuild (IPMININET_FORCE_INSTALL=1).
     """
     return os.environ.get("IPMININET_FORCE_INSTALL") == "1" or not all(
-        os.path.exists(p) for p in paths
+        p is not None and os.path.exists(p) for p in paths
     )
 
 
@@ -278,29 +278,25 @@ def install_frrouting(output_dir: str):
 
 def install_exabgp(output_dir: str, may_fail=False):
     # ExaBGP 5.x is a src/ layout Python package installed with pip; its
-    # console script lands in the interpreter's bin dir. Install it into the
-    # system and symlink the entry point to /usr/sbin so ipmininet finds it.
-    exabgp_self_executable = os.path.join(output_dir, "exabgp")
-    final_link = "/usr/sbin/exabgp"
-
-    if not _needs_rebuild(exabgp_self_executable, final_link):
+    # console script lands in the interpreter's bin dir and is already on
+    # PATH, so nothing more is needed. Inside a uv-managed virtualenv (CI and
+    # the container build) it is installed into that env with `uv pip`, so the
+    # runtime image inherits it together with the rest of the venv.
+    if not _needs_rebuild(exabgp_executable()):
         print("IPMininet: ExaBGP already installed; skipping build")
         return
 
-    dist.pip_install(f"exabgp=={ExaBGPVersion}", may_fail=may_fail)
-
-    entry = find_executable("exabgp")
-    if not entry:
+    if find_executable("uv") and os.environ.get("VIRTUAL_ENV"):
+        sh(f"uv pip install -q exabgp=={ExaBGPVersion}", may_fail=may_fail)
+    else:
+        dist.pip_install(f"exabgp=={ExaBGPVersion}", may_fail=may_fail)
+    if not exabgp_executable():
         print("WARNING: pip did not install the exabgp entry point.", file=sys.stderr)
-        return
 
-    # Keep a marker that the build is done, and mirror the entry point in
-    # /usr/sbin (install_frrouting links its own binaries the same way).
-    with open(exabgp_self_executable, "w"):
-        pass
-    if os.path.lexists(final_link):
-        os.remove(final_link)
-    os.symlink(entry, final_link)
+
+def exabgp_executable() -> str | None:
+    """Return the path to the exabgp console script, if installed."""
+    return find_executable("exabgp")
 
 
 def update_grub():
