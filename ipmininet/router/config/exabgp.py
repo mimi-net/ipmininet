@@ -311,11 +311,13 @@ class ExaBGPDaemon(AbstractBGP):
 
     @property
     def startup_line(self) -> str:
-        return f"{self.NAME} --env {self.env_filename} {self.cfg_filename}"
+        # ExaBGP 5.x moved to a subcommand CLI: the env file is passed with
+        # --env-file and the config is the trailing argument.
+        return f"{self.NAME} --env-file {self.env_filename} server {self.cfg_filename}"
 
     @property
     def dry_run(self) -> str:
-        return f"{self.NAME} --validate --env {self.env_filename} {self.cfg_filename}"
+        return f"{self.NAME} validate {self.cfg_filename}"
 
     def set_defaults(self, defaults):
         """

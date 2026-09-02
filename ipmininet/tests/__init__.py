@@ -28,24 +28,28 @@ def _exabgp_usable() -> bool:
     """Return whether a working ExaBGP daemon is available.
 
     ExaBGP 4.2.11 shipped a vendored six too old for Python 3.12 (broken
-    ``six.moves``), so simply being on PATH is not enough: the daemon must
-    also start (--version) cleanly.
+    ``six.moves``); ExaBGP 5.x runs on Python 3 but moved to a subcommand
+    CLI. Either way, simply being on PATH is not enough: the daemon must
+    also report its version cleanly.
     """
     if not has_cmd("exabgp"):
         return False
-    try:
-        return (
-            subprocess.run(
-                ["exabgp", "--version"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=10,
-                check=False,
-            ).returncode
-            == 0
-        )
-    except (OSError, subprocess.SubprocessError):
-        return False
+    for probe in (["exabgp", "version"], ["exabgp", "--version"]):
+        try:
+            if (
+                subprocess.run(
+                    probe,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10,
+                    check=False,
+                ).returncode
+                == 0
+            ):
+                return True
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return False
 
 
 require_exabgp = pytest.mark.skipif(
