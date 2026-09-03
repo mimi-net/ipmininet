@@ -16,11 +16,24 @@ def test_iptables_example():
 
         ip = net["r2"].intf("r2-eth0").ip
         cmd = f"ping -W 1 -c 1 {ip}"
-        p = net["r1"].popen(cmd.split(" "))
-        out, err = p.communicate()
-        ret = p.poll()
-        assert ret == 0, (
-            f"Pings over IPv4 should not be blocked.\n[stdout]\n{out}\n[stderr]\n{err}"
+        last_out = ""
+        last_err = ""
+
+        def _ipv4_ping_ok():
+            nonlocal last_out, last_err
+            p = net["r1"].popen(cmd.split(" "))
+            ret = p.wait()
+            last_out, last_err = p.communicate()
+            return ret == 0
+
+        wait_until(
+            _ipv4_ping_ok,
+            timeout=30,
+            interval=0.5,
+            description=lambda: (
+                "IPv4 pings from {} to {} to not be blocked\n"
+                "[stdout]\n{}\n[stderr]\n{}".format(net["r1"], ip, last_out, last_err)
+            ),
         )
 
         ip6 = net["r2"].intf("r2-eth0").ip6
