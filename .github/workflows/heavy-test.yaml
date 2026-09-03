@@ -1,7 +1,9 @@
-# Full test suite, run on master and on demand.
+# Full test suite with coverage, run on master and on demand.
 #
-# Performs the full `ipmininet.install -a` and runs every test except the
-# known-broken exabgp daemon, which is skipped in its own test module.
+# Performs the full `ipmininet.install -a` and runs every test with the
+# coverage gate. It complements `test.yaml`, which runs the same suite on pull
+# requests: master only changes through merged PRs, so this job is the single
+# bare-metal full-suite run per master push and enforces the coverage floor.
 # Lint/format checks are run in the `rootless` job of test.yaml.
 name: Heavy test
 on:
