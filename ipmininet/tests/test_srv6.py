@@ -285,6 +285,27 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
     return path
 
 
+def _wait_v6_connectivity(net: IPNet, src: str, dst_ip: str, timeout=120) -> None:
+    """Wait until ``src`` can ping ``dst_ip`` over IPv6.
+
+    The path assertions below measure IPv6 routes, but the routing only
+    converges after the IPv4 one asserted by ``assert_connectivity``: under
+    parallel CI load OSPFv6 could still be settling when ``sr_path`` started
+    probing, which made it return an empty path and flaked the test.
+    """
+
+    def _connected() -> bool:
+        out = net[src].cmd(shlex.split(f"ping -6 -c 1 -W 1 {dst_ip}"))
+        return ", 0% packet loss" in out
+
+    wait_until(
+        _connected,
+        timeout=timeout,
+        interval=1,
+        description=lambda: f"IPv6 connectivity from {src} to {dst_ip} to converge",
+    )
+
+
 @require_root
 @pytest.mark.parametrize(
     "routes,paths,through",
@@ -436,6 +457,8 @@ def test_static_examples(routes, paths, through):
 
         assert_connectivity(net, v6=False)
         for i, p in enumerate(paths):
+            dst_ip = net[p[-1]].defaultIntf().ip6
+            _wait_v6_connectivity(net, p[0], dst_ip)
             assert_path(
                 net,
                 p,
