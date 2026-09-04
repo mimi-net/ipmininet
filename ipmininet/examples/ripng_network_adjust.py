@@ -7,7 +7,7 @@ from ipmininet.router.config.ripng import RIPng
 
 
 class RIPngNetworkAdjust(IPTopo):
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         lr1r2_cost=1,
         lr1r3_cost=1,

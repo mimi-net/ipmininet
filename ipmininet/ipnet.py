@@ -45,7 +45,7 @@ PING6_CMD = "ping6" if has_cmd("ping6") else "ping -6"
 class IPNet(Mininet):
     """IPNet: An IP-aware Mininet"""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         router: type[Router] = Router,
         config: type[RouterConfig] = BasicRouterConfig,
@@ -140,7 +140,7 @@ class IPNet(Mininet):
         self.physical_interface.update(topo.phys_interface_capture)
         super().buildFromTopo(topo)
 
-    def addLink(
+    def addLink(  # noqa: PLR0913, PLR0917
         self,
         node1: Node,
         node2: Node,
@@ -341,7 +341,7 @@ class IPNet(Mininet):
                     self._ip_allocs[ip.ip.compressed] = intf.node
 
     @staticmethod
-    def _allocate_subnets(
+    def _allocate_subnets(  # noqa: PLR0913, PLR0917
         subnets: list[IPv4Network | IPv6Network],
         domains: list["BroadcastDomain"],
         domainlen="len_v4",
@@ -387,12 +387,12 @@ class IPNet(Mininet):
             if not d.use_ip_version(ip_version):
                 continue
             if not subnets:
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     "No subnet left in the prefix space for allbroadcast domains."
                 )
             plen = min(max_prefixlen, getattr(d, size_key))
             if plen < subnets[-1].prefixlen:
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     "Could not find a subnet big enough for a broadcast domain."
                 )
             log.debug("Allocating prefix", plen, "for interfaces", d.interfaces)
@@ -825,13 +825,13 @@ class BroadcastDomain:
 
         :return ip_interface:"""
         if self.net is None:
-            raise ValueError("No associated IPv4 subnet")
+            raise ValueError("No associated IPv4 subnet")  # noqa: TRY003
         try:
             addr = self.net[self._allocated_v4]
             self._allocated_v4 += 1
             return ip_interface(f"{addr}/{self.net.prefixlen}")
         except IndexError:
-            raise ValueError("No more available IPv4 address") from None
+            raise ValueError("No more available IPv4 address") from None  # noqa: TRY003
 
     def next_ipv6(self) -> IPv6Interface:
         """Allocate and return the next available IPv6 address in this
@@ -839,13 +839,13 @@ class BroadcastDomain:
 
         :return ip_interface:"""
         if self.net6 is None:
-            raise ValueError("No associated IPv6 subnet")
+            raise ValueError("No associated IPv6 subnet")  # noqa: TRY003
         try:
             addr = self.net6[self._allocated_v6]
             self._allocated_v6 += 1
             return ip_interface(f"{addr}/{self.net6.prefixlen}")
         except IndexError:
-            raise ValueError("No more available IPv6 address") from None
+            raise ValueError("No more available IPv6 address") from None  # noqa: TRY003
 
     def use_ip_version(self, ip_version) -> bool:
         """Checks whether there are nodes using this IP version

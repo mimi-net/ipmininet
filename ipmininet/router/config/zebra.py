@@ -362,7 +362,7 @@ class ZebraList(ABC):
             elif isinstance(e, (IPv4Network, IPv6Network, str)):
                 self.entries.append(self.Entry(prefix=e))
             else:
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     f'"{e}" is not a valid prefix entry for the {family} family'
                 )
 
@@ -440,7 +440,7 @@ class RouteMapMatchCond:
         if self.family == "community":
             return "community"
 
-        raise ValueError(f"Unsupported family; {self.family}")
+        raise ValueError(f"Unsupported family; {self.family}")  # noqa: TRY003
 
     def __eq__(self, other):
         return (
@@ -472,7 +472,7 @@ class RouteMapSetAction:
 
 
 class RouteMapEntry:
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         family: str,
         match_policy=PERMIT,
@@ -535,7 +535,9 @@ class RouteMapEntry:
 
     def update(self, rm_entry: "RouteMapEntry"):
         if not self.can_merge(rm_entry):
-            raise ValueError("Attempting to merge incompatible RouteMap Entries")
+            raise ValueError(  # noqa: TRY003
+                "Attempting to merge incompatible RouteMap Entries"
+            )
 
         self.append_set_action(rm_entry.set_actions)
         self.append_match_cond(rm_entry.match_cond)
@@ -625,7 +627,9 @@ class RouteMap:
 
     def update(self, rm: "RouteMap"):
         if self != rm:
-            raise ValueError("Attempting to update incompatible RouteMaps")
+            raise ValueError(  # noqa: TRY003
+                "Attempting to update incompatible RouteMaps"
+            )
 
         for order in rm.entries:
             self.entry(rm.entries[order], order)

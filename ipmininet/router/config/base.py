@@ -114,7 +114,7 @@ class NodeConfig:
             try:
                 cls, kw = cls
             except ValueError:
-                raise TypeError(
+                raise TypeError(  # noqa: TRY003
                     f"Expected a tuple (Daemon, dict)  but got {cls!s}"
                 ) from None
             daemon_opts.update(kw)
@@ -124,7 +124,7 @@ class NodeConfig:
             if issubclass(cls, Daemon):
                 cls = cls(self._node, **daemon_opts)
             else:
-                raise TypeError(
+                raise TypeError(  # noqa: TRY003
                     f"Expected an object or a subclass of Daemon, got {cls} instead"
                 )
         else:
@@ -149,7 +149,7 @@ class NodeConfig:
                 key, val = value.split("=")
                 self._sysctl[key] = val
             except ValueError:
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     f"sysctl must be specified using `key=val` format. Ignoring {value}"
                 ) from None
 
@@ -348,7 +348,7 @@ class Daemon(metaclass=abc.ABCMeta):
                     "Couldnt render a config file(", self.template_filenames[i], ")"
                 )
                 log.error(mako.exceptions.text_error_template().render())
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     f"Cannot render a configuration [{self._node.name}: {self.NAME}]"
                 ) from None
         return cfg_content

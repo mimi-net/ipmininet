@@ -43,7 +43,7 @@ def require_cmd(cmd: str, help_str: str | None = None):
 
     if help_str:
         log.error(help_str)
-    raise RuntimeError(f"[{cmd}] is not available in $PATH")
+    raise RuntimeError(f"[{cmd}] is not available in $PATH")  # noqa: TRY003
 
 
 def otherIntf(intf: Intf) -> Optional["IPIntf"]:
@@ -88,9 +88,9 @@ def is_subnet_of(a: IPv4Network | IPv6Network, b: IPv4Network | IPv6Network) -> 
     try:
         # Always false if one is v4 and the other is v6.
         if a.version != b.version:
-            raise TypeError(f"{a} and {b} are not of the same version")
+            raise TypeError(f"{a} and {b} are not of the same version")  # noqa: TRY003
     except AttributeError:
-        raise TypeError(
+        raise TypeError(  # noqa: TRY003
             f"Unable to test subnet containment between {a} and {b}"
         ) from None
     else:

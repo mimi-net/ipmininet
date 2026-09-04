@@ -59,7 +59,7 @@ def srv6_segment_space(
     """
     if isinstance(intf, str):
         if not isinstance(node, IPNode):
-            raise TypeError(
+            raise TypeError(  # noqa: TRY003
                 "Cannot retrieve an IPIntf from name without "
                 "passing its node as parameter"
             )
@@ -96,7 +96,7 @@ class LocalSIDTable:
             elif isinstance(destination, IPIntf):
                 self.prefixes.extend(srv6_segment_space(intf=destination))
             else:
-                raise TypeError(
+                raise TypeError(  # noqa: TRY003
                     "The LocalSIDTable cannot be created because "
                     f"the destination {destination} cannot be matched"
                 )
@@ -115,7 +115,9 @@ class LocalSIDTable:
         while self.num in tables:
             self.num += 1
         if self.num >= MIN_RESERVED_TABLE:
-            raise RuntimeError("Cannot find a free table number on the host")
+            raise RuntimeError(  # noqa: TRY003
+                "Cannot find a free table number on the host"
+            )
 
         # Create the table
         self.create()
@@ -173,7 +175,7 @@ class SRv6Route(metaclass=abc.ABCMeta):
         self.source = node if not isinstance(node, str) else net[node]
         itfs = realIntfList(self.source)
         if len(itfs) == 0:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 f"Cannot install SRv6Route {self} without"
                 f" a real interface on node {self.source.name}\n"
             )
@@ -181,7 +183,7 @@ class SRv6Route(metaclass=abc.ABCMeta):
 
         # Check SRv6 capability
         if not self.is_available():
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 f"Cannot create {self} because the distribution does not support it"
             )
 
@@ -258,7 +260,7 @@ class SRv6Route(metaclass=abc.ABCMeta):
                 elif isinstance(h, IPIntf):
                     ip = h.ip6 if v6 else h.ip
                 if ip is None:
-                    raise ValueError(
+                    raise ValueError(  # noqa: TRY003
                         f"Cannot find for the nexthop {nh}"
                         f" a global IPv{6 if v6 else 4} address\n"
                     ) from None
@@ -315,7 +317,7 @@ class SRv6Encap(SRv6Route):
     ENCAP = "encap"
     INLINE = "inline"
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         net: IPNet,
         node: IPNode | str,
@@ -342,7 +344,7 @@ class SRv6Encap(SRv6Route):
                      preferred if the destination prefix is the same.
         """
         if len(through) == 0:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 "It does not make sense to use Segment Routing without any redirection."
             )
         self.nexthops = list(through)
@@ -573,7 +575,7 @@ class SRv6EndB6Function(SRv6EndFunction):
                          cases, the default IPv6 address is selected.
         """
         if len(segments) == 0:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 "It does not make sense to use Segment Routing without any segment."
             )
         self.segments = self.nexthops_to_ips(segments)

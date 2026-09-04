@@ -10,7 +10,7 @@ class IPSwitch(LinuxBridge):
     """Linux Bridge (with optional spanning tree) extended to include
     the hubs"""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         name: str,
         stp=True,

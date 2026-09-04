@@ -337,7 +337,7 @@ class BGPConfig:
             )
         return self
 
-    def filter(
+    def filter(  # noqa: PLR0913, PLR0917
         self,
         name: str | None = None,
         policy=DENY,
@@ -499,7 +499,9 @@ class BGPConfig:
                     if f not in prefix_list:
                         prefix_list.append(f)
             else:
-                raise TypeError(f"Filter not yet implemented for {type(f).__name__}")
+                raise TypeError(  # noqa: TRY003
+                    f"Filter not yet implemented for {type(f).__name__}"
+                )
         return match_cond
 
     def add_set_action(
@@ -761,7 +763,7 @@ class AddressFamily:
             return "ip"
         if self.name == "ipv6":
             return "ip6"
-        raise ValueError(f"Unsupported AddressFamily {self.name}")
+        raise ValueError(f"Unsupported AddressFamily {self.name}")  # noqa: TRY003
 
 
 def AF_INET(*args, **kwargs):

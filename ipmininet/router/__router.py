@@ -84,7 +84,7 @@ class ProcessHelper:
 class IPNode(Node):
     """A Node which manages a set of daemons"""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         name: str,
         config: type[NodeConfig] | tuple[type[NodeConfig], dict] = NodeConfig,

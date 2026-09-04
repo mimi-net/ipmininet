@@ -2,7 +2,7 @@ from ipmininet.iptopo import IPTopo
 
 
 class SpanningTreeAdjust(IPTopo):
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         l1_start=None,
         l1_end=None,

@@ -106,7 +106,7 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300, poll=1.0) -> list
     return []
 
 
-def assert_path(
+def assert_path(  # noqa: PLR0913, PLR0917
     net: IPNet,
     expected_path: list[str],
     v6=False,
@@ -219,7 +219,7 @@ def assert_connectivity(net: IPNet, v6=False, attempts=1500, translate_address=T
     assert connected, "Cannot ping all hosts over %s" % ("IPv4" if not v6 else "IPv6")
 
 
-def check_tcp_connectivity(
+def check_tcp_connectivity(  # noqa: PLR0913, PLR0917
     client: IPNode,
     server: IPNode,
     v6=False,
@@ -243,7 +243,7 @@ def check_tcp_connectivity(
         t += 1
         if server_p.poll() is not None:
             out, err = server_p.communicate()
-            raise AssertionError(
+            raise AssertionError(  # noqa: TRY003
                 "The netcat server used to check TCP connectivity failed"
                 f" with the output:\n[stdout]\n{out}\n[stderr]\n{err}"
             )

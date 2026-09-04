@@ -356,7 +356,7 @@ class OrderedAddress:
         return address_comparator(self.addr, other.addr) < 0
 
 
-def address_comparator(a, b):
+def address_comparator(a, b):  # noqa: PLR0911
     """Return -1, 0, 1 if a is less, equally, more visible than b.
     We define visibility according to IP version, address scope, address class,
     and address value"""
@@ -403,13 +403,17 @@ class PhysicalInterface(IPIntf):
         try:
             node = kw["node"]
         except KeyError:
-            raise ValueError("PhysicalInterface() requires a node= argument") from None
+            raise ValueError(  # noqa: TRY003
+                "PhysicalInterface() requires a node= argument"
+            ) from None
         # Save the addresses from the root namespace
         try:
             _, v4, v6 = _addresses_of(name, node=None)
         except (subprocess.CalledProcessError, OSError):
             log.error("Cannot retrieve the addresses of interface", name, "!")
-            raise ValueError("Unknown physical interface name") from None
+            raise ValueError(  # noqa: TRY003
+                "Unknown physical interface name"
+            ) from None
         # cfr man ip-link; some devices cannot change of net ns
         if node.inNamespace and "netns-local: on" in subprocess.check_output(
             ("ethtool", "-k", name)

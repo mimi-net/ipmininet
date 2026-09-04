@@ -9,7 +9,7 @@ class IPOVSSwitch(OVSSwitch):
     working directory and a configurable priority.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         name: str,
         stp=False,
@@ -43,7 +43,9 @@ class IPOVSSwitch(OVSSwitch):
     def start(self, controllers):
         """Start up a new OVS OpenFlow switch using ovs-vsctl"""
         if self.inNamespace:
-            raise RuntimeError("OVS kernel switch does not work in a namespace")
+            raise RuntimeError(  # noqa: TRY003
+                "OVS kernel switch does not work in a namespace"
+            )
 
         self.cmd("ifconfig", self, "down")
         int(self.dpid, 16)  # DPID must be a hex string

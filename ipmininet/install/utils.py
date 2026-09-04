@@ -103,7 +103,7 @@ class Distribution:
 
     def require_pip(self):
         if find_executable(self.PIP_CMD) is None:
-            raise RuntimeError(f"Cannot find {self.PIP_CMD}")
+            raise RuntimeError(f"Cannot find {self.PIP_CMD}")  # noqa: TRY003
 
 
 class Ubuntu(Distribution):
