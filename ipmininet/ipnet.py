@@ -507,6 +507,35 @@ class IPNet(Mininet):
 
         return lost, packets
 
+    def _ping_addressing(
+        self, src: Node, host_list: list[Node], use_v4: bool, use_v6: bool
+    ) -> tuple[dict, dict, set]:
+        """Return the IPv4/IPv6 destinations reachable from ``src`` and the
+        pairs of hosts that cannot ping each other.
+
+        :param src: origin of the pings
+        :param host_list: the candidate destinations
+        :param use_v4: whether IPv4 addresses can be used
+        :param use_v6: whether IPv6 addresses can be used
+        :return: a tuple (v4 destinations, v6 destinations, incompatible pairs)
+        """
+        src_ip, src_ip6 = address_pair(src, use_v4, use_v6)
+        ping_dict = {}
+        ping6_dict = {}
+        incompatible_pairs = set()
+        for dst in host_list:
+            if src == dst:
+                continue
+            dst_ip, dst_ip6 = address_pair(dst, src_ip is not None, src_ip6 is not None)
+            if dst_ip is not None:
+                ping_dict[dst] = dst_ip
+            if dst_ip6 is not None:
+                ping6_dict[dst] = dst_ip6
+            if use_v4 and dst_ip is None and use_v6 and dst_ip6 is None:
+                node1, node2 = sorted((src, dst), key=lambda x: x.name)
+                incompatible_pairs.add((node1.name, node2.name))
+        return ping_dict, ping6_dict, incompatible_pairs
+
     def ping(
         self,
         hosts: list[Node] | None = None,
@@ -529,11 +558,7 @@ class IPNet(Mininet):
         :return: the packet loss percentage of IPv4 connectivity if
                  self.use_v4 is set the loss percentage of IPv6 connectivity
                  otherwise"""
-        packets = lost = 0
-        host_list = self.hosts
-        if hosts is not None:
-            host_list = hosts
-        incompatible_hosts = {}  # type: Dict[str, Set[str]]
+        host_list = self.hosts if hosts is None else hosts
         if not use_v4 and not use_v6:
             log.output("*** Warning: Parameters forbid both IPv4 and IPv6 for pings\n")
             return 0
@@ -545,26 +570,14 @@ class IPNet(Mininet):
                 "IPv6" if use_v6 else "",
             )
         )
+        incompatible_hosts = {}  # type: Dict[str, Set[str]]
+        packets = lost = 0
         for src in host_list:
-            src_ip, src_ip6 = address_pair(src, use_v4, use_v6)
-            ping_dict = {}
-            ping6_dict = {}
-            for dst in host_list:
-                if src != dst:
-                    dst_ip, dst_ip6 = address_pair(
-                        dst, src_ip is not None, src_ip6 is not None
-                    )
-                    if dst_ip is not None:
-                        ping_dict[dst] = dst_ip
-                    if dst_ip6 is not None:
-                        ping6_dict[dst] = dst_ip6
-                    if use_v4 and dst_ip is None and use_v6 and dst_ip6 is None:
-                        node1 = src if src.name <= dst.name else dst
-                        node2 = src if node1 != src else dst
-                        if node2.name not in incompatible_hosts.setdefault(
-                            node1.name, set()
-                        ):
-                            incompatible_hosts[node1.name].add(node2.name)
+            ping_dict, ping6_dict, incompatible_pairs = self._ping_addressing(
+                src, host_list, use_v4, use_v6
+            )
+            for node1, node2 in incompatible_pairs:
+                incompatible_hosts.setdefault(node1, set()).add(node2)
 
             result = self._ping_set(src, ping_dict, timeout, True)
             lost += result[0]
@@ -582,9 +595,8 @@ class IPNet(Mininet):
 
         if packets > 0:
             ploss = 100.0 * lost / packets
-            received = packets - lost
             log.output(
-                f"*** Results: {ploss}% dropped ({received}/{packets} received)\n"
+                f"*** Results: {ploss}% dropped ({packets - lost}/{packets} received)\n"
             )
         else:
             ploss = 0

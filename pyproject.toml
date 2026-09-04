@@ -129,7 +129,6 @@ select = [
 "ipmininet/router/config/bgp.py" = ["PLR0913", "PLR0917", "TRY003"]
 "ipmininet/router/config/zebra.py" = ["PLR0913", "PLR0917", "TRY003"]
 "ipmininet/srv6.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/tests/test_srv6.py" = ["PLR0912", "PLR0915"]
 "ipmininet/tests/utils.py" = ["PLR0913", "PLR0917", "TRY003"]
 "ipmininet/utils.py" = ["PLC0415", "TRY003"]
 

@@ -118,6 +118,24 @@ class Named(HostDaemon):
             delegation_servers=zone.delegation_servers,
         )
 
+    def _ptr_record(self, zone: ConfigDict, record: "ARecord") -> "PTRRecord":
+        if record.full_domain_name:
+            domain_name = record.domain_name
+        else:
+            domain_name = dns_join_name(record.domain_name, zone.name)
+        return PTRRecord(record.address, domain_name, ttl=record.ttl)
+
+    def _fill_reverse_zones(self, cfg_zones: ConfigDict, records: list) -> list:
+        """Return the records of ``records`` appended to an existing reverse zone."""
+        placed_records = []
+        for record in records:
+            for zone in cfg_zones.values():
+                if zone.name in record.domain_name and is_reverse_zone(zone.name):
+                    zone.records.append(record)
+                    placed_records.append(record)
+                    break
+        return placed_records
+
     def build_reverse_zone(self, cfg_zones: ConfigDict):
         """
         Build non-existing PTR records. Then, adds them to an existing reverse
@@ -128,16 +146,10 @@ class Named(HostDaemon):
         ptr_records = set()
         for zone in cfg_zones.values():
             for record in zone.records:
-                if not isinstance(record, ARecord) or (
-                    record.domain_name in zone.delegation_servers
+                if isinstance(record, ARecord) and (
+                    record.domain_name not in zone.delegation_servers
                 ):
-                    continue
-
-                if record.full_domain_name:
-                    domain_name = record.domain_name
-                else:
-                    domain_name = dns_join_name(record.domain_name, zone.name)
-                ptr_records.add(PTRRecord(record.address, domain_name, ttl=record.ttl))
+                    ptr_records.add(self._ptr_record(zone, record))
 
         existing_records = [
             record
@@ -146,27 +158,24 @@ class Named(HostDaemon):
             if isinstance(record, PTRRecord)
         ]
 
-        ptr_v6_records = []
-        ptr_v4_records = []
-        for record in ptr_records:
-            # Filter out existing PTR records
-            if record in existing_records:
-                continue
-            # Try to place the rest in existing reverse DNS zones
-            found = False
-            for zone in cfg_zones.values():
-                if zone.name in record.domain_name and is_reverse_zone(zone.name):
-                    zone.records.append(record)
-                    found = True
-                    break
-            # The rest needs a new DNS zone
-            if not found:
-                if record.v6:
-                    ptr_v6_records.append(record)
-                else:
-                    ptr_v4_records.append(record)
+        # Filter out existing PTR records and place the rest in existing
+        # reverse DNS zones
+        new_records = [
+            record for record in ptr_records if record not in existing_records
+        ]
+        placed_records = self._fill_reverse_zones(cfg_zones, new_records)
 
-        # Create new reverse DNS zones for remaining PTR records
+        ptr_v6_records: list = []
+        ptr_v4_records: list = []
+        for record in new_records:
+            # The records that were not placed need a new reverse DNS zone
+            if record in placed_records:
+                continue
+            if record.v6:
+                ptr_v6_records.append(record)
+            else:
+                ptr_v4_records.append(record)
+
         if len(ptr_v6_records) > 0:
             self.build_largest_reverse_zone(cfg_zones, ptr_v6_records)
         if len(ptr_v4_records) > 0:
@@ -459,11 +468,9 @@ class DNSZone(Overlay):
         if record not in self._records:
             self._records.append(record)
 
-    def apply(self, topo):
-        super().apply(topo)
-        if not self.consistent:
-            return
-
+    def _peer_overlays(self, topo) -> list:
+        """Return the peer zones that want to hint root name servers and
+        register the direct subdomains of this zone as delegated zones."""
         zones = []
         for overlay in topo.overlays:
             if (
@@ -486,15 +493,27 @@ class DNSZone(Overlay):
 
                 self.delegated_zones.append(overlay)
 
+        return zones
+
+    def _hint_root_zone_servers(self, topo, zones: list) -> None:
+        for zone in zones:
+            for n in zone.nodes:
+                if "root_zone" not in topo.nodeInfo(n):
+                    hint_root_zone = copy.deepcopy(self)
+                    hint_root_zone.soa_record = None
+                    hint_root_zone._records = hint_root_zone.ns_records
+                    topo.nodeInfo(n)["root_zone"] = hint_root_zone
+
+    def apply(self, topo):
+        super().apply(topo)
+        if not self.consistent:
+            return
+
+        zones = self._peer_overlays(topo)
+
         # If this is root zone, add a hint zone for the NS servers
         if self.name == DNS_ROOT:
-            for zone in zones:
-                for n in zone.nodes:
-                    if "root_zone" not in topo.nodeInfo(n):
-                        hint_root_zone = copy.deepcopy(self)
-                        hint_root_zone.soa_record = None
-                        hint_root_zone._records = hint_root_zone.ns_records
-                        topo.nodeInfo(n)["root_zone"] = hint_root_zone
+            self._hint_root_zone_servers(topo, zones)
 
         for zone in self.delegated_zones:
             # Create NSRecords for the delegated subdomains

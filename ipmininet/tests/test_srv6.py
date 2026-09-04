@@ -134,80 +134,73 @@ def _infer_sub_paths(
     return sub_paths
 
 
-def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[str]:
-    require_cmd("tshark", help_str="tshark is required to run tests")
-    require_cmd("nmap", help_str="nmap is required to run tests")
+def _pcap_size(node) -> int:
+    """Return the size in bytes of the capture file of ``node``, 0 if absent."""
+    path = f"/tmp/{node.name}.pcap"
+    return os.path.getsize(path) if os.path.isfile(path) else 0
 
-    # Check connectivity
-    ping_cmd = f"ping -6 -c 1 -W {int(timeout)} {dst_ip}"
-    out = net[src].cmd(shlex.split(ping_cmd))
-    if ", 0% packet loss" not in out:
-        return []
 
-    # Start captures of the IPv6 traffic on every node
-    tsharks = []
+def _probe(net: IPNet, src: str, dst_ip: str, probe_cmd: str) -> None:
+    """Send a ping probe and assert the destination is still reachable."""
+    out = net[src].cmd(shlex.split(probe_cmd))
+    assert "100% packet loss" not in out, (
+        f"Connectivity from {src} to {dst_ip} is not ensured, "
+        "so we cannot infer the path."
+    )
+
+
+def _wait_announcing(tsharks: list) -> None:
+    """Wait for tshark to announce it started capturing on every node.
+
+    tshark prints "Capturing on <interface>" to stderr once the capture is
+    live. Waiting on that notification is more reliable than checking that the
+    process is merely alive: a just-started tshark may not have attached to
+    the interface yet, and the measurement ping would then be missed.
+    """
     stderr_buf = {}
-    nodes = net.routers + net.hosts
-    try:
-        for n in nodes:
-            p = n.popen(shlex.split(f"tshark -n -i any -f 'ip6' -w /tmp/{n.name}.pcap"))
-            tsharks.append(p)
-        # Wait for tshark to announce it started capturing. A freshly started
-        # tshark only becomes functionally live a moment *after* printing this
-        # message, so we then wait for each capture to record packets.
-        wait_until(
-            lambda: _tshark_capturing(tsharks, stderr_buf),
-            timeout=30,
-            interval=0.2,
-            description="tshark to start capturing on every node",
-        )
+    wait_until(
+        lambda: _tshark_capturing(tsharks, stderr_buf),
+        timeout=30,
+        interval=0.2,
+        description="tshark to start capturing on every node",
+    )
 
-        probe_cmd = f"ping -6 -c 1 -W {int(timeout)} {dst_ip}"
 
-        def _pcap_size(node):
-            path = f"/tmp/{node.name}.pcap"
-            return os.path.getsize(path) if os.path.isfile(path) else 0
+def _wait_captures_live(
+    net: IPNet, src: str, dst_ip: str, probe_cmd: str, nodes: list
+) -> None:
+    """Probe until every capture grew past the header written at start.
 
-        # Phase 1: a capture is live once its file grew past the header
-        # written at start. Probe until every capture is live; the
-        # announcement alone is not a reliable signal under load.
-        baseline = {n.name: _pcap_size(n) for n in nodes}
-        deadline = time.monotonic() + 20
-        while (
-            not all(_pcap_size(n) > baseline[n.name] for n in nodes)
-            and time.monotonic() < deadline
-        ):
-            out = net[src].cmd(shlex.split(probe_cmd))
-            assert "100% packet loss" not in out, (
-                f"Connectivity from {src} to {dst_ip} is not ensured, "
-                "so we cannot infer the path."
-            )
-            time.sleep(0.5)
+    A capture is functionally live once its file recorded a packet, which the
+    "Capturing on ..." announcement alone does not guarantee under load.
+    """
+    baseline = {n.name: _pcap_size(n) for n in nodes}
+    deadline = time.monotonic() + 20
+    while (
+        not all(_pcap_size(n) > baseline[n.name] for n in nodes)
+        and time.monotonic() < deadline
+    ):
+        _probe(net, src, dst_ip, probe_cmd)
+        time.sleep(0.5)
 
-        # Phase 2: every capture is live; send the single measurement probe.
-        # Nodes off the measurement path never see it, so we cannot wait for
-        # every capture to record it: stopping with SIGINT flushes whatever
-        # was captured, and the read-back assert below is the confirmation
-        # that the measurement actually landed on the path.
-        out = net[src].cmd(shlex.split(probe_cmd))
-        assert "100% packet loss" not in out, (
-            f"Connectivity from {src} to {dst_ip} is not ensured, "
-            "so we cannot infer the path."
-        )
 
-        for p in tsharks:
-            assert p.poll() is None, (
-                f"tshark stopped unexpectedly:stderr '{p.stderr.read()}'"
-            )
-    finally:
-        # Stop captures; SIGINT makes tshark flush the captured packets to disk
-        for p in tsharks:
-            p.send_signal(signal.SIGINT)
-            p.wait()
+def _stop_captures(tsharks: list) -> None:
+    """Stop the captures; SIGINT makes tshark flush the packets to disk."""
+    for p in tsharks:
+        p.send_signal(signal.SIGINT)
+        p.wait()
 
-    # Retrieve packet captures
+
+def _read_captures(nodes: list) -> dict[str, list[tuple[float, str]]]:
+    """Return, per node, the captured ping requests as (time, destination).
+
+    On newer tshark, ipv6.dst lists every IPv6 header of an encapsulated
+    packet (e.g. the SRv6 SID and the inner destination).  Keep the outermost
+    one, which is the destination each router actually forwards on, and
+    matches the addresses used by the ``through`` segments of the test.
+    """
     captures = {}  # type: Dict[str, List[Tuple[float, str]]]
-    for n in net.routers + net.hosts:
+    for n in nodes:
         out = n.cmd(
             shlex.split(
                 f"tshark -n -r /tmp/{n.name}.pcap -T fields "
@@ -221,35 +214,48 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
             if len(values) < TSHARK_FIELDS:
                 continue
             icmp_type = values[0]
-            # On newer tshark, ipv6.dst lists every IPv6 header of an
-            # encapsulated packet (e.g. the SRv6 SID and the inner
-            # destination).  Keep the outermost one, which is the
-            # destination each router actually forwards on, and matches
-            # the addresses used by the `through` segments of the test.
             data_dst = values[1].split(",")[0]
             data_time = values[-1]
             if icmp_type == "128":
                 captures.setdefault(n.name, []).append((float(data_time), data_dst))
+    return captures
 
-    # Verify the measurement actually landed in the captures: this is the
-    # notification that tshark was capturing when the probes were sent.
+
+def _reconstruct_sub_paths(
+    captures: dict[str, list[tuple[float, str]]], dst_ip: str
+) -> dict[str, list[str]]:
+    """Verify the measurement ping landed and infer the observed sub paths.
+
+    The read-back assert is the confirmation that tshark was capturing when
+    the probes were sent.
+    """
     captured_dests = {dest for _, packets in captures.items() for _, dest in packets}
     assert dst_ip in captured_dests, (
         f"No capture recorded the ping to {dst_ip} (captured destinations: "
         f"{sorted(captured_dests)}). tshark was probably not capturing yet."
     )
 
-    # Analyze results
-
     packet_received = {}  # type: Dict[str, List[Tuple[float, str]]]
     for n, packets in captures.items():
         for data_time, destination in packets:
             packet_received.setdefault(destination, []).append((data_time, n))
 
-    sub_paths = _infer_sub_paths(packet_received)
+    return _infer_sub_paths(packet_received)
 
-    # Order sub paths with the trough list
-    path = []  # type: List[str]
+
+def _extend_through_waypoints(
+    net: IPNet,
+    sub_paths: dict[str, list[str]],
+    through: tuple,
+    dst_ip: str,
+    path: list[str],
+) -> bool:
+    """Append the sub path of each ``through`` waypoint to ``path``.
+
+    Return False as soon as a waypoint was not observed, leaving ``path``
+    holding the partial ordering gathered so far; otherwise append the sub
+    path of the destination and return True.
+    """
     for intermediate in through:
         found = False
 
@@ -268,8 +274,62 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
                 path.extend(sub_paths[ip])
                 break
         if not found:
-            return path
+            return False
     path.extend(sub_paths[dst_ip])
+    return True
+
+
+def _remove_captures(nodes: list) -> None:
+    """Clean up the per-node captures so no stale file lingers between the
+    parametrized cases of this module."""
+    for n in nodes:
+        pcap_path = f"/tmp/{n.name}.pcap"
+        if os.path.isfile(pcap_path):
+            os.unlink(pcap_path)
+
+
+def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[str]:
+    require_cmd("tshark", help_str="tshark is required to run tests")
+    require_cmd("nmap", help_str="nmap is required to run tests")
+
+    # Check connectivity
+    probe_cmd = f"ping -6 -c 1 -W {int(timeout)} {dst_ip}"
+    out = net[src].cmd(shlex.split(probe_cmd))
+    if ", 0% packet loss" not in out:
+        return []
+
+    # Start captures of the IPv6 traffic on every node
+    nodes = net.routers + net.hosts
+    tsharks = []
+    try:
+        for n in nodes:
+            p = n.popen(shlex.split(f"tshark -n -i any -f 'ip6' -w /tmp/{n.name}.pcap"))
+            tsharks.append(p)
+        _wait_announcing(tsharks)
+        # Phase 1: a capture is live once it recorded a probe.
+        _wait_captures_live(net, src, dst_ip, probe_cmd, nodes)
+        # Phase 2: every capture is live; send the single measurement probe.
+        # Nodes off the measurement path never see it, so we cannot wait for
+        # every capture to record it: stopping with SIGINT flushes whatever
+        # was captured, and the read-back assert below is the confirmation
+        # that the measurement actually landed on the path.
+        _probe(net, src, dst_ip, probe_cmd)
+
+        for p in tsharks:
+            assert p.poll() is None, (
+                f"tshark stopped unexpectedly:stderr '{p.stderr.read()}'"
+            )
+    finally:
+        _stop_captures(tsharks)
+
+    # Retrieve packet captures and analyze results
+    captures = _read_captures(nodes)
+    sub_paths = _reconstruct_sub_paths(captures, dst_ip)
+
+    # Order sub paths with the through list
+    path = []  # type: List[str]
+    if not _extend_through_waypoints(net, sub_paths, through, dst_ip, path):
+        return path
 
     # Remove duplicates
     compressed_path = []  # type: List[str]
@@ -282,10 +342,7 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
 
     # Clean up the per-node captures so no stale file lingers between the
     # parametrized cases of this module.
-    for n in net.routers + net.hosts:
-        pcap_path = f"/tmp/{n.name}.pcap"
-        if os.path.isfile(pcap_path):
-            os.unlink(pcap_path)
+    _remove_captures(nodes)
 
     return path
 
