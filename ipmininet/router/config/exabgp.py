@@ -6,6 +6,20 @@ from .bgp import AF_INET, AF_INET6, BGP_DEFAULT_PORT, AbstractBGP
 from .utils import ConfigDict
 
 
+class NotHexRepresentableError(ValueError):
+    """Raised when an ExaBGP list is used for an hexadecimal representation."""
+
+    def __init__(self):
+        super().__init__("Must not be used for an Hexadecimal representation")
+
+
+class UnknownBGPAttributeError(ValueError):
+    """Raised when a BGP attribute type is not known to ExaBGP."""
+
+    def __init__(self, attr_type):
+        super().__init__(f"{attr_type!s} is not a known attribute")
+
+
 class Representable(ABC):
     """
     String representation for ExaBGP configuration
@@ -73,7 +87,7 @@ class ExaList(HexRepresentable):
     """
 
     def hex_repr(self) -> str:
-        raise ValueError("Must not be used for an Hexadecimal representation")
+        raise NotHexRepresentableError()
 
     @property
     def val(self):
@@ -217,7 +231,7 @@ class BGPAttribute(Representable):
 
         if flags is None:
             if str(attr_type) not in self._known_attr:
-                raise ValueError(f"{attr_type!s} is not a known attribute")
+                raise UnknownBGPAttributeError(attr_type)
         else:
             assert isinstance(val, HexRepresentable), (
                 "If flags are set, val must be of type 'HexRepresentable'"

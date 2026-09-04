@@ -24,6 +24,16 @@ from ipmininet.router.config.base import Daemon, NodeConfig
 from ipmininet.utils import get_set, is_container
 
 
+class UnknownTopologyAttributeError(AttributeError):
+    """Raised when accessing an attribute that is neither an IPTopo method
+    nor a known overlay."""
+
+    def __init__(self, item):
+        super().__init__(
+            f"{item} is neither a method of IPTopo nor refers to any known overlay"
+        )
+
+
 class IPTopo(Topo):
     """A topology that supports L3 routers"""
 
@@ -233,9 +243,7 @@ class IPTopo(Topo):
                 return OverlayWrapper(self, self.OVERLAYS[item[3:]])
             except KeyError:
                 pass
-        raise AttributeError(
-            f"{item} is neither a method of IPTopo nor refers to any known overlay"
-        )
+        raise UnknownTopologyAttributeError(item)
 
     def getNodeInfo(self, n: str, key, default: type):
         """Attempt to retrieve the information for the given node/key

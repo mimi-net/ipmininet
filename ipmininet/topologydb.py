@@ -10,6 +10,27 @@ from mininet.log import lg
 from .utils import otherIntf, realIntfList
 
 
+class NoSuchNodeError(ValueError):
+    """Raised when looking up a node that is not in the topology database."""
+
+    def __init__(self, node):
+        super().__init__(f"No node named {node} in the network")
+
+
+class NoSuchLinkError(ValueError):
+    """Raised when looking up a link between two unknown nodes."""
+
+    def __init__(self, x, y):
+        super().__init__(f"The link {x}-{y} does not exist")
+
+
+class NotARouterError(TypeError):
+    """Raised when asking for the router id of a non-router node."""
+
+    def __init__(self, node):
+        super().__init__(f"{node} is not a router")
+
+
 class TopologyDB:
     """A convenience store for auto-allocated mininet properties.
     This is *NOT* to be used as IGP graph as it does not reflect the actual
@@ -54,7 +75,7 @@ class TopologyDB:
         try:
             return self._network[x]
         except KeyError:
-            raise ValueError(f"No node named {x} in the network") from None
+            raise NoSuchNodeError(x) from None
 
     __getitem__ = node = _node
 
@@ -62,7 +83,7 @@ class TopologyDB:
         try:
             return self._node(x)[y]
         except KeyError:
-            raise ValueError(f"The link {x}-{y} does not exist") from None
+            raise NoSuchLinkError(x, y) from None
 
     def interface(self, x, y):
         """Return the ip address of the interface of x facing y
@@ -103,7 +124,7 @@ class TopologyDB:
         :return: the routerid"""
         n = self._node(x)
         if n["type"] != "router":
-            raise TypeError(f"{x} is not a router")
+            raise NotARouterError(x)
         return n["routerid"]
 
     def parse_net(self, net):

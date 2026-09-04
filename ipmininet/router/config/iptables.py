@@ -12,6 +12,34 @@ from ipmininet.utils import is_container
 from .base import Daemon
 
 
+class UnknownTableError(ValueError):
+    """Raised when building a chain for an unknown IPTables table."""
+
+    def __init__(self, table):
+        super().__init__(f"{table} does not match to an IPTables table name")
+
+
+class UnknownChainError(ValueError):
+    """Raised when building a chain that does not exist in the table."""
+
+    def __init__(self, name, table):
+        super().__init__(f"{name} is not an allowed Chain for table {table}")
+
+
+class InvalidDefaultPolicyError(ValueError):
+    """Raised when a chain default verdict is neither DROP nor ACCEPT."""
+
+    def __init__(self, default):
+        super().__init__(f"{default} is an invalid default policy")
+
+
+class UnknownRuleParameterError(ValueError):
+    """Raised when a rule is given a parameter that has no iptables alias."""
+
+    def __init__(self, unknown_args):
+        super().__init__(f"Unknown parameters: {unknown_args}")
+
+
 class IPTables(Daemon):
     """iptables: the default Linux firewall/ACL engine for IPv4.
     This is currently mainly a proxy class to generate a list of static rules
@@ -113,19 +141,17 @@ class Chain:
             _table = str(table).lower()
             allowed_chains = self.TABLE_CHAINS[_table]
         except KeyError:
-            raise ValueError(
-                f"{table} does not match to an IPTables table name"
-            ) from None
+            raise UnknownTableError(table) from None
 
         self.table = _table
         _name = str(name).upper()
         if _name not in allowed_chains:
-            raise ValueError(f"{name} is not an allowed Chain for table {table}")
+            raise UnknownChainError(name, table)
 
         self.name = _name
         _default = str(default).upper()
         if _default != "DROP" and _default != "ACCEPT":
-            raise ValueError(f"{default} is an invalid default policy")
+            raise InvalidDefaultPolicyError(default)
 
         self.default = _default
         self.rules = rules
@@ -175,7 +201,7 @@ class ChainRule:
 
         unknown_args = set(kwargs.keys()).difference(self.ALIASES.keys())
         if unknown_args:
-            raise ValueError(f"Unknown parameters: {unknown_args}")
+            raise UnknownRuleParameterError(unknown_args)
 
         args = {self.ALIASES[k]: v for k, v in kwargs.items()}
         self.oif = InterfaceClause("o", args)

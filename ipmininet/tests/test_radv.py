@@ -119,9 +119,9 @@ def test_radvd_cleanup():
         try:
             net["r"].nconfig.daemon(RADVD).cleanup()
         except Exception as e:
-            raise AssertionError(
+            pytest.fail(
                 f"An exception '{e}' was raised while cleaning twice RADVD daemon"
-            ) from e
+            )
         net.stop()
     finally:
         cleanup()

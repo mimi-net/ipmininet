@@ -9,6 +9,20 @@ if TYPE_CHECKING:
     from ipmininet.iptopo import IPTopo
 
 
+class LinkIndexError(IndexError):
+    """Raised when a link is indexed with an unsupported integer index."""
+
+    def __init__(self):
+        super().__init__("Links have only two nodes and one key")
+
+
+class NodeNotOnLinkError(KeyError):
+    """Raised when a node that is not an endpoint indexes a link."""
+
+    def __init__(self, node):
+        super().__init__(f"Node '{node}' is not on this link")
+
+
 class NodeDescription(str):
     def __new__(cls, value, *args, **kwargs):
         return super().__new__(cls, value)
@@ -101,13 +115,13 @@ class LinkDescription:
                 return self.dst_intf
             if item == self.KEY_INDEX:
                 return self.key
-            raise IndexError("Links have only two nodes and one key")
+            raise LinkIndexError()
 
         if item == self.src:
             return self.src_intf
         if item == self.dst:
             return self.dst_intf
-        raise KeyError(f"Node '{item}' is not on this link")
+        raise NodeNotOnLinkError(item)
 
     # The following methods allow this object to behave like an edge key
     # for mininet.topo.MultiGraph

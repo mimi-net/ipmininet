@@ -19,6 +19,13 @@ if TYPE_CHECKING:
     from ipmininet.router import IPNode
 
 
+class NoCaptureAnchorError(ValueError):
+    """Raised when a capture is started without a node or an interface."""
+
+    def __init__(self):
+        super().__init__("The Network capture need a router or an interface to run")
+
+
 class Overlay:
     """This overlay simply defines groups of nodes and links, and properties
     that are common to all of them. It then registers these properties to the
@@ -350,7 +357,7 @@ class NetworkCapture(Overlay):
             self._drain_stderr(intf.name, process)
             self.ongoing_captures[intf.name] = process
             return process
-        raise ValueError("The Network capture need a router or an interface to run")
+        raise NoCaptureAnchorError()
 
     def stop(self, node: Optional["IPNode"] = None, intf: Optional["IPIntf"] = None):
         for anchor in [node, intf]:
