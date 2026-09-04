@@ -112,25 +112,6 @@ select = [
 # strings, a literal `ip addr` output fixture).
 "ipmininet/examples/simple_ospf_network.py" = ["E501"]
 "ipmininet/tests/test_pure.py" = ["E501"]
-# Architectural rules deferred for existing files (see NOTES.md):
-# - PLC0415: intentional circular-import avoidance
-# - TRY003: requires per-message exception classes
-# - PLR0913/PLR0917/PLR0912/PLR0911/PLR0915: require function refactors
-"ipmininet/examples/ripng_network_adjust.py" = ["PLR0913", "PLR0917"]
-"ipmininet/examples/spanning_tree_adjust.py" = ["PLR0913", "PLR0917"]
-"ipmininet/host/config/named.py" = ["PLR0912", "PLR0913", "PLR0917"]
-"ipmininet/install/utils.py" = ["PLC0415", "TRY003"]
-"ipmininet/ipnet.py" = ["PLR0912", "PLR0913", "PLR0917", "TRY003"]
-"ipmininet/ipovs_switch.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/ipswitch.py" = ["PLR0913", "PLR0917"]
-"ipmininet/link.py" = ["PLR0911", "TRY003"]
-"ipmininet/router/__router.py" = ["PLR0913", "PLR0917"]
-"ipmininet/router/config/base.py" = ["PLC0415", "TRY003"]
-"ipmininet/router/config/bgp.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/router/config/zebra.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/srv6.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/tests/utils.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/utils.py" = ["PLC0415", "TRY003"]
 
 [tool.mdformat]
 wrap = "keep"

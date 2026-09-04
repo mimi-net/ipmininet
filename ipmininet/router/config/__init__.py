@@ -2,8 +2,6 @@
 that can be used in a router."""
 
 from .base import (
-    BasicRouterConfig,
-    BorderRouterConfig,
     NodeConfig,
     RouterConfig,
 )
@@ -53,6 +51,10 @@ from .ospf6 import OSPF6
 from .pimd import PIMD
 from .radvd import RADVD, AdvConnectedPrefix, AdvPrefix, AdvRDNSS
 from .ripng import RIPng
+from .routing import (
+    BasicRouterConfig,
+    BorderRouterConfig,
+)
 from .sshd import SSHd
 from .staticd import STATIC, StaticRoute
 from .zebra import Mgmtd, Zebra
