@@ -1,8 +1,12 @@
 """This module tests the Dnsmasq and DHCPRelay daemon configurations."""
 
 import os
+import shutil
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
 
 from ipmininet.host.config.dnsmasq import Dnsmasq
 from ipmininet.router.config.dhcprelay import DHCPRelay
@@ -15,6 +19,13 @@ MASK = "255.255.255.0"
 PID = "1234"
 
 
+@pytest.fixture
+def tmp_cwd():
+    cwd = tempfile.mkdtemp(dir="/tmp")
+    yield cwd
+    shutil.rmtree(cwd, ignore_errors=True)
+
+
 def _node(name, cwd, routerid=None):
     node = SimpleNamespace(name=name, cwd=cwd)
     node.cmd = MagicMock()
@@ -23,14 +34,14 @@ def _node(name, cwd, routerid=None):
     return node
 
 
-def _dnsmasq(tmp_path, intfs=None):
-    node = _node("h1", str(tmp_path))
+def _dnsmasq(tmp_cwd, intfs=None):
+    node = _node("h1", tmp_cwd)
     daemon = Dnsmasq(node, DHCP_RANGE, MASK, GW_IP, intfs or ["eth0"])
     return node, daemon
 
 
-def test_dnsmasq_build_and_files(tmp_path):
-    node, daemon = _dnsmasq(tmp_path, ["eth0", "eth1"])
+def test_dnsmasq_build_and_files(tmp_cwd):
+    node, daemon = _dnsmasq(tmp_cwd, ["eth0", "eth1"])
 
     cfg = daemon.build()
 
@@ -46,15 +57,15 @@ def test_dnsmasq_build_and_files(tmp_path):
     assert cfg.opts["log-queries"] is None
 
     filename = daemon.cfg_filenames[0]
-    assert filename == os.path.join(str(tmp_path), "dnsmasq_h1.eth0_eth1.cfg")
+    assert filename == os.path.join(str(tmp_cwd), "dnsmasq_h1.eth0_eth1.cfg")
     assert daemon.startup_line == f"dnsmasq --conf-file={filename}"
     assert daemon.dry_run == ""
     assert daemon.template_filenames == ["dnsmasq.mako", "dnsmasq.mako"]
     assert node.cmd.call_count == 0
 
 
-def test_dnsmasq_pids_found(tmp_path):
-    _, daemon = _dnsmasq(tmp_path)
+def test_dnsmasq_pids_found(tmp_cwd):
+    _, daemon = _dnsmasq(tmp_cwd)
     daemon.node.cmd.return_value = (
         'udp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=1234,fd=5))\n'
         'tcp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=5678,fd=6))\n'
@@ -64,22 +75,22 @@ def test_dnsmasq_pids_found(tmp_path):
     daemon.node.cmd.assert_called_once_with("ss -tulnp | grep dnsmasq")
 
 
-def test_dnsmasq_pids_without_match(tmp_path):
-    _, daemon = _dnsmasq(tmp_path)
+def test_dnsmasq_pids_without_match(tmp_cwd):
+    _, daemon = _dnsmasq(tmp_cwd)
     daemon.node.cmd.return_value = "ss output without any pid"
 
     assert daemon.pids is None
 
 
-def test_dnsmasq_pids_empty_output(tmp_path):
-    _, daemon = _dnsmasq(tmp_path)
+def test_dnsmasq_pids_empty_output(tmp_cwd):
+    _, daemon = _dnsmasq(tmp_cwd)
     daemon.node.cmd.return_value = ""
 
     assert daemon.pids is None
 
 
-def test_dnsmasq_kill(tmp_path):
-    node, daemon = _dnsmasq(tmp_path)
+def test_dnsmasq_kill(tmp_cwd):
+    node, daemon = _dnsmasq(tmp_cwd)
     node.cmd.side_effect = [f" {PID} \n", ""]
 
     daemon.kill()
@@ -88,8 +99,8 @@ def test_dnsmasq_kill(tmp_path):
     assert node.cmd.call_args_list[1].args[0] == f"kill -9 {PID}"
 
 
-def test_dnsmasq_cleanup(tmp_path):
-    node, daemon = _dnsmasq(tmp_path)
+def test_dnsmasq_cleanup(tmp_cwd):
+    node, daemon = _dnsmasq(tmp_cwd)
     node.cmd.side_effect = [f" {PID} \n", ""]
 
     daemon.cleanup()
@@ -97,8 +108,8 @@ def test_dnsmasq_cleanup(tmp_path):
     assert node.cmd.call_args_list[1].args[0] == f"kill -9 {PID}"
 
 
-def test_dhcprelay_build_and_files(tmp_path):
-    node = _node("r1", str(tmp_path), routerid="10.0.0.1")
+def test_dhcprelay_build_and_files(tmp_cwd):
+    node = _node("r1", str(tmp_cwd), routerid="10.0.0.1")
     daemon = DHCPRelay(node, SERVER_IP, LISTENING_IP)
 
     cfg = daemon.build()
@@ -109,15 +120,15 @@ def test_dhcprelay_build_and_files(tmp_path):
     assert cfg.routerid == "10.0.0.1"
 
     filename = daemon.cfg_filenames[0]
-    assert filename == os.path.join(str(tmp_path), f"dhcprelay_r1.{LISTENING_IP}.cfg")
+    assert filename == os.path.join(str(tmp_cwd), f"dhcprelay_r1.{LISTENING_IP}.cfg")
     assert daemon.startup_line == f"dnsmasq --conf-file={filename}"
     assert daemon.dry_run == ""
     assert daemon.KILL_PATTERNS == ("dnsmasq",)
     assert node.cmd.call_count == 0
 
 
-def test_dhcprelay_kill_and_cleanup(tmp_path):
-    node = _node("r1", str(tmp_path))
+def test_dhcprelay_kill_and_cleanup(tmp_cwd):
+    node = _node("r1", str(tmp_cwd))
     daemon = DHCPRelay(node, SERVER_IP, LISTENING_IP)
     node.cmd.side_effect = [f" {PID} \n", "", f" {PID} \n", ""]
 

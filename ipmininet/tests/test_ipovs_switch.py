@@ -55,8 +55,8 @@ def test_bridge_opts_defaults():
     assert "fail_mode=standalone" in opts
     assert "other_config:disable-in-band=true" in opts
     assert "other_config:dp-desc=s1" in opts
-    assert "stp_enable=true" not in opts
-    assert "rstp_enable=true" not in opts
+    assert " stp_enable=true" not in opts
+    assert " rstp_enable=true" not in opts
     assert switch.priority is None
 
 
@@ -70,22 +70,22 @@ def test_bridge_opts_priority():
 def test_bridge_opts_rstp_enabled():
     _, opts = _bridge_opts(rstp=True)
 
-    assert "rstp_enable=true" in opts
-    assert "stp_enable=true" not in opts
+    assert " rstp_enable=true" in opts
+    assert " stp_enable=true" not in opts
 
 
 def test_bridge_opts_stp_enabled():
     _, opts = _bridge_opts(stp=True)
 
-    assert "stp_enable=true" in opts
-    assert "rstp_enable=true" not in opts
+    assert " stp_enable=true" in opts
+    assert " rstp_enable=true" not in opts
 
 
 def test_bridge_opts_stp_blocked_by_controller_mode():
     _, opts = _bridge_opts(stp=True, failMode="secure")
 
-    assert "stp_enable=true" not in opts
-    assert "rstp_enable=true" not in opts
+    assert " stp_enable=true" not in opts
+    assert " rstp_enable=true" not in opts
 
 
 def test_bridge_opts_user_datapath():
