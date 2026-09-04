@@ -115,9 +115,7 @@ select = [
 # Architectural rules deferred for existing files (see NOTES.md):
 # - PLC0415: intentional circular-import avoidance
 # - TRY003: requires per-message exception classes
-# - PLR2004: requires named constants for IP/protocol magic values
 # - PLR0913/PLR0917/PLR0912/PLR0911/PLR0915: require function refactors
-"ipmininet/examples/exabgp_prefix_injector.py" = ["PLR2004"]
 "ipmininet/examples/ripng_network_adjust.py" = ["PLR0913", "PLR0917"]
 "ipmininet/examples/spanning_tree_adjust.py" = ["PLR0913", "PLR0917"]
 "ipmininet/host/config/named.py" = ["PLR0912", "PLR0913", "PLR0917"]
@@ -135,13 +133,10 @@ select = [
 "ipmininet/router/config/exabgp.py" = ["TRY003"]
 "ipmininet/router/config/iptables.py" = ["TRY003"]
 "ipmininet/router/config/zebra.py" = ["PLR0913", "PLR0917", "TRY003"]
-"ipmininet/srv6.py" = ["PLR0913", "PLR0917", "PLR2004", "TRY003"]
-"ipmininet/tests/test_link.py" = ["PLR2004"]
-"ipmininet/tests/test_misc.py" = ["PLR2004"]
+"ipmininet/srv6.py" = ["PLR0913", "PLR0917", "TRY003"]
 "ipmininet/tests/test_radv.py" = ["TRY003"]
-"ipmininet/tests/test_srv6.py" = ["PLR0912", "PLR0915", "PLR2004"]
-"ipmininet/tests/test_tc.py" = ["PLR2004"]
-"ipmininet/tests/utils.py" = ["PLR0913", "PLR0917", "PLR2004", "TRY003"]
+"ipmininet/tests/test_srv6.py" = ["PLR0912", "PLR0915"]
+"ipmininet/tests/utils.py" = ["PLR0913", "PLR0917", "TRY003"]
 "ipmininet/topologydb.py" = ["TRY003"]
 "ipmininet/utils.py" = ["PLC0415", "TRY003"]
 

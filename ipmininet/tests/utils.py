@@ -16,6 +16,10 @@ from ipmininet.ipswitch import IPSwitch
 from ipmininet.router import IPNode
 from ipmininet.utils import require_cmd
 
+# Number of identical successive traceroutes required to consider that the
+# network has converged on a stable path.
+CONVERGED_PATH_COUNT = 2
+
 
 def wait_until(
     predicate: Callable[[], bool],
@@ -85,7 +89,7 @@ def traceroute(net: IPNet, src: str, dst_ip: str, timeout=300, poll=1.0) -> list
                 and old_path_ips == path_ips
             ):
                 same_path_count += 1
-                if same_path_count > 2:
+                if same_path_count > CONVERGED_PATH_COUNT:
                     # Network has converged
                     return path_ips
             else:

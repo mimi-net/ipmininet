@@ -13,6 +13,9 @@ from ipmininet.router.config.utils import ip_statement
 
 from . import require_root
 
+# An Ethernet MAC address is made of 6 octets
+MAC_LEN = 6
+
 
 @pytest.mark.parametrize(
     "address", ["::/0", "0.0.0.0/0", "1.2.3.0/24", "2001:db8:1234::/48"]
@@ -74,15 +77,15 @@ def test_ip_address_format():
     )
     mac, v4, v6 = _parse_addresses(out)
     assert mac is not None
-    assert len(mac.split(":")) == 6
+    assert len(mac.split(":")) == MAC_LEN
     assert mac in out
     assert len(v4) > 0
     for a in v4:
-        assert a.version == 4
+        assert a.version == utils.IP_V4
         assert a.with_prefixlen in out
     assert len(v6) > 0
     for a in v6:
-        assert a.version == 6
+        assert a.version == utils.IP_V6
         assert a.with_prefixlen in out
     # IF status, MAC, inet, valid, inet, valid, ..., inet6, valid, ...
     assert len(out.strip("\n").split("\n")) == (2 + 2 * len(v4) + 2 * len(v6))

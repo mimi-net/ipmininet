@@ -27,6 +27,8 @@ from ipmininet.router.config.bgp import AF_INET, AF_INET6
 __MAX_UINT128_ = 340282366920938463463374607431768211455
 __MAX_UINT32_ = 4294967295
 __MAX_UINT16_ = 65535
+# Maximum number of prefixes to generate and inject per address family
+MAX_PREFIXES_PER_AFI = 5
 
 _1_0_0_0 = 16777216  # int repr of IPv4 address 1.0.0.0
 _233_255_255_255 = 3758096383
@@ -203,7 +205,7 @@ class ExaBGPTopoInjectPrefixes(IPTopo):
             for afi in ("ipv4", "ipv6"):
                 prefixes = set()
                 for x in itertools.takewhile(
-                    lambda _, prefixes=prefixes: len(prefixes) <= 5,
+                    lambda _, prefixes=prefixes: len(prefixes) <= MAX_PREFIXES_PER_AFI,
                     gen_ip_prefix(afi),
                 ):
                     prefixes.add(x)

@@ -21,6 +21,10 @@ from .link import IPIntf
 from .router import IPNode
 from .utils import address_pair, realIntfList
 
+# Lowest reserved Linux routing table number (253, 254 and 255 are the
+# default, main and local tables), hence the highest usable value is 252.
+MIN_RESERVED_TABLE = 253
+
 
 def enable_srv6(node: IPNode):
     """
@@ -110,7 +114,7 @@ class LocalSIDTable:
         self.num = 1
         while self.num in tables:
             self.num += 1
-        if self.num >= 253:
+        if self.num >= MIN_RESERVED_TABLE:
             raise RuntimeError("Cannot find a free table number on the host")
 
         # Create the table

@@ -8,6 +8,13 @@ from ipmininet.ipnet import IPNet
 from ipmininet.link import OrderedAddress
 from ipmininet.tests import require_root
 
+# Default prefix lengths when setting an address, and the lengths we update
+# them to in test_addr_intf.
+DEFAULT_IPV4_PREFIXLEN = 24
+UPDATED_IPV4_PREFIXLEN = 28
+DEFAULT_IPV6_PREFIXLEN = 64
+UPDATED_IPV6_PREFIXLEN = 48
+
 
 @pytest.mark.parametrize(
     "unsorted_list,sorted_list",
@@ -73,22 +80,28 @@ def test_addr_intf():
         # Check IP6 update
         itf.ip6 = "2001:21::1"
         ip6s = list(itf.ip6s(exclude_lls=True))
-        assert len(ip6s) == 1 and ip6s[0].with_prefixlen == "2001:21::1/64", (
-            "Cannot update an IPv6 address"
+        assert (
+            len(ip6s) == 1
+            and ip6s[0].with_prefixlen == f"2001:21::1/{DEFAULT_IPV6_PREFIXLEN}"
+        ), "Cannot update an IPv6 address"
+        assert itf.prefixLen6 == DEFAULT_IPV6_PREFIXLEN
+        itf.prefixLen6 = UPDATED_IPV6_PREFIXLEN
+        assert itf.prefixLen6 == UPDATED_IPV6_PREFIXLEN, (
+            "Cannot update prefix len of an IPv6 address"
         )
-        assert itf.prefixLen6 == 64
-        itf.prefixLen6 = 48
-        assert itf.prefixLen6 == 48, "Cannot update prefix len of an IPv6 address"
 
         # Check IP update
         itf.ip = "10.1.2.1"
         ips = list(itf.ips())
-        assert len(ips) == 1 and ips[0].with_prefixlen == "10.1.2.1/24", (
-            "Cannot update an IPv4 address"
+        assert (
+            len(ips) == 1
+            and ips[0].with_prefixlen == f"10.1.2.1/{DEFAULT_IPV4_PREFIXLEN}"
+        ), "Cannot update an IPv4 address"
+        assert itf.prefixLen == DEFAULT_IPV4_PREFIXLEN
+        itf.prefixLen = UPDATED_IPV4_PREFIXLEN
+        assert itf.prefixLen == UPDATED_IPV4_PREFIXLEN, (
+            "Cannot update prefix len of an IPv4 address"
         )
-        assert itf.prefixLen == 24
-        itf.prefixLen = 28
-        assert itf.prefixLen == 28, "Cannot update prefix len of an IPv4 address"
 
         # Check MAC getters
         assert itf.updateMAC() == itf.updateAddr()[1], (

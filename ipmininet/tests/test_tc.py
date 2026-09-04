@@ -18,6 +18,11 @@ from .utils import require_cmd
 
 delay_regex = re.compile(r"time=(\d+\.?\d*) ms")
 
+# Number of probes sent to measure a link, and how many of them must fall
+# within tolerance for the assertion to hold.
+PING_COUNT = 10
+MIN_MATCHING_SAMPLES = PING_COUNT // 2
+
 
 def assert_delay(
     src: IPNode, dst: IPNode, delay_target: float, tolerance=1.5, v6=False
@@ -28,7 +33,7 @@ def assert_delay(
         help_str=f"{executable} is required to run tests",
     )
 
-    cmd = f"{executable} -c 10 {dst.intf().ip6 if v6 else dst.intf().ip}"
+    cmd = f"{executable} -c {PING_COUNT} {dst.intf().ip6 if v6 else dst.intf().ip}"
     out, err, exitcode = src.pexec(cmd)
 
     assert exitcode == 0, f"Cannot ping between {src} and {dst}: {err}"
@@ -40,7 +45,7 @@ def assert_delay(
             delay = float(match.group(1))
             if delay_target - tolerance <= delay <= delay_target + tolerance:
                 delays.append(delay)
-    assert len(delays) >= 5, (
+    assert len(delays) >= MIN_MATCHING_SAMPLES, (
         f"Less than half of the pings between {src} and {dst} had the desired latency"
     )
 
@@ -75,7 +80,7 @@ def assert_bw(src: IPNode, dst: IPNode, bw_target: float, tolerance=1, v6=False)
         bw = int(sample["sum"]["bits_per_second"]) / 10**6
         if bw_target - tolerance <= bw <= bw_target + tolerance:
             bws.append(bw)
-    assert len(bws) >= 5, (
+    assert len(bws) >= MIN_MATCHING_SAMPLES, (
         f"Less than half of the pings between {src} and {dst} had the desired latency"
     )
 

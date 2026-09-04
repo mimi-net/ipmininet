@@ -25,6 +25,11 @@ from ipmininet.tests.utils import assert_connectivity, assert_path, wait_until
 from ipmininet.utils import require_cmd
 
 MAIN_TABLE = 254
+# Two ICMP echo-request probes are considered part of the same traversal if
+# they are captured within this many seconds of each other on a node.
+PROBE_GROUP_WINDOW_S = 0.25
+# tshark field list length (icmpv6.type, ipv6.dst, frame.time_epoch)
+TSHARK_FIELDS = 3
 
 
 class SRv6TestTopo(SRv6Topo):
@@ -102,7 +107,7 @@ def _infer_sub_paths(
         ordered = sorted(events)
         probes = []  # type: List[List[Tuple[float, str]]]
         for capture_time, node in ordered:
-            if probes and capture_time - probes[-1][-1][0] < 0.25:
+            if probes and capture_time - probes[-1][-1][0] < PROBE_GROUP_WINDOW_S:
                 probes[-1].append((capture_time, node))
             else:
                 probes.append([(capture_time, node)])
@@ -213,7 +218,7 @@ def sr_path(net: IPNet, src: str, dst_ip: str, timeout=1, through=()) -> list[st
         data = out.split("\n")[1:-1]
         for line in data:
             values = line.strip().split("\t")
-            if len(values) < 3:
+            if len(values) < TSHARK_FIELDS:
                 continue
             icmp_type = values[0]
             # On newer tshark, ipv6.dst lists every IPv6 header of an
