@@ -48,6 +48,8 @@ if [ ${#ARGS[@]} -eq 0 ]; then
         ipmininet/tests/test_pure.py
         ipmininet/tests/test_physicalinterface.py
         ipmininet/tests/test_address_alllocation.py
+        ipmininet/tests/test_dhcp.py
+        ipmininet/tests/test_ipovs_switch.py
     )
 fi
 

@@ -50,7 +50,8 @@ jobs:
             ipmininet/tests/test_pure.py \
             ipmininet/tests/test_misc.py \
             ipmininet/tests/test_link.py \
-            ipmininet/tests/test_network_capture.py
+            ipmininet/tests/test_network_capture.py \
+            ipmininet/tests/test_dhcp.py
       - name: Upload coverage report (rootless)
         uses: actions/upload-artifact@v7
         with:
