@@ -74,6 +74,12 @@ class HostDescription(NodeDescription):
 
 @functools.total_ordering
 class LinkDescription:
+    # Integer indexes used to access the two node interfaces and the key
+    # of a link description, mirroring mininet.topo.Topo indexing.
+    SRC_INDEX = 0
+    DST_INDEX = 1
+    KEY_INDEX = 3
+
     def __init__(self, topo: "IPTopo", src: str, dst: str, key, link_attrs: dict):
         self.src = src
         self.dst = dst
@@ -89,11 +95,11 @@ class LinkDescription:
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            if item == 0:
+            if item == self.SRC_INDEX:
                 return self.src_intf
-            if item == 1:
+            if item == self.DST_INDEX:
                 return self.dst_intf
-            if item == 3:
+            if item == self.KEY_INDEX:
                 return self.key
             raise IndexError("Links have only two nodes and one key")
 

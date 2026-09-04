@@ -9,6 +9,10 @@ from mininet.link import Intf
 from mininet.log import lg as log
 from mininet.node import Node
 
+# Magic values for the IP protocol version
+IP_V4 = 4
+IP_V6 = 6
+
 if TYPE_CHECKING:
     from ipmininet.link import IPIntf
 

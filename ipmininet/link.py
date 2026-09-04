@@ -15,7 +15,7 @@ from mininet.log import lg as log
 from mininet.node import Node
 
 from . import MIN_IGP_METRIC, OSPF_DEFAULT_AREA
-from .utils import is_container, otherIntf
+from .utils import IP_V4, IP_V6, is_container, otherIntf
 
 
 class IPIntf(_m.TCIntf):
@@ -200,10 +200,10 @@ class IPIntf(_m.TCIntf):
             # Prepare assignment commands
             cmds.append(f"ip address add dev {self.name} {addr.with_prefixlen}")
             # Record assignment family
-            if addr.version == 4:
+            if addr.version == IP_V4:
                 setv4 = True
                 lb_v4_update = addr.is_loopback or lb_v4_update
-            elif addr.version == 6:
+            elif addr.version == IP_V6:
                 setv6 = True
                 lb_v6_update = addr.is_loopback or lb_v6_update
         # Clean-up old addresses

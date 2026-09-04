@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from ipaddress import IPv4Network, IPv6Network, ip_network
 from typing import Union
 
+from ipmininet.utils import IP_V4, IP_V6
+
 from .base import RouterDaemon
 from .utils import ConfigDict
 
@@ -15,9 +17,9 @@ PERMIT = "permit"
 
 def get_family(prefix: str | IPv4Network | IPv6Network) -> str | None:
     pfx = ip_network(prefix) if isinstance(prefix, str) else prefix
-    if pfx.version == 4:
+    if pfx.version == IP_V4:
         return "ipv4"
-    if pfx.version == 6:
+    if pfx.version == IP_V6:
         return "ipv6"
 
     return None

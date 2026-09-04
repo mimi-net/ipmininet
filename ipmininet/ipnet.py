@@ -28,6 +28,8 @@ from .link import IPIntf, IPLink, PhysicalInterface
 from .router import Router
 from .router.config import BasicRouterConfig, RouterConfig
 from .utils import (
+    IP_V4,
+    IP_V6,
     L3Router,
     address_pair,
     has_cmd,
@@ -841,8 +843,8 @@ class BroadcastDomain:
                  enabling this IP version
         """
         for i in self.interfaces:
-            if (i.node.use_v4 and ip_version == 4) or (
-                i.node.use_v6 and ip_version == 6
+            if (i.node.use_v4 and ip_version == IP_V4) or (
+                i.node.use_v6 and ip_version == IP_V6
             ):
                 return True
         return False

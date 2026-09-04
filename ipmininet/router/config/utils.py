@@ -2,6 +2,8 @@
 
 from ipaddress import IPv4Address, IPv6Address, ip_interface
 
+from ipmininet.utils import IP_V6
+
 
 class ConfigDict(dict):
     """A dictionary whose attributes are its keys.
@@ -35,4 +37,4 @@ def ip_statement(ip: int | str | IPv6Address | IPv4Address):
     :type ip: ip_interface, ip_network, ip_address, int, str"""
     if not isinstance(ip, int):
         ip = ip_interface(str(ip)).version
-    return "ipv6" if ip == 6 else "ip"
+    return "ipv6" if ip == IP_V6 else "ip"

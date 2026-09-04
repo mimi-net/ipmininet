@@ -11,7 +11,7 @@ from mininet.log import lg
 
 from ipmininet.overlay import Overlay
 from ipmininet.router.config.utils import ConfigDict
-from ipmininet.utils import find_node, has_cmd, realIntfList
+from ipmininet.utils import IP_V4, IP_V6, find_node, has_cmd, realIntfList
 
 from .base import HostDaemon
 
@@ -293,7 +293,7 @@ class DNSRecord:
 class ARecord(DNSRecord):
     def __init__(self, domain_name, address: str | IPv4Address | IPv6Address, ttl=60):
         self.address = ip_address(str(address))
-        rtype = "A" if self.address.version == 4 else "AAAA"
+        rtype = "A" if self.address.version == IP_V4 else "AAAA"
         super().__init__(rtype=rtype, domain_name=domain_name, ttl=ttl)
 
     @property
@@ -318,7 +318,7 @@ class PTRRecord(DNSRecord):
 
     @property
     def v6(self):
-        return self.address.version == 6
+        return self.address.version == IP_V6
 
     @property
     def rdata(self):
