@@ -48,7 +48,7 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 85
+fail_under = 90
 
 [tool.ipmininet]
 duplication_max = 51
