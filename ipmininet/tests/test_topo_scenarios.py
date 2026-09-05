@@ -5,6 +5,8 @@ starting any network or requiring root privileges. The Subnet and NetworkCapture
 overlays are applied through ``topo.build()`` just like in a real experiment.
 """
 
+import tempfile
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -219,28 +221,31 @@ def test_node_description_without_topo_is_inert():
     assert node.get_config(Mock()) is None
 
 
-def test_capture_header_size_reads_magic(tmp_path):
-    for magic, expected in (
-        (_PCAP_MAGIC_LE, _PCAP_GLOBAL_HEADER_SIZE),
-        (_PCAP_MAGIC_BE, _PCAP_GLOBAL_HEADER_SIZE),
-        (_PCAPNG_MAGIC, _PCAPNG_SECTION_HEADER_SIZE),
-    ):
-        capture = tmp_path / "capture.pcap"
-        capture.write_bytes(magic + b"\x00" * 40)
-        assert _capture_header_size(str(capture)) == expected
+def test_capture_header_size_reads_magic():
+    with tempfile.TemporaryDirectory() as tmp:
+        for magic, expected in (
+            (_PCAP_MAGIC_LE, _PCAP_GLOBAL_HEADER_SIZE),
+            (_PCAP_MAGIC_BE, _PCAP_GLOBAL_HEADER_SIZE),
+            (_PCAPNG_MAGIC, _PCAPNG_SECTION_HEADER_SIZE),
+        ):
+            capture = Path(tmp) / "capture.pcap"
+            capture.write_bytes(magic + b"\x00" * 40)
+            assert _capture_header_size(str(capture)) == expected
 
 
-def test_capture_header_size_defaults(tmp_path):
-    capture = tmp_path / "capture.unknown"
-    capture.write_bytes(b"\xde\xad\xbe\xef" + b"\x00" * 40)
-    assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
+def test_capture_header_size_defaults():
+    with tempfile.TemporaryDirectory() as tmp:
+        capture = Path(tmp) / "capture.unknown"
+        capture.write_bytes(b"\xde\xad\xbe\xef" + b"\x00" * 40)
+        assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
 
-    assert _capture_header_size(str(tmp_path / "missing.pcap")) == (
-        _PCAP_GLOBAL_HEADER_SIZE
-    )
+        assert _capture_header_size(str(Path(tmp) / "missing.pcap")) == (
+            _PCAP_GLOBAL_HEADER_SIZE
+        )
 
 
-def test_capture_header_size_ignores_empty_output(tmp_path):
-    capture = tmp_path / "empty.pcap"
-    capture.write_bytes(b"")
-    assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
+def test_capture_header_size_ignores_empty_output():
+    with tempfile.TemporaryDirectory() as tmp:
+        capture = Path(tmp) / "empty.pcap"
+        capture.write_bytes(b"")
+        assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
