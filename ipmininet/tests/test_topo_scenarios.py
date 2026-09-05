@@ -5,7 +5,6 @@ starting any network or requiring root privileges. The Subnet and NetworkCapture
 overlays are applied through ``topo.build()`` just like in a real experiment.
 """
 
-import os
 from unittest.mock import Mock
 
 import pytest
@@ -245,4 +244,3 @@ def test_capture_header_size_ignores_empty_output(tmp_path):
     capture = tmp_path / "empty.pcap"
     capture.write_bytes(b"")
     assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
-    os.unlink(capture)
