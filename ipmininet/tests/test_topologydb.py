@@ -152,12 +152,14 @@ def test_topologydb_lookups_and_errors():
         assert db["r1"]["type"] == "router"
         assert db.node("h1")["type"] == "host"
 
-        h1_itf = net["h1"].intf("r1")
+        links = net["h1"].connectionsTo(net["r1"])
+        assert links
+        h1_itf = links[0][0]
         assert db.interface("h1", "r1") == ip_interface(
             f"{h1_itf.ip}/{h1_itf.prefixLen}"
         )
         assert db.subnet("h1", "r1") == db.interface("h1", "r1").network
-        assert net["h1"].intf("r1").ip in db.subnet("h1", "r1")
+        assert h1_itf.ip in db.subnet("h1", "r1")
 
         assert db.interface_bandwidth("h1", "r1") == -1
 
