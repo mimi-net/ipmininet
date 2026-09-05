@@ -5,12 +5,31 @@ starting any network or requiring root privileges. The Subnet and NetworkCapture
 overlays are applied through ``topo.build()`` just like in a real experiment.
 """
 
+import os
+from unittest.mock import Mock
+
 import pytest
 
 from ipmininet.iptopo import IPTopo, UnknownTopologyAttributeError
-from ipmininet.overlay import NetworkCapture, NoCaptureAnchorError, Subnet
+from ipmininet.node_description import (
+    LinkDescription,
+    LinkIndexError,
+    NodeDescription,
+    NodeNotOnLinkError,
+)
+from ipmininet.overlay import (
+    NetworkCapture,
+    NoCaptureAnchorError,
+    Subnet,
+    _capture_header_size,
+)
 
 _COST = 5
+_PCAP_MAGIC_LE = b"\xd4\xc3\xb2\xa1"
+_PCAP_MAGIC_BE = b"\xa1\xb2\xc3\xd4"
+_PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"
+_PCAP_GLOBAL_HEADER_SIZE = 24
+_PCAPNG_SECTION_HEADER_SIZE = 28
 
 
 def _ips_per_node(topo: IPTopo) -> dict[str, list[str]]:
@@ -155,3 +174,75 @@ def test_network_capture_requires_anchor():
     assert not capture.check_consistency(IPTopo())
     with pytest.raises(NoCaptureAnchorError):
         capture.start()
+
+
+def test_link_description_indexing():
+    topo = IPTopo()
+    topo.addHost("h1")
+    topo.addHost("h2")
+    link = topo.addLink("h1", "h2")
+
+    assert link[0].node == "h1"
+    assert link[1].node == "h2"
+    assert link[LinkDescription.KEY_INDEX] == link.key
+    with pytest.raises(LinkIndexError):
+        _ = link[2]
+
+
+def test_link_description_node_lookup_errors():
+    topo = IPTopo()
+    topo.addHost("h1")
+    topo.addHost("h2")
+    link = topo.addLink("h1", "h2")
+
+    assert link["h1"].node == "h1"
+    assert link["h2"].node == "h2"
+    with pytest.raises(NodeNotOnLinkError, match="is not on this link"):
+        _ = link["ghost"]
+
+
+def test_link_description_ordering_by_key():
+    topo = IPTopo()
+    topo.addHost("h1")
+    topo.addHost("h2")
+    first = topo.addLink("h1", "h2", key=1)
+    second = topo.addLink("h1", "h2", key=2)
+
+    assert first < second.key
+    assert hash(first) == hash(1)
+    assert first == 1
+
+
+def test_node_description_without_topo_is_inert():
+    node = NodeDescription("h1")
+
+    node.addDaemon(Mock())
+    assert node.get_config(Mock()) is None
+
+
+def test_capture_header_size_reads_magic(tmp_path):
+    for magic, expected in (
+        (_PCAP_MAGIC_LE, _PCAP_GLOBAL_HEADER_SIZE),
+        (_PCAP_MAGIC_BE, _PCAP_GLOBAL_HEADER_SIZE),
+        (_PCAPNG_MAGIC, _PCAPNG_SECTION_HEADER_SIZE),
+    ):
+        capture = tmp_path / "capture.pcap"
+        capture.write_bytes(magic + b"\x00" * 40)
+        assert _capture_header_size(str(capture)) == expected
+
+
+def test_capture_header_size_defaults(tmp_path):
+    capture = tmp_path / "capture.unknown"
+    capture.write_bytes(b"\xde\xad\xbe\xef" + b"\x00" * 40)
+    assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
+
+    assert _capture_header_size(str(tmp_path / "missing.pcap")) == (
+        _PCAP_GLOBAL_HEADER_SIZE
+    )
+
+
+def test_capture_header_size_ignores_empty_output(tmp_path):
+    capture = tmp_path / "empty.pcap"
+    capture.write_bytes(b"")
+    assert _capture_header_size(str(capture)) == _PCAP_GLOBAL_HEADER_SIZE
+    os.unlink(capture)
