@@ -57,9 +57,9 @@ jobs:
         run: |
           sudo env "PATH=$PATH" bash -c '
             uv run coverage combine || true
-            uv run coverage report -m
             uv run coverage xml -o coverage.xml
             uv run coverage html -d htmlcov
+            uv run coverage report -m
           '
       - name: Upload coverage report
         uses: actions/upload-artifact@v7

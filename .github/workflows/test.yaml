@@ -1,4 +1,4 @@
-# Bare-metal CI, run on pull requests.
+# Bare-metal CI, run on pull requests and on demand.
 #
 # Two jobs:
 #  - rootless: installs the venv with uv and runs the test suite as the
@@ -9,13 +9,15 @@
 #
 # Lint/format checks run in the `rootless` job below, before the light tests.
 #
-# This workflow only runs on pull requests: master changes arrive through
-# merged PRs whose checks already ran here, so re-running this suite on every
-# master push would duplicate the coverage-gated `heavy-test.yaml` job. Master
-# pushes keep that job plus `container-test.yaml` and `docs.yaml`.
+# Runs on pull requests and via manual dispatch (so the full suite can be
+# exercised on any branch before merge): master changes arrive through merged
+# PRs whose checks already ran here, so re-running this suite on every master
+# push would duplicate the coverage-gated `heavy-test.yaml` job. Master pushes
+# keep that job plus `container-test.yaml` and `docs.yaml`.
 name: Test IPMininet
 on:
   pull_request:
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

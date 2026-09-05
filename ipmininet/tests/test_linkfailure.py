@@ -150,3 +150,27 @@ def test_randomFailureOnTargetedLink():
         net.stop()
     finally:
         cleanup()
+
+
+@require_root
+def test_ping_and_failure_api_edges():
+    """Exercise the corner cases of the ping and failure APIs on a live net."""
+    try:
+        net = IPNet(topo=Topo())
+        net.start()
+
+        # Wait for OSPF convergence before touching the failure APIs
+        assert_connectivity(net, v6=False)
+        assert_connectivity(net, v6=True)
+
+        # Ping API corner cases
+        assert net.ping(use_v4=False, use_v6=False) == 0
+        assert net.ping(hosts=[]) == 0
+
+        # Failure API corner cases: bogus nodes and too many downed links
+        assert net.runFailurePlan([("ghost1", "ghost2")]) == []
+        assert net.randomFailure(99) == []
+
+        net.stop()
+    finally:
+        cleanup()

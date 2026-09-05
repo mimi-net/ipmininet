@@ -4,6 +4,7 @@ import itertools
 import os
 import shutil
 import tempfile
+from ipaddress import ip_interface
 
 import pytest
 
@@ -18,8 +19,31 @@ from ipmininet.ipswitch import IPSwitch
 from ipmininet.iptopo import IPTopo
 from ipmininet.router import Router
 from ipmininet.tests import require_root
-from ipmininet.topologydb import TopologyDB
+from ipmininet.topologydb import (
+    NoSuchLinkError,
+    NoSuchNodeError,
+    NotARouterError,
+    TopologyDB,
+)
 from ipmininet.utils import otherIntf, realIntfList
+
+
+class _MixedNetworkTopo(IPTopo):
+    """A small network mixing routers, hosts and a switch"""
+
+    def build(self, *args, **kwargs):
+        r1 = self.addRouter("r1")
+        r2 = self.addRouter("r2")
+        h1 = self.addHost("h1")
+        s1 = self.addSwitch("s1")
+        h2 = self.addHost("h2")
+        h3 = self.addHost("h3")
+        self.addLink(r1, r2)
+        self.addLink(h1, r1)
+        self.addLink(r1, s1)
+        self.addLink(s1, h2)
+        self.addLink(s1, h3)
+        super().build(*args, **kwargs)
 
 
 @require_root
@@ -117,3 +141,43 @@ def test_topologydb(topology: type[IPTopo]):
     finally:
         net.stop()
         shutil.rmtree(db_dir, ignore_errors=True)
+
+
+@require_root
+def test_topologydb_lookups_and_errors():
+    net = IPNet(topo=_MixedNetworkTopo())
+    try:
+        db = TopologyDB(net=net)
+
+        assert db["r1"]["type"] == "router"
+        assert db.node("h1")["type"] == "host"
+
+        h1_itf = net["h1"].intf("r1")
+        assert db.interface("h1", "r1") == ip_interface(
+            f"{h1_itf.ip}/{h1_itf.prefixLen}"
+        )
+        assert db.subnet("h1", "r1") == db.interface("h1", "r1").network
+        assert net["h1"].intf("r1").ip in db.subnet("h1", "r1")
+
+        assert db.interface_bandwidth("h1", "r1") == -1
+
+        interfaces = {itf.name for itf in realIntfList(net["r1"])}
+        assert set(db.interfaces("r1")) == interfaces
+
+        with pytest.raises(NoSuchNodeError):
+            db["ghost"]
+        with pytest.raises(NoSuchNodeError):
+            db.interface("ghost", "r1")
+        with pytest.raises(NoSuchLinkError):
+            db.interface("h1", "ghost")
+        with pytest.raises(NoSuchLinkError):
+            db.interface_bandwidth("h1", "ghost")
+        with pytest.raises(NotARouterError):
+            db.routerid("h1")
+    finally:
+        net.stop()
+
+
+def test_topologydb_without_data():
+    db = TopologyDB()
+    assert db._network == {}

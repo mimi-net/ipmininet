@@ -6,11 +6,14 @@
 # artifacts. Runs the full test suite inside it with root privileges. Every
 # worker runs in its own isolated namespace (scripts/run-tests-parallel.sh),
 # mirroring the bare-metal job but in a reproducible environment.
+#
+# Runs on pull requests and on demand; master pushes keep this job too.
 name: Container test
 on:
   pull_request:
   push:
     branches: [master]
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
