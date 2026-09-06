@@ -146,6 +146,24 @@ def get_set(d: dict, key, default: type):
         return x
 
 
+def walk_unvisited(intfs, expand):
+    """Yield the interfaces reachable from ``intfs`` without revisiting any.
+
+    Each yielded interface is popped from a LIFO work queue and marked as
+    visited; ``expand(intf)`` must return the neighbour interfaces to enqueue
+    after visiting ``intf`` (an empty list stops that branch).
+    """
+    visited = set()
+    to_visit = list(intfs)
+    while to_visit:
+        i = to_visit.pop()
+        if i in visited:
+            continue
+        visited.add(i)
+        yield i
+        to_visit.extend(expand(i))
+
+
 def find_node(start: Node, node_name: str) -> Intf | None:
     """
     :param start: The starting node of the search
@@ -156,18 +174,16 @@ def find_node(start: Node, node_name: str) -> Intf | None:
     if start.name == node_name:
         return start.intf()
 
-    visited = set()  # type: Set[IPIntf]
-    to_visit = realIntfList(start)
-    # Explore all interfaces recursively, until we find one
-    # connected to the node
-    while to_visit:
-        i = to_visit.pop()
-        if i in visited:
-            continue
-        visited.add(i)
+    def _expand(i):
+        return [
+            intf
+            for n in i.broadcast_domain.interfaces
+            if L3Router.is_l3router_intf(n)
+            for intf in realIntfList(n.node)
+        ]
+
+    for i in walk_unvisited(realIntfList(start), _expand):
         for n in i.broadcast_domain.interfaces:
             if n.node.name == node_name:
                 return n
-            if L3Router.is_l3router_intf(n):
-                to_visit.extend(realIntfList(n.node))
     return None

@@ -2,14 +2,18 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.simple_ospf_network import SimpleOSPFNet
-from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import OSPF
 from ipmininet.router.config.base import RouterConfig
 from ipmininet.router.config.ospf import OSPFRedistributedRoute
-from ipmininet.tests.utils import assert_connectivity, assert_path
+from ipmininet.tests.utils import (
+    IGP_DETOUR_PATHS,
+    IGP_UNIT_PATHS,
+    assert_connectivity,
+    run_ipnet,
+    run_topology_scenario,
+)
 
 from . import require_root
 
@@ -79,32 +83,8 @@ class MinimalOSPFNet(IPTopo):
 
 @require_root
 def test_ospf_example():
-    try:
-        net = IPNet(topo=SimpleOSPFNet())
-        net.start()
+    with run_ipnet(SimpleOSPFNet()) as net:
         assert_connectivity(net)
-        net.stop()
-    finally:
-        cleanup()
-
-
-unit_igp_cost_paths = [
-    ["h1", "r1", "r2", "h2"],
-    ["h2", "r2", "r1", "h1"],
-    ["h1", "r1", "r3", "h3"],
-    ["h3", "r3", "r1", "h1"],
-    ["h2", "r2", "r3", "h3"],
-    ["h3", "r3", "r2", "h2"],
-]
-
-detour_paths = [
-    ["h1", "r1", "r3", "r2", "h2"],
-    ["h2", "r2", "r3", "r1", "h1"],
-    ["h1", "r1", "r3", "h3"],
-    ["h3", "r3", "r1", "h1"],
-    ["h2", "r2", "r3", "h3"],
-    ["h3", "r3", "r2", "h2"],
-]
 
 
 @require_root
@@ -116,10 +96,10 @@ detour_paths = [
             {},
             {},
             ["  network 10.0.0.1/24 area 0.0.0.0", "interface r1-eth0"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
-        ({}, {"debug": ["lsa"]}, {}, ["debug ospf lsa"], unit_igp_cost_paths),
-        ({}, {}, {"igp_metric": 5}, ["  ip ospf cost 5"], detour_paths),
+        ({}, {"debug": ["lsa"]}, {}, ["debug ospf lsa"], IGP_UNIT_PATHS),
+        ({}, {}, {"igp_metric": 5}, ["  ip ospf cost 5"], IGP_DETOUR_PATHS),
         (
             {},
             {},
@@ -128,7 +108,7 @@ detour_paths = [
                 "  network 10.0.0.1/24 area 1.1.1.1",
                 "  network 127.0.0.1/8 area 0.0.0.0",
             ],
-            detour_paths,
+            IGP_DETOUR_PATHS,
         ),
         (
             {"igp_area": "1.1.1.1"},
@@ -138,21 +118,21 @@ detour_paths = [
                 "  network 127.0.0.1/8 area 1.1.1.1",
                 "  network 10.0.0.1/24 area 0.0.0.0",
             ],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
             {},
             {"params1": {"ospf_priority": 1}},
             ["  ip ospf priority 1"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
             {},
             {"params1": {"ospf_dead_int": "minimal hello-multiplier 2"}},
             ["  ip ospf dead-interval minimal hello-multiplier 2"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
@@ -167,33 +147,16 @@ detour_paths = [
                 "  redistribute connected metric-type 1 metric 15",
                 "  redistribute static metric-type 2 metric 50",
             ],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
     ],
 )
 def test_ospf_daemon_params(node_params, ospf_params, link_params, exp_cfg, exp_paths):
-    try:
-        net = IPNet(
-            topo=MinimalOSPFNet(node_params, ospf_params, link_params),
-            allocate_IPs=False,
-            use_v6=False,
-        )
-        net.start()
-
-        # Check generated configuration
-        with open("/tmp/ospfd_r1.cfg") as fileobj:
-            cfg = fileobj.readlines()
-            for line in exp_cfg:
-                assert line + "\n" in cfg, (
-                    "Cannot find the line '{}' in the generated "
-                    "configuration:\n{}".format(line, "".join(cfg))
-                )
-
-        # Check reachability and paths
-        assert_connectivity(net)
-        for path in exp_paths:
-            assert_path(net, path)
-
-        net.stop()
-    finally:
-        cleanup()
+    run_topology_scenario(
+        MinimalOSPFNet(node_params, ospf_params, link_params),
+        cfg_file="/tmp/ospfd_r1.cfg",
+        exp_cfg=exp_cfg,
+        paths=exp_paths,
+        allocate_IPs=False,
+        use_v6=False,
+    )

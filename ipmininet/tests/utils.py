@@ -1,8 +1,9 @@
 import re
 import signal
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from io import StringIO
 from ipaddress import ip_address, ip_network
 from re import Match, Pattern
@@ -10,15 +11,105 @@ from re import Match, Pattern
 import mininet.log
 import pytest
 
+from ipmininet.clean import cleanup
 from ipmininet.host.config.named import DNSRecord
 from ipmininet.ipnet import IPNet
 from ipmininet.ipswitch import IPSwitch
+from ipmininet.iptopo import IPTopo
 from ipmininet.router import IPNode
 from ipmininet.utils import require_cmd
 
 # Number of identical successive traceroutes required to consider that the
 # network has converged on a stable path.
 CONVERGED_PATH_COUNT = 2
+
+# Paths through the triangular three-router IGP topology shared by the OSPF and
+# RIPng daemon tests: the unit-cost shortest paths, and the detour taken once
+# the r1-r2 link cost is raised.
+IGP_UNIT_PATHS = [
+    ["h1", "r1", "r2", "h2"],
+    ["h2", "r2", "r1", "h1"],
+    ["h1", "r1", "r3", "h3"],
+    ["h3", "r3", "r1", "h1"],
+    ["h2", "r2", "r3", "h3"],
+    ["h3", "r3", "r2", "h2"],
+]
+IGP_DETOUR_PATHS = [
+    ["h1", "r1", "r3", "r2", "h2"],
+    ["h2", "r2", "r3", "r1", "h1"],
+    ["h1", "r1", "r3", "h3"],
+    ["h3", "r3", "r1", "h1"],
+    ["h2", "r2", "r3", "h3"],
+    ["h3", "r3", "r2", "h2"],
+]
+
+
+@contextmanager
+def run_ipnet(topo: IPTopo, **net_kwargs) -> Iterator[IPNet]:
+    """Start an IPNet built from ``topo`` and guarantee its teardown.
+
+    Runs ``net.stop()`` and the global ``cleanup()`` in a ``finally`` block so
+    a test never leaks namespaces, daemons or interfaces, even when an
+    assertion fails mid-test.
+    """
+    net = IPNet(topo=topo, **net_kwargs)
+    net.start()
+    try:
+        yield net
+    finally:
+        net.stop()
+        cleanup()
+
+
+def assert_config_file(cfg_file: str, exp_cfg: list[str], strip=False):
+    """Assert that every expected line appears in a generated daemon config.
+
+    :param strip: Whether to compare lines with surrounding whitespace and
+                  blank lines removed (used by daemons that indent config).
+    """
+    with open(cfg_file) as fileobj:
+        if strip:
+            cfg = [line.strip() for line in fileobj if line.strip()]
+        else:
+            cfg = fileobj.readlines()
+    for line in exp_cfg:
+        expected = line if strip else line + "\n"
+        assert expected in cfg, (
+            "Cannot find the line '{}' in the generated configuration:\n{}".format(
+                line, "".join(cfg)
+            )
+        )
+
+
+def assert_all_paths(net: IPNet, paths: list[list[str]], v6=False):
+    """Assert the network has converged on each of the expected paths."""
+    for path in paths:
+        assert_path(net, path, v6=v6)
+
+
+def run_topology_scenario(
+    topo: IPTopo,
+    exp_cfg: list[str] | None = None,
+    cfg_file: str | None = None,
+    paths: list[list[str]] | None = None,
+    v6=False,
+    **net_kwargs,
+):
+    """Start ``topo`` and check its config, connectivity and converged paths.
+
+    :param topo: The topology to start.
+    :param cfg_file: Path of the generated daemon config to check, whose lines
+                     must contain every entry of ``exp_cfg``.
+    :param exp_cfg: Lines expected to appear in ``cfg_file``.
+    :param paths: Expected converged paths (checked with ``assert_path``).
+    :param v6: Whether to check IPv6 connectivity and paths.
+    """
+    with run_ipnet(topo, **net_kwargs) as net:
+        if cfg_file is not None:
+            assert_config_file(cfg_file, exp_cfg or [])
+        assert_connectivity(net, v6=v6)
+        if paths is not None:
+            assert_all_paths(net, paths, v6=v6)
 
 
 def wait_until(

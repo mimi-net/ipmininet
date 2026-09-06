@@ -5,9 +5,8 @@ from ipaddress import IPv4Network, ip_interface
 
 from ipmininet.link import IPIntf
 from ipmininet.overlay import Overlay
-from ipmininet.utils import L3Router
 
-from .utils import ConfigDict
+from .utils import ConfigDict, interface_props, is_l3router_interface
 from .zebra import QuaggaDaemon, Zebra
 
 
@@ -59,10 +58,7 @@ class OSPF(QuaggaDaemon):
     def build(self):
         cfg = super().build()
         cfg.redistribute = self.options.redistribute
-        interfaces = self._node.intfList()
-        cfg.interfaces = self._build_interfaces(interfaces)
-        cfg.networks = self._build_networks(interfaces)
-        return cfg
+        return self.build_interface_config(cfg)
 
     @staticmethod
     def _build_networks(interfaces: list[IPIntf]) -> list["OSPFNetwork"]:
@@ -78,21 +74,17 @@ class OSPF(QuaggaDaemon):
     def _build_interfaces(self, interfaces: list[IPIntf]) -> list[ConfigDict]:
         """Return the list of OSPF interface properties from the list of
         active interfaces"""
-        return [
-            ConfigDict(
-                description=i.describe,
-                name=i.name,
-                # Is the interface between two routers?
-                active=self.is_active_interface(i),
-                priority=i.get("ospf_priority", self.options.priority),
-                dead_int=i.get("ospf_dead_int", self.options.dead_int),
-                hello_int=i.get("ospf_hello_int", self.options.hello_int),
-                cost=i.igp_metric,
+        return interface_props(
+            interfaces,
+            lambda i: {
+                "priority": i.get("ospf_priority", self.options.priority),
+                "dead_int": i.get("ospf_dead_int", self.options.dead_int),
+                "hello_int": i.get("ospf_hello_int", self.options.hello_int),
+                "cost": i.igp_metric,
                 # Is the interface forcefully disabled?
-                passive=i.get("igp_passive", False),
-            )
-            for i in interfaces
-        ]
+                "passive": i.get("igp_passive", False),
+            },
+        )
 
     def set_defaults(self, defaults):
         """:param debug: the set of debug events that should be logged
@@ -109,11 +101,7 @@ class OSPF(QuaggaDaemon):
     @staticmethod
     def is_active_interface(itf) -> bool:
         """Return whether an interface is active or not for the OSPF daemon"""
-        if itf.broadcast_domain is None:
-            return False
-        return any(
-            L3Router.is_l3router_intf(i) for i in itf.broadcast_domain if i != itf
-        )
+        return is_l3router_interface(itf)
 
 
 class OSPFNetwork:

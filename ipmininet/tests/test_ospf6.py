@@ -2,14 +2,18 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.simple_ospfv3_network import SimpleOSPFv3Net
-from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import OSPF6
 from ipmininet.router.config.base import RouterConfig
 from ipmininet.router.config.ospf6 import OSPF6RedistributedRoute
-from ipmininet.tests.utils import assert_connectivity, assert_path
+from ipmininet.tests.utils import (
+    IGP_DETOUR_PATHS,
+    IGP_UNIT_PATHS,
+    assert_connectivity,
+    run_ipnet,
+    run_topology_scenario,
+)
 
 from . import require_root
 
@@ -55,47 +59,23 @@ class MinimalOSPFv3Net(IPTopo):
 
 @require_root
 def test_ospf6_example():
-    try:
-        net = IPNet(topo=SimpleOSPFv3Net())
-        net.start()
+    with run_ipnet(SimpleOSPFv3Net()) as net:
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
-
-
-unit_igp_cost_paths = [
-    ["h1", "r1", "r2", "h2"],
-    ["h2", "r2", "r1", "h1"],
-    ["h1", "r1", "r3", "h3"],
-    ["h3", "r3", "r1", "h1"],
-    ["h2", "r2", "r3", "h3"],
-    ["h3", "r3", "r2", "h2"],
-]
-
-high_igp_cost_paths = [
-    ["h1", "r1", "r3", "r2", "h2"],
-    ["h2", "r2", "r3", "r1", "h1"],
-    ["h1", "r1", "r3", "h3"],
-    ["h3", "r3", "r1", "h1"],
-    ["h2", "r2", "r3", "h3"],
-    ["h3", "r3", "r2", "h2"],
-]
 
 
 @require_root
 @pytest.mark.parametrize(
     "node_params,ospf6_params,link_params,exp_cfg,exp_paths",
     [
-        ({}, {}, {}, ["  ipv6 ospf6 area 0.0.0.0"], unit_igp_cost_paths),
+        ({}, {}, {}, ["  ipv6 ospf6 area 0.0.0.0"], IGP_UNIT_PATHS),
         (
             {},
             {"debug": ["flooding"]},
             {},
             ["debug ospf6 flooding"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
-        ({}, {}, {"igp_metric": 5}, ["  ipv6 ospf6 cost 5"], high_igp_cost_paths),
+        ({}, {}, {"igp_metric": 5}, ["  ipv6 ospf6 cost 5"], IGP_DETOUR_PATHS),
         (
             {},
             {},
@@ -104,7 +84,7 @@ high_igp_cost_paths = [
                 "  ipv6 ospf6 area 1.1.1.1",
                 "  ipv6 ospf6 area 0.0.0.0",
             ],
-            high_igp_cost_paths,
+            IGP_DETOUR_PATHS,
         ),
         (
             {"igp_area": "1.1.1.1"},
@@ -114,21 +94,21 @@ high_igp_cost_paths = [
                 "  ipv6 ospf6 area 1.1.1.1",
                 "  ipv6 ospf6 area 0.0.0.0",
             ],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
             {},
             {"params1": {"ospf6_priority": 1}},
             ["  ipv6 ospf6 priority 1"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
             {},
             {"params1": {"ospf_dead_int": "minimal hello-multiplier 2"}},
             [f"  ipv6 ospf6 dead-interval {OSPF6.DEAD_INT}"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
         (
             {},
@@ -140,31 +120,17 @@ high_igp_cost_paths = [
             },
             {},
             ["  redistribute connected", "  redistribute static"],
-            unit_igp_cost_paths,
+            IGP_UNIT_PATHS,
         ),
     ],
 )
 def test_ospf6_daemon_params(
     node_params, ospf6_params, link_params, exp_cfg, exp_paths
 ):
-    try:
-        net = IPNet(topo=MinimalOSPFv3Net(node_params, ospf6_params, link_params))
-        net.start()
-
-        # Check generated configuration
-        with open("/tmp/ospf6d_r1.cfg") as fileobj:
-            cfg = fileobj.readlines()
-            for line in exp_cfg:
-                assert line + "\n" in cfg, (
-                    "Cannot find the line '{}' in the generated"
-                    " configuration:\n{}".format(line, "".join(cfg))
-                )
-
-        # Check reachability
-        assert_connectivity(net, v6=True)
-        for path in exp_paths:
-            assert_path(net, path, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
+    run_topology_scenario(
+        MinimalOSPFv3Net(node_params, ospf6_params, link_params),
+        cfg_file="/tmp/ospf6d_r1.cfg",
+        exp_cfg=exp_cfg,
+        paths=exp_paths,
+        v6=True,
+    )

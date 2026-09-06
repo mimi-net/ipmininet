@@ -3,9 +3,8 @@
 from ipaddress import IPv6Interface, ip_interface
 
 from ipmininet.link import IPIntf
-from ipmininet.utils import L3Router
 
-from .utils import ConfigDict
+from .utils import ConfigDict, interface_props
 from .zebra import MgmtdBackendDaemon
 
 UPDATE_TIMER = 30
@@ -29,10 +28,7 @@ class RIPng(MgmtdBackendDaemon):
         cfg.update_timer = self.options.update_timer
         cfg.timeout_timer = self.options.timeout_timer
         cfg.garbage_timer = self.options.garbage_timer
-        interfaces = self._node.intfList()
-        cfg.interfaces = self._build_interfaces(interfaces)
-        cfg.networks = self._build_networks(interfaces)
-        return cfg
+        return self.build_interface_config(cfg)
 
     @staticmethod
     def _build_networks(interfaces: list[IPIntf]) -> list["RIPNetwork"]:
@@ -47,17 +43,13 @@ class RIPng(MgmtdBackendDaemon):
     def _build_interfaces(self, interfaces: list[IPIntf]) -> list[ConfigDict]:
         """Return the list of RIP interface properties from the list of
         active interfaces"""
-        return [
-            ConfigDict(
-                description=i.describe,
-                name=i.name,
-                # Is the interface between two routers?
-                active=self.is_active_interface(i),
-                cost=i.igp_metric - 1,
-                domain=ip_interface(f"{i.ip6}/{i.prefixLen6}"),
-            )
-            for i in interfaces
-        ]
+        return interface_props(
+            interfaces,
+            lambda i: {
+                "cost": i.igp_metric - 1,
+                "domain": ip_interface(f"{i.ip6}/{i.prefixLen6}"),
+            },
+        )
 
     def set_defaults(self, defaults):
         """:param debug: the set of debug events that should be logged
@@ -83,15 +75,6 @@ class RIPng(MgmtdBackendDaemon):
         defaults.timeout_timer = TIMEOUT_TIMER
         defaults.garbage_timer = GARBAGE_TIMER
         super().set_defaults(defaults)
-
-    @staticmethod
-    def is_active_interface(itf) -> bool:
-        """Return whether an interface is active or not for the RIPng daemon"""
-        if itf.broadcast_domain is None:
-            return False
-        return any(
-            L3Router.is_l3router_intf(i) for i in itf.broadcast_domain if i != itf
-        )
 
 
 class RIPNetwork:

@@ -24,3 +24,11 @@ repos:
         name: mdformat (strict check)
         args: [--check]
         stages: [pre-push]
+  - repo: local
+    hooks:
+      - id: duplicate-code
+        name: pylint duplicate-code (zero tolerance)
+        entry: scripts/check-duplicates.sh
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

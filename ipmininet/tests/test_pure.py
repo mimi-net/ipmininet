@@ -13,7 +13,6 @@ from typing import ClassVar
 import pytest
 
 from ipmininet.link import _parse_addresses
-from ipmininet.router.config.utils import ConfigDict, ip_statement
 from ipmininet.tests.test_srv6 import _infer_sub_paths
 from ipmininet.tests.utils import wait_until
 from ipmininet.utils import get_set, is_container, is_subnet_of
@@ -226,32 +225,3 @@ class TestGetSet:
         d = {}
         assert get_set(d, "b", list) == []
         assert d == {"b": []}
-
-
-class TestConfigDict:
-    def test_attribute_access(self):
-        d = ConfigDict(foo="bar")
-        assert d.foo == "bar"
-        assert d["foo"] == "bar"
-
-    def test_missing_attribute_is_none(self):
-        d = ConfigDict()
-        assert d.missing is None
-
-    def test_attribute_assignment(self):
-        d = ConfigDict()
-        d.foo = "bar"
-        assert d["foo"] == "bar"
-
-
-@pytest.mark.parametrize(
-    "ip,expected",
-    [
-        ("10.0.0.0/8", "ip"),
-        (4, "ip"),
-        ("2001:db8::/32", "ipv6"),
-        (6, "ipv6"),
-    ],
-)
-def test_ip_statement(ip, expected):
-    assert ip_statement(ip) == expected

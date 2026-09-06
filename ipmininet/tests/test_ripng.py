@@ -2,14 +2,16 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.ripng_network import RIPngNetwork
 from ipmininet.examples.ripng_network_adjust import RIPngNetworkAdjust
-from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import RIPng
 from ipmininet.router.config.base import RouterConfig
-from ipmininet.tests.utils import assert_connectivity, assert_path, assert_routing_table
+from ipmininet.tests.utils import (
+    assert_routing_table,
+    run_ipnet,
+    run_topology_scenario,
+)
 
 from . import require_root
 
@@ -137,40 +139,25 @@ RIPNG_FAST_TIMERS = {"update_timer": 2, "timeout_timer": 6, "garbage_timer": 6}
     ids=lambda v: v.__name__,
 )
 def test_ripng_examples(topo):
-    try:
-        net = IPNet(topo=topo(ripng_timers=RIPNG_FAST_TIMERS))
-        net.start()
-        assert_connectivity(net, v6=True)
-        for path in expected_paths[topo.__name__]:
-            assert_path(net, path, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
+    run_topology_scenario(
+        topo(ripng_timers=RIPNG_FAST_TIMERS),
+        paths=expected_paths[topo.__name__],
+        v6=True,
+    )
 
 
 @require_root
 def test_ripng_adjust():
-    try:
-        net = IPNet(
-            topo=RIPngNetworkAdjust(lr1r5_cost=5, ripng_timers=RIPNG_FAST_TIMERS)
-        )
-        net.start()
-        assert_connectivity(net, v6=True)
-        for path in expected_paths["RIPngNetworkAdjust-mod"]:
-            assert_path(net, path, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
+    run_topology_scenario(
+        RIPngNetworkAdjust(lr1r5_cost=5, ripng_timers=RIPNG_FAST_TIMERS),
+        paths=expected_paths["RIPngNetworkAdjust-mod"],
+        v6=True,
+    )
 
 
 @require_root
 def test_ripng_flush_routing_tables():
-    try:
-        net = IPNet(topo=MinimalRIPngNet(is_test_flush=True))
-        net.start()
-
+    with run_ipnet(MinimalRIPngNet(is_test_flush=True)) as net:
         routing_tables = {
             "r1": ["2042:22::/64", "2042:33::/64", "2042:23::/64"],
             "r2": ["2042:11::/64", "2042:33::/64", "2042:13::/64"],
@@ -178,6 +165,3 @@ def test_ripng_flush_routing_tables():
         }
         for router, expected_ipv6 in routing_tables.items():
             assert_routing_table(net[router], expected_ipv6, present=False)
-        net.stop()
-    finally:
-        cleanup()

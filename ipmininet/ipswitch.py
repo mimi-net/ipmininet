@@ -6,6 +6,24 @@ from mininet.nodelib import LinuxBridge
 from ipmininet.utils import require_cmd
 
 
+def start_captures(node):
+    """Start the captures configured on a node and on each of its interfaces."""
+    for capture in node.params.get("captures", []):
+        capture.start(node=node)
+    for intf in node.intfList():
+        for capture in intf.params.get("captures", []):
+            capture.start(intf=intf)
+
+
+def stop_captures(node):
+    """Stop the captures configured on a node and on each of its interfaces."""
+    for capture in node.params.get("captures", []):
+        capture.stop(node=node)
+    for intf in node.intfList():
+        for capture in intf.params.get("captures", []):
+            capture.stop(intf=intf)
+
+
 class IPSwitch(LinuxBridge):
     """Linux Bridge (with optional spanning tree) extended to include
     the hubs"""
@@ -62,19 +80,9 @@ class IPSwitch(LinuxBridge):
                     f"brctl setpathcost {self.name} {i.name} "
                     f"{i.params.get('stp_cost', 1)}"
                 )
-        # Start the captures on this switch
-        for capture in self.params.get("captures", []):
-            capture.start(node=self)
-        for intf in self.intfList():
-            for capture in intf.params.get("captures", []):
-                capture.start(intf=intf)
+        start_captures(self)
         self.cmd("ifconfig", self, "up")
 
     def stop(self, deleteIntfs=True):
-        # Stop the captures on this switch
-        for capture in self.params.get("captures", []):
-            capture.stop(node=self)
-        for intf in self.intfList():
-            for capture in intf.params.get("captures", []):
-                capture.stop(intf=intf)
+        stop_captures(self)
         super().stop(deleteIntfs=deleteIntfs)

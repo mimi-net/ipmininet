@@ -2,13 +2,15 @@
 # Enforce a ceiling on duplicated source/test code blocks (pylint duplicate-code).
 # The allowed count is read from pyproject.toml [tool.ipmininet] duplication_max,
 # so the project config file stays the single source of truth.
+# The standalone examples under ipmininet/examples and the install helpers are
+# excluded: they act as self-contained user documentation.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 BASELINE="$(uv run python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["tool"]["ipmininet"].get("duplication_max", 0))')"
 
-OUT="$(uv run pylint ipmininet/ 2>&1 || true)"
+OUT="$(uv run pylint ipmininet/ --ignore=examples,install 2>&1 || true)"
 COUNT="$(printf '%s\n' "$OUT" | grep -c "R0801" || true)"
 
 if [ "$COUNT" -gt "$BASELINE" ]; then

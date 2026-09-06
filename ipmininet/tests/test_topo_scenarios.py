@@ -19,6 +19,11 @@ from ipmininet.node_description import (
     NodeNotOnLinkError,
 )
 from ipmininet.overlay import (
+    _PCAP_GLOBAL_HEADER_SIZE,
+    _PCAP_MAGIC_BE,
+    _PCAP_MAGIC_LE,
+    _PCAPNG_MAGIC,
+    _PCAPNG_SECTION_HEADER_SIZE,
     NetworkCapture,
     NoCaptureAnchorError,
     Subnet,
@@ -26,11 +31,6 @@ from ipmininet.overlay import (
 )
 
 _COST = 5
-_PCAP_MAGIC_LE = b"\xd4\xc3\xb2\xa1"
-_PCAP_MAGIC_BE = b"\xa1\xb2\xc3\xd4"
-_PCAPNG_MAGIC = b"\x0a\x0d\x0d\x0a"
-_PCAP_GLOBAL_HEADER_SIZE = 24
-_PCAPNG_SECTION_HEADER_SIZE = 28
 
 
 def _ips_per_node(topo: IPTopo) -> dict[str, list[str]]:
@@ -49,6 +49,29 @@ def _build_lan(prefix="s") -> IPTopo:
     topo.addHost("h2")
     topo.addLink("h1", prefix)
     topo.addLink(prefix, "h2")
+    return topo
+
+
+def _build_split_lan() -> IPTopo:
+    """Two hosts on two distinct LANs."""
+    topo = IPTopo()
+    topo.addHost("h1")
+    topo.addSwitch("s1")
+    topo.addHost("h2")
+    topo.addSwitch("s2")
+    topo.addLink("h1", "s1")
+    topo.addLink("h2", "s2")
+    return topo
+
+
+def _build_star_lan(nhosts=4) -> IPTopo:
+    """Four hosts on the same switch."""
+    topo = IPTopo()
+    for host in (f"h{i}" for i in range(1, nhosts + 1)):
+        topo.addHost(host)
+    topo.addSwitch("s1")
+    for host in (f"h{i}" for i in range(1, nhosts + 1)):
+        topo.addLink(host, "s1")
     return topo
 
 
@@ -93,69 +116,46 @@ def test_topo_unknown_attribute_raises():
         _ = topo.no_such_attribute
 
 
-def test_subnet_assigns_addresses_in_order():
-    topo = _build_lan()
-    topo.addSubnet(nodes=["h1", "h2"], subnets=["10.0.0.0/24"])
+@pytest.mark.parametrize(
+    "builder,nodes,subnets,expected_ips,consistent",
+    [
+        (
+            _build_lan,
+            ["h1", "h2"],
+            ["10.0.0.0/24"],
+            {"h1": ["10.0.0.1/24"], "h2": ["10.0.0.2/24"]},
+            True,
+        ),
+        (
+            _build_lan,
+            ["h1", "h2"],
+            ["10.0.0.0/24", "192.168.0.0/30"],
+            {
+                "h1": ["10.0.0.1/24", "192.168.0.1/30"],
+                "h2": ["10.0.0.2/24", "192.168.0.2/30"],
+            },
+            True,
+        ),
+        (_build_split_lan, ["h1", "h2"], ["10.0.0.0/24"], None, False),
+        (_build_star_lan, ["h1", "h2", "h3", "h4"], ["10.0.0.0/30"], None, False),
+        (_build_lan, ["h1", "h2"], ["banana"], None, False),
+        (_build_lan, [], ["10.0.0.0/24"], {}, True),
+    ],
+)
+def test_subnet_overlay_consistency(builder, nodes, subnets, expected_ips, consistent):
+    topo = builder()
+    topo.addSubnet(nodes=nodes, subnets=subnets)
     topo.build()
 
-    assert topo.overlays[0].consistent
+    assert bool(topo.overlays[0].consistent) is consistent
+    if expected_ips is None:
+        return
     ips = _ips_per_node(topo)
-    assert ips["h1"] == ["10.0.0.1/24"]
-    assert ips["h2"] == ["10.0.0.2/24"]
-
-
-def test_subnet_multiple_subnets_same_interface():
-    topo = _build_lan()
-    topo.addSubnet(nodes=["h1", "h2"], subnets=["10.0.0.0/24", "192.168.0.0/30"])
-    topo.build()
-
-    ips = _ips_per_node(topo)
-    assert ips["h1"] == ["10.0.0.1/24", "192.168.0.1/30"]
-    assert ips["h2"] == ["10.0.0.2/24", "192.168.0.2/30"]
-
-
-def test_subnet_nodes_on_distinct_lans_are_inconsistent():
-    topo = IPTopo()
-    topo.addHost("h1")
-    topo.addHost("h2")
-    topo.addSwitch("s1")
-    topo.addSwitch("s2")
-    topo.addLink("h1", "s1")
-    topo.addLink("h2", "s2")
-    topo.addSubnet(nodes=["h1", "h2"], subnets=["10.0.0.0/24"])
-    topo.build()
-
-    assert not topo.overlays[0].consistent
-
-
-def test_subnet_too_small_is_inconsistent():
-    topo = IPTopo()
-    for host in ("h1", "h2", "h3", "h4"):
-        topo.addHost(host)
-    topo.addSwitch("s1")
-    for host in ("h1", "h2", "h3", "h4"):
-        topo.addLink(host, "s1")
-    topo.addSubnet(nodes=["h1", "h2", "h3", "h4"], subnets=["10.0.0.0/30"])
-    topo.build()
-
-    assert not topo.overlays[0].consistent
-
-
-def test_subnet_invalid_network_is_inconsistent():
-    topo = _build_lan()
-    topo.addSubnet(nodes=["h1", "h2"], subnets=["banana"])
-    topo.build()
-
-    assert not topo.overlays[0].consistent
-
-
-def test_subnet_without_nodes_is_consistent():
-    topo = _build_lan()
-    topo.addSubnet(nodes=[], subnets=["10.0.0.0/24"])
-    topo.build()
-
-    assert topo.overlays[0].consistent
-    assert not any(_ips_per_node(topo).values())
+    if not expected_ips:
+        assert not any(ips.values())
+    else:
+        for node, expected in expected_ips.items():
+            assert ips[node] == expected
 
 
 def test_overlay_element_properties():

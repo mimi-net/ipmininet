@@ -1,5 +1,7 @@
 from mininet.node import OVSSwitch
 
+from ipmininet.ipswitch import start_captures, stop_captures
+
 
 class IPOVSSwitch(OVSSwitch):
     """A switch that supports IPMininet-specific features.
@@ -73,12 +75,7 @@ class IPOVSSwitch(OVSSwitch):
         self.vsctl(f" add-br {self}")
         self.vsctl(f" set bridge {self}" + self.bridgeOpts())
         self.vsctl(intfs)
-        # Start the captures on this switch
-        for capture in self.params.get("captures", []):
-            capture.start(node=self)
-        for intf in self.intfList():
-            for capture in intf.params.get("captures", []):
-                capture.start(intf=intf)
+        start_captures(self)
         self.cmd("ifconfig", self, "up")
 
     def bridgeOpts(self):
@@ -103,10 +100,5 @@ class IPOVSSwitch(OVSSwitch):
         return opts
 
     def stop(self, deleteIntfs=True):
-        # Stop the captures on this switch
-        for capture in self.params.get("captures", []):
-            capture.stop(node=self)
-        for intf in self.intfList():
-            for capture in intf.params.get("captures", []):
-                capture.stop(intf=intf)
+        stop_captures(self)
         OVSSwitch.stop(self, deleteIntfs)

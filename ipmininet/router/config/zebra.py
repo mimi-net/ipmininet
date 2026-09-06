@@ -53,6 +53,17 @@ class QuaggaDaemon(RouterDaemon):
         cfg.debug = self.options.debug
         return cfg
 
+    def build_interface_config(self, cfg):
+        """Populate the per-interface and per-network config lists.
+
+        Called by the IGP daemon subclasses (OSPF, RIPng) which each implement
+        ``_build_interfaces``/``_build_networks`` for their own address family.
+        """
+        interfaces = self._node.intfList()
+        cfg.interfaces = self._build_interfaces(interfaces)
+        cfg.networks = self._build_networks(interfaces)
+        return cfg
+
     def set_defaults(self, defaults):
         """:param debug: the set of debug events that should be logged"""
         defaults.debug = ()

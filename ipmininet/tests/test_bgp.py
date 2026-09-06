@@ -2,7 +2,6 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.bgp_full_config import BGPTopoFull
 from ipmininet.examples.bgp_local_pref import BGPTopoLocalPref
 from ipmininet.examples.bgp_med import BGPTopoMed
@@ -14,12 +13,16 @@ from ipmininet.examples.bgp_policies_5 import BGPPoliciesTopo5
 from ipmininet.examples.bgp_policies_adjust import BGPPoliciesAdjustTopo
 from ipmininet.examples.bgp_rr import BGPTopoRR
 from ipmininet.examples.simple_bgp_network import SimpleBGPTopo
-from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import AS, BGP, bgp_peering, iBGPFullMesh
 from ipmininet.router.config.base import RouterConfig
 from ipmininet.router.config.bgp import AF_INET, AF_INET6, CLIENT_PROVIDER
-from ipmininet.tests.utils import assert_connectivity, assert_path
+from ipmininet.tests.utils import (
+    assert_all_paths,
+    assert_config_file,
+    assert_connectivity,
+    run_ipnet,
+)
 
 from . import require_root
 
@@ -117,14 +120,9 @@ class BGPTopo(IPTopo):
 
 @require_root
 def test_bgp_example():
-    try:
-        net = IPNet(topo=SimpleBGPTopo())
-        net.start()
+    with run_ipnet(SimpleBGPTopo()) as net:
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
@@ -162,25 +160,13 @@ def test_bgp_example():
     ],
 )
 def test_bgp_daemon_params(bgp_params, expected_cfg):
-    try:
-        net = IPNet(topo=BGPTopo(bgp_params), allocate_IPs=False)
-        net.start()
-
+    with run_ipnet(BGPTopo(bgp_params), allocate_IPs=False) as net:
         # Check generated configuration
-        with open("/tmp/bgpd_as2r1.cfg") as fileobj:
-            cfg = [line for line in (line.strip() for line in fileobj) if line]
-            for line in expected_cfg:
-                assert line in cfg, (
-                    "Cannot find the line '{}' in the generated "
-                    "configuration:\n{}".format(line, "".join(cfg))
-                )
+        assert_config_file("/tmp/bgpd_as2r1.cfg", expected_cfg, strip=True)
 
         # Check reachability
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 local_pref_paths = [
@@ -192,19 +178,6 @@ local_pref_paths = [
     ["as1r6", "as4r1", "as4h1"],
 ]
 
-
-@require_root
-def test_bgp_local_pref():
-    try:
-        net = IPNet(topo=BGPTopoLocalPref())
-        net.start()
-        for path in local_pref_paths:
-            assert_path(net, path, v6=True)
-        net.stop()
-    finally:
-        cleanup()
-
-
 med_paths = [
     ["as1r1", "as1r6", "as1r5", "as4r2", "as4h1"],
     ["as1r2", "as1r3", "as1r6", "as1r5", "as4r2", "as4h1"],
@@ -213,19 +186,6 @@ med_paths = [
     ["as1r5", "as4r2", "as4h1"],
     ["as1r6", "as1r5", "as4r2", "as4h1"],
 ]
-
-
-@require_root
-def test_bgp_med():
-    try:
-        net = IPNet(topo=BGPTopoMed())
-        net.start()
-        for path in med_paths:
-            assert_path(net, path, v6=True)
-        net.stop()
-    finally:
-        cleanup()
-
 
 rr_paths = [
     ["as1r1", "as1r6", "as5r1", "as2r1", "as2h1"],
@@ -236,19 +196,6 @@ rr_paths = [
     ["as1r6", "as5r1", "as2r1", "as2h1"],
 ]
 
-
-@require_root
-def test_bgp_rr():
-    try:
-        net = IPNet(topo=BGPTopoRR())
-        net.start()
-        for path in rr_paths:
-            assert_path(net, path, v6=True)
-        net.stop()
-    finally:
-        cleanup()
-
-
 full_paths = [
     ["as1r1", "as1r6", "as4r1", "as4h1"],
     ["as1r2", "as1r3", "as1r6", "as4r1", "as4h1"],
@@ -258,17 +205,19 @@ full_paths = [
     ["as1r6", "as4r1", "as4h1"],
 ]
 
+_bgp_path_examples = [
+    (BGPTopoLocalPref, local_pref_paths),
+    (BGPTopoMed, med_paths),
+    (BGPTopoRR, rr_paths),
+    (BGPTopoFull, full_paths),
+]
+
 
 @require_root
-def test_bgp_full_config():
-    try:
-        net = IPNet(topo=BGPTopoFull())
-        net.start()
-        for path in full_paths:
-            assert_path(net, path, v6=True)
-        net.stop()
-    finally:
-        cleanup()
+@pytest.mark.parametrize("topo,paths", _bgp_path_examples)
+def test_bgp_paths(topo, paths):
+    with run_ipnet(topo()) as net:
+        assert_all_paths(net, paths, v6=True)
 
 
 policies_paths = {
@@ -322,28 +271,16 @@ policies_paths = {
     ],
 )
 def test_bgp_policies(topology):
-    try:
-        net = IPNet(topo=topology())
-        net.start()
-        for path in policies_paths[topology.__name__]:
-            assert_path(net, path, v6=True)
-        net.stop()
-    finally:
-        cleanup()
+    with run_ipnet(topology()) as net:
+        assert_all_paths(net, policies_paths[topology.__name__], v6=True)
 
 
 @require_root
 def test_bgp_policies_adjust():
-    try:
-        # Adding this new peering link should enable all hosts
-        # to ping each others
-        net = IPNet(
-            topo=BGPPoliciesAdjustTopo(
-                as_start="as5r", as_end="as2r", bgp_policy=CLIENT_PROVIDER
-            )
+    # Adding this new peering link should enable all hosts to ping each others
+    with run_ipnet(
+        BGPPoliciesAdjustTopo(
+            as_start="as5r", as_end="as2r", bgp_policy=CLIENT_PROVIDER
         )
-        net.start()
+    ) as net:
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
