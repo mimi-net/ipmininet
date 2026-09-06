@@ -1,9 +1,7 @@
 # IPMininet
 
 [![Pypi Version](https://img.shields.io/pypi/v/ipmininet.svg)](https://pypi.python.org/pypi/ipmininet/)
-[![Build Status](https://jenkins-mininet.info.ucl.ac.be/buildStatus/icon?job=ipmininet%2Fpythonversion%3Dipmininet-py37%2Ctestname%3Dunittest&subject=Python3.7)](https://jenkins-mininet.info.ucl.ac.be/job/ipmininet/pythonversion=ipmininet-py37,testname=unittest)
 [![Documentation Status](https://readthedocs.org/projects/ipmininet/badge/?version=latest)](http://ipmininet.readthedocs.io/?badge=latest)
-[![Build Status](https://jenkins-mininet.info.ucl.ac.be/buildStatus/icon?job=ipmininet%2Fpythonversion%3Dipmininet-py37%2Ctestname%3Ddoctest&subject=doc%20examples)](https://jenkins-mininet.info.ucl.ac.be/job/ipmininet/pythonversion=ipmininet-py37,testname=doctest)
 [![Code Coverage](https://codecov.io/gh/mimi-net/ipmininet/branch/master/graph/badge.svg)](https://codecov.io/gh/mimi-net/ipmininet)
 
 This is a python library, extending [Mininet](http://mininet.org), in order
@@ -13,3 +11,7 @@ IP addresses or router configuration files, ...
 
 The latest user documentation is available on
 https://ipmininet.readthedocs.io/
+
+Requires Python 3.12+ and FRRouting 10.7+ (the generated FRR configs use the
+mgmtd backend introduced in FRR 9). Install or re-provision the daemons with
+`sudo python -m ipmininet.install -af`; see the installation docs.

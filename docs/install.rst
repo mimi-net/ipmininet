@@ -54,7 +54,7 @@ You can change the installed version by replacing the version tag in the followi
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade git+https://github.com/mimi-net/ipmininet.git@v1.2.6
+    $ sudo pip install --upgrade git+https://github.com/mimi-net/ipmininet.git@v1.3.0
 
 Then, you can install all the daemons:
 
@@ -65,5 +65,11 @@ Then, you can install all the daemons:
 You can choose to install only a subset of the daemons
 by changing the options on the installation script.
 For the option documentations, use the ``-h`` option.
+
+The installer provisions FRRouting **10.7.1** (built from source) and installs
+ExaBGP **5.0.13** via pip. IPMininet generates FRR configs through the mgmtd
+backend introduced in FRR 9, so an environment provisioned by an older
+IPMininet must be **re-provisioned** (``sudo python -m ipmininet.install -af``)
+after upgrading the library, or the daemon startup checks will fail.
 
 .. _documentation: http://mininet.org/download/
