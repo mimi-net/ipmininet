@@ -293,6 +293,7 @@ class PrefixListEntry(Entry):
                 ip_network("0.0.0.0/0") if self.family == "ipv4" else ip_network("::/0")
             )
             self.le = type_mask[self.family]
+            self.ge = None
             return
 
         if le is not None:

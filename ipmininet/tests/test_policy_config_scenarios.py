@@ -72,12 +72,13 @@ def test_prefix_list_any_entry():
     entry4 = pl4.entries[0]
     assert entry4.prefix == ip_network("0.0.0.0/0")
     assert entry4.le == _V4_MAX_PREFIX
-    assert not hasattr(entry4, "ge")
+    assert entry4.ge is None
 
     pl6 = PrefixList("ipv6", entries=("any",))
     entry6 = pl6.entries[0]
     assert entry6.prefix == ip_network("::/0")
     assert entry6.le == _V6_MAX_PREFIX
+    assert entry6.ge is None
 
 
 def test_prefix_list_le_ge_bounds():
