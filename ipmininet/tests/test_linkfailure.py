@@ -4,13 +4,17 @@ from ipaddress import ip_network
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 
 from ..examples.link_failure import FailureTopo
 from . import require_root
-from .utils import assert_connectivity, assert_node_not_connected, assert_routing_table
+from .utils import (
+    assert_connectivity,
+    assert_node_not_connected,
+    assert_routing_table,
+    run_ipnet,
+)
 
 
 def _wait_reconvergence(net: IPNet, timeout=180):
@@ -42,17 +46,10 @@ class Topo(IPTopo):
 
 @require_root
 def test_failure_topo():
-    try:
-        net = IPNet(topo=FailureTopo())
-        net.start()
-
+    with run_ipnet(FailureTopo()) as net:
         # Check example connectivity
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
@@ -65,10 +62,7 @@ def test_failure_topo():
     ],
 )
 def test_failurePlan(plan):
-    try:
-        net = IPNet(topo=Topo())
-        net.start()
-
+    with run_ipnet(Topo()) as net:
         # Wait for OSPF convergence
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -88,18 +82,12 @@ def test_failurePlan(plan):
         # Check link restoration
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
 @pytest.mark.parametrize("downed_links", [1, 2, 3])
 def test_randomFailure(downed_links):
-    try:
-        net = IPNet(topo=Topo())
-        net.start()
-
+    with run_ipnet(Topo()) as net:
         # Wait for OSPF convergence
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -118,17 +106,11 @@ def test_randomFailure(downed_links):
         # Check link restoration
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
 def test_randomFailureOnTargetedLink():
-    try:
-        net = IPNet(topo=Topo())
-        net.start()
-
+    with run_ipnet(Topo()) as net:
         # Wait for OSPF convergence
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -147,18 +129,12 @@ def test_randomFailureOnTargetedLink():
         # Check link restoration
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
 def test_ping_and_failure_api_edges():
     """Exercise the corner cases of the ping and failure APIs on a live net."""
-    try:
-        net = IPNet(topo=Topo())
-        net.start()
-
+    with run_ipnet(Topo()) as net:
         # Wait for OSPF convergence before touching the failure APIs
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
@@ -170,7 +146,3 @@ def test_ping_and_failure_api_edges():
         # Failure API corner cases: bogus nodes and too many downed links
         assert net.runFailurePlan([("ghost1", "ghost2")]) == []
         assert net.randomFailure(99) == []
-
-        net.stop()
-    finally:
-        cleanup()

@@ -2,25 +2,20 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.partial_static_address_network import PartialStaticAddressNet
 from ipmininet.examples.static_address_network import StaticAddressNet
 from ipmininet.examples.static_routing import StaticRoutingNet
 from ipmininet.examples.static_routing_failure import StaticRoutingNetFailure
 from ipmininet.examples.static_routing_network_basic import StaticRoutingNetBasic
 from ipmininet.examples.static_routing_network_complex import StaticRoutingNetComplex
-from ipmininet.ipnet import IPNet
-from ipmininet.tests.utils import assert_connectivity, assert_path
+from ipmininet.tests.utils import assert_connectivity, assert_path, run_ipnet
 
 from . import require_root
 
 
 @require_root
 def test_static_example():
-    try:
-        net = IPNet(topo=StaticAddressNet())
-        net.start()
-
+    with run_ipnet(StaticAddressNet()) as net:
         # Check allocated addresses
         assert net["h1"].intf("h1-eth0").ip == "10.0.0.2"
         assert net["h1"].intf("h1-eth0").ip6 == "2001:1a::2"
@@ -54,17 +49,10 @@ def test_static_example():
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
 
-        net.stop()
-    finally:
-        cleanup()
-
 
 @require_root
 def test_partial_static_example():
-    try:
-        net = IPNet(topo=PartialStaticAddressNet())
-        net.start()
-
+    with run_ipnet(PartialStaticAddressNet()) as net:
         # Check allocated addresses
         assert net["h3"].intf("h3-eth0").ip == "192.168.1.2"
         assert net["h3"].intf("h3-eth0").ip6 == "fc00:1::2"
@@ -81,10 +69,6 @@ def test_partial_static_example():
         # Check connectivity
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
 
 
 static_paths = {
@@ -132,10 +116,7 @@ static_paths = {
     ],
 )
 def test_static_examples(topo, connected, v4, v6):
-    try:
-        net = IPNet(topo=topo())
-        net.start()
-
+    with run_ipnet(topo()) as net:
         if connected and v4:
             assert_connectivity(net, v6=False)
         if connected and v6:
@@ -146,7 +127,3 @@ def test_static_examples(topo, connected, v4, v6):
                 assert_path(net, p, v6=False)
             if v6:
                 assert_path(net, p, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()

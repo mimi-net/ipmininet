@@ -2,12 +2,10 @@
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.router_adv_network import RouterAdvNet
-from ipmininet.ipnet import IPNet
 from ipmininet.iptopo import IPTopo
 from ipmininet.router.config import RADVD, AdvPrefix, AdvRDNSS
-from ipmininet.tests.utils import assert_connectivity
+from ipmininet.tests.utils import assert_connectivity, run_ipnet, run_topology_scenario
 
 from . import require_root
 
@@ -38,13 +36,10 @@ class CustomRouterAdvNet(IPTopo):
 
 @require_root
 def test_radvd_example():
-    try:
-        net = IPNet(topo=RouterAdvNet(), use_v4=False, use_v6=True, allocate_IPs=False)
-        net.start()
+    with run_ipnet(
+        RouterAdvNet(), use_v4=False, use_v6=True, allocate_IPs=False
+    ) as net:
         assert_connectivity(net, v6=True)
-        net.stop()
-    finally:
-        cleanup()
 
 
 @require_root
@@ -84,37 +79,22 @@ def test_radvd_example():
     ],
 )
 def test_radvd_daemon_params(link_params, expected_cfg):
-    try:
-        net = IPNet(
-            topo=CustomRouterAdvNet(link_params),
-            use_v4=False,
-            use_v6=True,
-            allocate_IPs=False,
-        )
-        net.start()
-
-        # Check generated configuration
-        with open("/tmp/radvd_r.cfg") as fileobj:
-            cfg = fileobj.readlines()
-            for line in expected_cfg:
-                assert line + "\n" in cfg, (
-                    "Cannot find the line '{}' in the generated"
-                    " configuration:\n{}".format(line, "".join(cfg))
-                )
-
-        # Check reachability
-        assert_connectivity(net, v6=True)
-
-        net.stop()
-    finally:
-        cleanup()
+    run_topology_scenario(
+        CustomRouterAdvNet(link_params),
+        cfg_file="/tmp/radvd_r.cfg",
+        exp_cfg=expected_cfg,
+        v6=True,
+        use_v4=False,
+        use_v6=True,
+        allocate_IPs=False,
+    )
 
 
 @require_root
 def test_radvd_cleanup():
-    try:
-        net = IPNet(topo=RouterAdvNet(), use_v4=False, use_v6=True, allocate_IPs=False)
-        net.start()
+    with run_ipnet(
+        RouterAdvNet(), use_v4=False, use_v6=True, allocate_IPs=False
+    ) as net:
         net["r"].nconfig.daemon(RADVD).cleanup()
         try:
             net["r"].nconfig.daemon(RADVD).cleanup()
@@ -122,6 +102,3 @@ def test_radvd_cleanup():
             pytest.fail(
                 f"An exception '{e}' was raised while cleaning twice RADVD daemon"
             )
-        net.stop()
-    finally:
-        cleanup()

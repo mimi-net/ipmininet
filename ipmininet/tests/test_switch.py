@@ -4,7 +4,6 @@ import functools
 
 import pytest
 
-from ipmininet.clean import cleanup
 from ipmininet.examples.spanning_tree import SpanningTreeNet
 from ipmininet.examples.spanning_tree_adjust import SpanningTreeAdjust
 from ipmininet.examples.spanning_tree_bus import SpanningTreeBus
@@ -12,11 +11,10 @@ from ipmininet.examples.spanning_tree_cost import SpanningTreeCost
 from ipmininet.examples.spanning_tree_full_mesh import SpanningTreeFullMesh
 from ipmininet.examples.spanning_tree_hub import SpanningTreeHub
 from ipmininet.examples.spanning_tree_intermediate import SpanningTreeIntermediate
-from ipmininet.ipnet import IPNet
 from ipmininet.ipswitch import IPSwitch
 from ipmininet.iptopo import IPTopo
 from ipmininet.tests import require_root
-from ipmininet.tests.utils import assert_connectivity, assert_stp_state
+from ipmininet.tests.utils import assert_connectivity, assert_stp_state, run_ipnet
 
 # Accelerate STP convergence (kernel forward delay is 15s by default).
 FastSTPSwitch = functools.partial(IPSwitch, stp_forward_delay=4)
@@ -220,40 +218,28 @@ expected_states = {
     ],
 )
 def test_stp(topo):
-    try:
-        net = IPNet(topo=topo(), switch=FastSTPSwitch)
-        net.start()
-
+    with run_ipnet(topo(), switch=FastSTPSwitch) as net:
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
 
         for switch, states in expected_states[topo.__name__].items():
             assert_stp_state(net[switch], states)
-        net.stop()
-    finally:
-        cleanup()
 
 
 def test_stp_adjust():
-    try:
-        net = IPNet(
-            topo=SpanningTreeAdjust(
-                l1_start="s2-eth1",
-                l1_end="s1-eth1",
-                l1_cost=2,
-                l2_start="s1-eth3",
-                l2_end="s3-eth1",
-                l2_cost=3,
-            ),
-            switch=FastSTPSwitch,
-        )
-        net.start()
-
+    with run_ipnet(
+        SpanningTreeAdjust(
+            l1_start="s2-eth1",
+            l1_end="s1-eth1",
+            l1_cost=2,
+            l2_start="s1-eth3",
+            l2_end="s3-eth1",
+            l2_cost=3,
+        ),
+        switch=FastSTPSwitch,
+    ) as net:
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
 
         for switch, states in expected_states["SpanningTreeAdjust-mod"].items():
             assert_stp_state(net[switch], states)
-        net.stop()
-    finally:
-        cleanup()
