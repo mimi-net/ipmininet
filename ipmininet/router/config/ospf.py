@@ -6,7 +6,7 @@ from ipaddress import IPv4Network, ip_interface
 from ipmininet.link import IPIntf
 from ipmininet.overlay import Overlay
 
-from .utils import ConfigDict, interface_props
+from .utils import ConfigDict, interface_props, is_l3router_interface
 from .zebra import QuaggaDaemon, Zebra
 
 
@@ -97,6 +97,11 @@ class OSPF(QuaggaDaemon):
         defaults.priority = 10
         defaults.redistribute = []
         super().set_defaults(defaults)
+
+    @staticmethod
+    def is_active_interface(itf) -> bool:
+        """Return whether an interface is active or not for the OSPF daemon"""
+        return is_l3router_interface(itf)
 
 
 class OSPFNetwork:
