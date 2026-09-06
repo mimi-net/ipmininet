@@ -1,8 +1,9 @@
 import re
 import signal
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from io import StringIO
 from ipaddress import ip_address, ip_network
 from re import Match, Pattern
@@ -10,15 +11,34 @@ from re import Match, Pattern
 import mininet.log
 import pytest
 
+from ipmininet.clean import cleanup
 from ipmininet.host.config.named import DNSRecord
 from ipmininet.ipnet import IPNet
 from ipmininet.ipswitch import IPSwitch
+from ipmininet.iptopo import IPTopo
 from ipmininet.router import IPNode
 from ipmininet.utils import require_cmd
 
 # Number of identical successive traceroutes required to consider that the
 # network has converged on a stable path.
 CONVERGED_PATH_COUNT = 2
+
+
+@contextmanager
+def run_ipnet(topo: IPTopo, **net_kwargs) -> Iterator[IPNet]:
+    """Start an IPNet built from ``topo`` and guarantee its teardown.
+
+    Runs ``net.stop()`` and the global ``cleanup()`` in a ``finally`` block so
+    a test never leaks namespaces, daemons or interfaces, even when an
+    assertion fails mid-test.
+    """
+    net = IPNet(topo=topo, **net_kwargs)
+    net.start()
+    try:
+        yield net
+    finally:
+        net.stop()
+        cleanup()
 
 
 def wait_until(

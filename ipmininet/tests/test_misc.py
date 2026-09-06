@@ -5,13 +5,12 @@ import subprocess
 import pytest
 
 from ipmininet import utils
-from ipmininet.clean import cleanup
 from ipmininet.examples.static_address_network import StaticAddressNet
-from ipmininet.ipnet import IPNet
 from ipmininet.link import _parse_addresses
 from ipmininet.router.config.utils import ip_statement
 
 from . import require_root
+from .utils import run_ipnet
 
 # An Ethernet MAC address is made of 6 octets
 MAC_LEN = 6
@@ -121,13 +120,8 @@ def test_require_cmd(cmd, present):
 )
 @require_root
 def test_address_pair(node, use_v4, use_v6, expected):
-    try:
-        net = IPNet(topo=StaticAddressNet())
-        net.start()
+    with run_ipnet(StaticAddressNet()) as net:
         assert utils.address_pair(net[node], use_v4, use_v6) == expected
-        net.stop()
-    finally:
-        cleanup()
 
 
 @pytest.mark.parametrize(
@@ -143,9 +137,7 @@ def test_address_pair(node, use_v4, use_v6, expected):
 )
 @require_root
 def test_find_node(start, node, present):
-    try:
-        net = IPNet(topo=StaticAddressNet())
-        net.start()
+    with run_ipnet(StaticAddressNet()) as net:
         i = utils.find_node(net[start], node)
         if present:
             assert i is not None, f"Node {node} not found from node {start}"
@@ -154,9 +146,6 @@ def test_find_node(start, node, present):
             )
         else:
             assert i is None, f"Node {node} should not be found from node {start}"
-        net.stop()
-    finally:
-        cleanup()
 
 
 @pytest.mark.parametrize(

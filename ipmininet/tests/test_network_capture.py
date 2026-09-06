@@ -8,8 +8,6 @@ from contextlib import contextmanager
 
 import pytest
 
-from ipmininet.clean import cleanup
-from ipmininet.ipnet import IPNet
 from ipmininet.overlay import (
     _PCAP_GLOBAL_HEADER_SIZE,
     _PCAP_MAGIC_BE,
@@ -21,15 +19,13 @@ from ipmininet.overlay import (
 
 from ..examples.network_capture import NetworkCaptureTopo
 from . import require_mimidump, require_root
-from .utils import assert_connectivity
+from .utils import assert_connectivity, run_ipnet
 
 
 @require_mimidump
 @require_root
 def test_network_capture_example():
-    try:
-        net = IPNet(topo=NetworkCaptureTopo())
-        net.start()
+    with run_ipnet(NetworkCaptureTopo()) as net:
         overlay = next(o for o in net.topo.overlays if isinstance(o, NetworkCapture))
 
         # Capture readiness is asynchronous; wait for it instead of asserting
@@ -43,17 +39,11 @@ def test_network_capture_example():
         assert_connectivity(net, v6=False)
         assert_connectivity(net, v6=True)
 
-        net.stop()
-    finally:
-        cleanup()
-
 
 @require_mimidump
 @require_root
 def test_network_capture_wait_until_capturing():
-    try:
-        net = IPNet(topo=NetworkCaptureTopo())
-        net.start()
+    with run_ipnet(NetworkCaptureTopo()) as net:
         overlay = next(o for o in net.topo.overlays if isinstance(o, NetworkCapture))
 
         # Captures on interfaces (mimidump) become live once the READY signal
@@ -67,10 +57,6 @@ def test_network_capture_wait_until_capturing():
 
         # Captures that were never started are not live
         assert not overlay.wait_until_capturing("does-not-exist", timeout=1)
-
-        net.stop()
-    finally:
-        cleanup()
 
 
 class _FakeProc:

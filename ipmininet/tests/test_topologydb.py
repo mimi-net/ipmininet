@@ -2,7 +2,6 @@
 
 import itertools
 import os
-import shutil
 import tempfile
 from ipaddress import ip_interface
 
@@ -14,11 +13,11 @@ from ipmininet.examples.simple_ospfv3_network import SimpleOSPFv3Net
 from ipmininet.examples.spanning_tree import SpanningTreeNet
 from ipmininet.examples.static_address_network import StaticAddressNet
 from ipmininet.host import IPHost
-from ipmininet.ipnet import IPNet
 from ipmininet.ipswitch import IPSwitch
 from ipmininet.iptopo import IPTopo
 from ipmininet.router import Router
 from ipmininet.tests import require_root
+from ipmininet.tests.utils import run_ipnet
 from ipmininet.topologydb import (
     NoSuchLinkError,
     NoSuchNodeError,
@@ -60,9 +59,7 @@ class _MixedNetworkTopo(IPTopo):
     ],
 )
 def test_topologydb(topology: type[IPTopo]):
-    net = IPNet(topo=topology())
-    db_dir = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as db_dir, run_ipnet(topology()) as net:
         db = TopologyDB(net=net)
 
         db_path = os.path.join(db_dir, "topology.json")
@@ -140,15 +137,10 @@ def test_topologydb(topology: type[IPTopo]):
                     "do not match"
                 )
 
-    finally:
-        net.stop()
-        shutil.rmtree(db_dir, ignore_errors=True)
-
 
 @require_root
 def test_topologydb_lookups_and_errors():
-    net = IPNet(topo=_MixedNetworkTopo())
-    try:
+    with run_ipnet(_MixedNetworkTopo()) as net:
         db = TopologyDB(net=net)
 
         assert db["r1"]["type"] == "router"
@@ -176,8 +168,6 @@ def test_topologydb_lookups_and_errors():
             db.interface_bandwidth("h1", "ghost")
         with pytest.raises(NotARouterError):
             db.routerid("h1")
-    finally:
-        net.stop()
 
 
 def test_topologydb_without_data():

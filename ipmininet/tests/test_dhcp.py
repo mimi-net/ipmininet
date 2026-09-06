@@ -64,29 +64,24 @@ def test_dnsmasq_build_and_files(tmp_cwd):
     assert node.cmd.call_count == 0
 
 
-def test_dnsmasq_pids_found(tmp_cwd):
+@pytest.mark.parametrize(
+    "ss_output,expected",
+    [
+        (
+            'udp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=1234,fd=5))\n'
+            'tcp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=5678,fd=6))\n',
+            ["1234", "5678"],
+        ),
+        ("ss output without any pid", None),
+        ("", None),
+    ],
+)
+def test_dnsmasq_pids(tmp_cwd, ss_output, expected):
     _, daemon = _dnsmasq(tmp_cwd)
-    daemon.node.cmd.return_value = (
-        'udp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=1234,fd=5))\n'
-        'tcp 0 0 0.0.0.0:53 users:(("dnsmasq",pid=5678,fd=6))\n'
-    )
+    daemon.node.cmd.return_value = ss_output
 
-    assert daemon.pids == ["1234", "5678"]
+    assert daemon.pids == expected
     daemon.node.cmd.assert_called_once_with("ss -tulnp | grep dnsmasq")
-
-
-def test_dnsmasq_pids_without_match(tmp_cwd):
-    _, daemon = _dnsmasq(tmp_cwd)
-    daemon.node.cmd.return_value = "ss output without any pid"
-
-    assert daemon.pids is None
-
-
-def test_dnsmasq_pids_empty_output(tmp_cwd):
-    _, daemon = _dnsmasq(tmp_cwd)
-    daemon.node.cmd.return_value = ""
-
-    assert daemon.pids is None
 
 
 def test_dnsmasq_kill(tmp_cwd):
