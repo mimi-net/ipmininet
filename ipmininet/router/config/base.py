@@ -19,7 +19,7 @@ from mako.lookup import TemplateLookup
 from mininet.log import lg as log
 
 from ipmininet.link import OrderedAddress
-from ipmininet.utils import realIntfList, require_cmd
+from ipmininet.utils import realIntfList, require_cmd, walk_unvisited
 
 from .utils import ConfigDict, ip_statement
 
@@ -252,21 +252,21 @@ class RouterConfig(NodeConfig):
             key=OrderedAddress,
         )
         if len(ip_list) == 0:
-            to_visit = realIntfList(self._node)
-            # Explore all routers to check that none has the same router id
-            while to_visit:
-                self.incr_last_routerid()
-                visited = set()  # type: Set[IPIntf]
-                while to_visit:
-                    i = to_visit.pop()
-                    if i in visited:
-                        continue
-                    visited.add(i)
-                    for n in i.broadcast_domain.routers:
-                        if self._equal_routerid(n.node):
-                            break  # We need to change the router id
-                        to_visit.extend(realIntfList(n.node))
-                to_visit = realIntfList(self._node) if to_visit else []
+            # No IPv4 address: generate a router id that clashes with none of
+            # the other routers reachable over the L3 graph.
+            self.incr_last_routerid()
+
+            def _expand(i):
+                if any(
+                    self._equal_routerid(n.node) for n in i.broadcast_domain.routers
+                ):
+                    return []
+                return [
+                    x for n in i.broadcast_domain.routers for x in realIntfList(n.node)
+                ]
+
+            for _ in walk_unvisited(realIntfList(self._node), _expand):
+                pass
             return self._last_routerid.compressed
         return ip_list.pop().ip.compressed
 

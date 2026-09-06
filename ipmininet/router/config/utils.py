@@ -2,7 +2,33 @@
 
 from ipaddress import IPv4Address, IPv6Address, ip_interface
 
-from ipmininet.utils import IP_V6
+from ipmininet.utils import IP_V6, L3Router
+
+
+def is_l3router_interface(itf) -> bool:
+    """Return whether an interface is active for an IGP daemon (i.e. whether
+    it faces another L3 router)."""
+    if itf.broadcast_domain is None:
+        return False
+    return any(L3Router.is_l3router_intf(i) for i in itf.broadcast_domain if i != itf)
+
+
+def interface_props(interfaces, props):
+    """Build the per-interface ConfigDict list shared by the IGP daemons.
+
+    Each entry holds the interface description, name and activeness, decorated
+    with the daemon-specific keys returned by ``props(intf)``.
+    """
+    return [
+        ConfigDict(
+            description=i.describe,
+            name=i.name,
+            # Is the interface between two routers?
+            active=is_l3router_interface(i),
+            **props(i),
+        )
+        for i in interfaces
+    ]
 
 
 class ConfigDict(dict):
