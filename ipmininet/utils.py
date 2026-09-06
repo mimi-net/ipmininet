@@ -173,12 +173,13 @@ def find_node(start: Node, node_name: str) -> Intf | None:
 
     if start.name == node_name:
         return start.intf()
-
     def _expand(i):
         return [
-            n for n in i.broadcast_domain.interfaces if L3Router.is_l3router_intf(n)
+            intf
+            for n in i.broadcast_domain.interfaces
+            if L3Router.is_l3router_intf(n)
+            for intf in realIntfList(n.node)
         ]
-
     for i in walk_unvisited(realIntfList(start), _expand):
         for n in i.broadcast_domain.interfaces:
             if n.node.name == node_name:
