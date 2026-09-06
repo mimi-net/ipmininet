@@ -51,7 +51,10 @@ skip_covered = true
 fail_under = 90
 
 [tool.ipmininet]
-duplication_max = 51
+# Zero-tolerance duplicate-code gate for the product and the test suite.
+# The standalone examples under ipmininet/examples (and install helpers) are
+# deliberately excluded: they double as user documentation, each kept small.
+duplication_max = 0
 
 [tool.pylint]
 
