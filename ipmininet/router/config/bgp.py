@@ -255,6 +255,7 @@ class BGPConfig:
         from_peer: str,
         matching: Sequence[AccessList | CommunityList] = (),
         name: str | None = None,
+        order: int | None = None,
     ) -> "BGPConfig":
         """Set local pref on a peering with 'from_peer' on routes
          matching all of the access and community lists in 'matching'
@@ -263,6 +264,8 @@ class BGPConfig:
         :param local_pref: The local pref value to set
         :param from_peer: The peer on which the local pref is applied
         :param matching: A list of AccessList and/or CommunityList
+        :param order: The order in which the route-map entry is applied,
+         i.e., lower order means applied before
         :return: self
         """
         self.add_set_action(
@@ -271,6 +274,7 @@ class BGPConfig:
             matching=matching,
             direction="in",
             name=name,
+            order=order,
         )
         return self
 
@@ -280,6 +284,7 @@ class BGPConfig:
         to_peer: str,
         matching: Sequence[AccessList | CommunityList] = (),
         name: str | None = None,
+        order: int | None = None,
     ) -> "BGPConfig":
         """Set MED on a peering with 'to_peer' on routes
          matching all of the access and community lists in 'matching'
@@ -288,6 +293,8 @@ class BGPConfig:
         :param med: The local pref value to set
         :param to_peer: The peer to which the med is applied
         :param matching: A list of AccessList and/or CommunityList
+        :param order: The order in which the route-map entry is applied,
+         i.e., lower order means applied before
         :return: self
         """
         self.add_set_action(
@@ -296,16 +303,18 @@ class BGPConfig:
             matching=matching,
             direction="out",
             name=name,
+            order=order,
         )
         return self
 
-    def set_community(
+    def set_community(  # noqa: PLR0913, PLR0917
         self,
         community: str | int,
         from_peer: str | None = None,
         to_peer: str | None = None,
         matching: Sequence[AccessList | CommunityList] = (),
         name: str | None = None,
+        order: int | None = None,
     ) -> "BGPConfig":
         """Set community on a routes received from 'from_peer'
          and routes sent to 'to_peer' on routes matching
@@ -317,6 +326,8 @@ class BGPConfig:
                           the community
         :param to_peer: The peer on which sent routes have to have the community
         :param matching: A list of AccessList and/or CommunityList
+        :param order: The order in which the route-map entry is applied,
+         i.e., lower order means applied before
         :return: self
         """
         if to_peer is not None:
@@ -326,6 +337,7 @@ class BGPConfig:
                 matching=matching,
                 direction="out",
                 name=name,
+                order=order,
             )
         if from_peer is not None:
             self.add_set_action(
@@ -334,6 +346,7 @@ class BGPConfig:
                 matching=matching,
                 direction="in",
                 name=name,
+                order=order,
             )
         return self
 
@@ -504,13 +517,14 @@ class BGPConfig:
                 )
         return match_cond
 
-    def add_set_action(
+    def add_set_action(  # noqa: PLR0913, PLR0917
         self,
         peer: str,
         set_action: RouteMapSetAction,
         name: str | None,
         matching: Sequence[AccessList | CommunityList],
         direction: str,
+        order: int | None = None,
     ) -> "BGPConfig":
         """Add a 'RouteMapSetAction' to a BGP peering between two nodes
 
@@ -519,6 +533,10 @@ class BGPConfig:
         :param set_action: The RouteMapSetAction to set
         :param matching: A list of filter, can be empty
         :param direction: direction of the route map: 'in', 'out' or 'both'
+        :param order: The order in which the route-map entry is applied,
+         i.e., lower order means applied before. If None, the action is merged
+         into the entry of the route map matching the filters, or appended as a
+         new entry if none does
         :return: self
         """
         route_maps = self.topo.getNodeInfo(self.router, "bgp_route_maps", list)
@@ -542,14 +560,17 @@ class BGPConfig:
 
             try:
                 idx = route_maps.index(rm)
-                entry = route_maps[idx].find_entry_by_match_condition(match_cond)
-                if entry:
-                    entry.append_set_action([set_action])
-                else:
-                    entry.entry(rm_entry)
-
+                existing_rm = route_maps.pop(idx)
+                if order is None:
+                    entry = existing_rm.find_entry_by_match_condition(match_cond)
+                    if entry is not None:
+                        entry.append_set_action([set_action])
+                        route_maps.append(existing_rm)
+                        continue
+                existing_rm.entry(rm_entry, order)
+                route_maps.append(existing_rm)
             except ValueError:
-                rm.entry(rm_entry)
+                rm.entry(rm_entry, order)
                 route_maps.append(rm)
         return self
 
