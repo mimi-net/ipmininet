@@ -35,6 +35,7 @@ if [ ${#ARGS[@]} -eq 0 ]; then
         ipmininet/tests/test_switch.py
         ipmininet/tests/test_static.py
         ipmininet/tests/test_bgp.py
+        ipmininet/tests/test_bgp_model.py
         ipmininet/tests/test_dns.py
         ipmininet/tests/test_radv.py
         ipmininet/tests/test_link.py
