@@ -54,7 +54,7 @@ You can change the installed version by replacing the version tag in the followi
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade git+https://github.com/mimi-net/ipmininet.git@v1.3.0
+    $ sudo pip install --upgrade git+https://github.com/mimi-net/ipmininet.git@v1.3.1
 
 Then, you can install all the daemons:
 
